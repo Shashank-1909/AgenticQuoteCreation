@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import SelectionHub from './components/SelectionHub';
+import Dashboard from './components/Dashboard';
+import ThemeToggle from './components/ThemeToggle';
 import {
   Send, CheckCircle2, Loader2, Zap, Settings,
   TrendingUp, ExternalLink, ArrowRight, Database,
-  Search, FileText, Network
+  Search, FileText, Network, ArrowLeft
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -32,6 +35,13 @@ const STYLES = `
   @keyframes slide-up-in {
     from { opacity: 0; transform: translateY(30px) scale(0.96); }
     to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  }
+  .dot-grid {
+    background-image: radial-gradient(circle, var(--glass-border) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+  }
+  .minimap-preview {
+    mask-image: radial-gradient(circle at center, black, transparent);
   }
 `;
 
@@ -503,9 +513,9 @@ const INIT_ORCH = {
 // ─────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
-const App = () => {
+const OrchestratorView = ({ onBack, selectedModule }) => {
   const [messages, setMessages]           = useState([
-    { id: 1, role: 'assistant', content: 'Command Center Online. Awaiting instructions for Salesforce RCA.' }
+    { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
   const [inputValue, setInputValue]       = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
@@ -526,6 +536,10 @@ const App = () => {
   const ws         = useRef(null);
   const centerRef  = useRef(null);
   const [graphScale, setGraphScale] = useState(1);
+  const [userZoom, setUserZoom]     = useState(1);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [pan, setPan]               = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning]   = useState(false);
 
   // ── Panel resizing ──────────────────────────────────────────
   const startResizingLeft  = useCallback(() => setIsResizingLeft(true),  []);
@@ -566,6 +580,27 @@ const App = () => {
       setGraphReady(false);
     }
   }, [graphActive]);
+
+  // ── Panning ────────────────────────────────────────────────
+  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
+  
+  const handlePanStart = (e) => {
+    if (e.target.closest('button') || e.target.closest('form')) return;
+    setIsPanning(true);
+    setLastPos({ x: e.clientX, y: e.clientY });
+  };
+  const handlePanMove = (e) => {
+    if (isPanning) {
+      const dx = e.clientX - lastPos.x;
+      const dy = e.clientY - lastPos.y;
+      setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setLastPos({ x: e.clientX, y: e.clientY });
+    }
+  };
+  const handlePanEnd = () => setIsPanning(false);
+
+  // ── Zoom logic ──────────────────────────────────────────────
+  const adjustZoom = (delta) => setUserZoom(prev => Math.min(2, Math.max(0.5, prev + delta)));
 
   // ── WebSocket ──────────────────────────────────────────────
   useEffect(() => {
@@ -701,13 +736,19 @@ const App = () => {
     <>
       <style>{STYLES}</style>
 
-      <div className={`h-screen w-full bg-[#020306] text-slate-200 font-sans flex overflow-hidden selection:bg-indigo-500/30 ${isResizingLeft || isResizingRight ? 'cursor-col-resize select-none' : ''}`}>
+      {/* Mesh Background */}
+      <div className="mesh-bg opacity-20 dark:opacity-40">
+        <div className="mesh-circle-1" />
+        <div className="mesh-circle-2" />
+      </div>
+
+      <div className={`h-screen w-full bg-[var(--site-bg)] text-[var(--text-main)] font-sans flex overflow-hidden selection:bg-indigo-500/30 transition-colors duration-500 ${isResizingLeft || isResizingRight ? 'cursor-col-resize select-none' : ''}`}>
 
         {/* ═══════════════════════════════════════════════════
             LEFT — COMMAND PANEL
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full border-r border-white/[0.04] bg-[#05060a] flex flex-col relative z-20 shrink-0 overflow-hidden"
+          className="h-full border-r border-[var(--glass-border)] bg-[var(--card-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: leftWidth }}
         >
           <div className="p-7 pb-4 flex items-center justify-between">
@@ -715,9 +756,9 @@ const App = () => {
               <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.4)] shrink-0">
                 <Zap size={16} fill="white" className="text-white" />
               </div>
-              {leftWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-white whitespace-nowrap">Command</h1>}
+              {leftWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Command</h1>}
             </div>
-            {leftWidth > 140 && <Settings size={14} className="text-slate-700 hover:text-indigo-400 cursor-pointer transition-colors shrink-0" />}
+            {leftWidth > 140 && <Settings size={14} className="text-slate-400 hover:text-indigo-600 cursor-pointer transition-colors shrink-0" />}
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-3 space-y-6 scrollbar-hide">
@@ -726,10 +767,10 @@ const App = () => {
                 <div className={`text-[9px] uppercase font-black tracking-[0.2em] mb-2 ${msg.role === 'user' ? 'text-indigo-400' : 'text-slate-700'}`}>
                   {msg.role === 'user' ? 'Commander' : 'Nexus AI'}
                 </div>
-                <div className={`p-4 rounded-2xl text-[11px] leading-relaxed shadow-lg ${
+                <div className={`p-5 rounded-2xl text-[11px] leading-relaxed shadow-sm transition-all ${
                   msg.role === 'user'
-                    ? 'bg-indigo-600/5 border border-indigo-500/20 text-indigo-100'
-                    : 'bg-[#0a0c14] border border-white/[0.05] text-slate-400'}`}>
+                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20'
+                    : 'bg-[var(--card-bg)] border border-[var(--glass-border)] text-[var(--text-main)]'}`}>
                   {msg.content}
                 </div>
               </div>
@@ -744,7 +785,7 @@ const App = () => {
                 onChange={e => setInputValue(e.target.value)}
                 placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
                 disabled={isBusy}
-                className="w-full bg-[#0d111d] border border-white/10 rounded-2xl py-4 pl-4 pr-10 text-[10px] focus:border-indigo-500/50 outline-none text-white placeholder-slate-800 transition-all"
+                className="w-full bg-[var(--site-bg)] border border-[var(--glass-border)] rounded-2xl py-4 pl-4 pr-10 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all"
               />
               <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-600">
                 <Send size={15} />
@@ -755,8 +796,8 @@ const App = () => {
 
         {/* LEFT RESIZER */}
         <div onMouseDown={startResizingLeft}
-          className="w-1 hover:w-1.5 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/30 flex items-center justify-center relative z-30">
-          <div className={`w-0.5 h-12 rounded-full bg-white/5 transition-all ${isResizingLeft ? 'bg-indigo-500 shadow-[0_0_15px_#6366f1] h-24' : ''}`} />
+          className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
+          <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingLeft ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
         </div>
 
         {/* ═══════════════════════════════════════════════════
@@ -764,31 +805,59 @@ const App = () => {
         ═══════════════════════════════════════════════════ */}
         <section
           ref={centerRef}
-          className="flex-1 h-full bg-[#020306] flex flex-col items-center overflow-hidden border-r border-white/[0.04]"
+          className="flex-1 h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-colors duration-500"
         >
           {/* Title bar */}
-          <div className="w-full flex items-center justify-between px-8 pt-7 pb-2 shrink-0">
-            <span className="text-[9px] font-black tracking-[0.75em] text-white/15 uppercase">
-              Orchestration Flow
-            </span>
-            <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${
-                isBusy ? 'bg-emerald-400 animate-pulse' : workflowState === 'completed' ? 'bg-emerald-600' : 'bg-slate-800'
-              }`} />
-              <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">
-                {workflowState === 'idle' ? 'Idle' : workflowState === 'completed' ? 'Done' : 'Live'}
-              </span>
+            <div className="w-full flex items-center justify-between px-8 pt-7 pb-2 shrink-0">
+              <div className="flex items-center gap-4">
+                {onBack && (
+                  <button 
+                    onClick={onBack}
+                    className="p-2 -ml-2 rounded-full hover:bg-white/5 text-slate-500 hover:text-white transition-all"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                )}
+                <span className="text-[9px] font-black tracking-[0.75em] text-slate-400 dark:text-white/15 uppercase">
+                  Orchestration Flow
+                </span>
+              </div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                <span className="text-[8px] font-black uppercase text-slate-500">Minimap</span>
+                <button 
+                  onClick={() => setShowMinimap(!showMinimap)}
+                  className={`w-8 h-4 rounded-full relative transition-colors ${showMinimap ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                >
+                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${showMinimap ? 'left-4.5' : 'left-0.5'}`} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${
+                  isBusy ? 'bg-emerald-400 animate-pulse' : workflowState === 'completed' ? 'bg-emerald-600' : 'bg-slate-800'
+                }`} />
+                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">
+                  {workflowState === 'idle' ? 'Idle' : workflowState === 'completed' ? 'Done' : 'Live'}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Graph viewport */}
-          <div className="flex-1 w-full overflow-y-auto scrollbar-hide flex flex-col items-center">
+          <div 
+            className={`flex-1 w-full overflow-hidden flex flex-col items-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onMouseDown={handlePanStart}
+            onMouseMove={handlePanMove}
+            onMouseUp={handlePanEnd}
+            onMouseLeave={handlePanEnd}
+          >
             <div style={{
-              transform: `scale(${graphScale})`,
-              transformOrigin: 'top center',
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${graphScale * userZoom})`,
+              transformOrigin: 'center center',
               width: GW,
-              marginTop: 16,
+              marginTop: 100,
               flexShrink: 0,
+              transition: isPanning ? 'none' : 'transform 0.1s ease-out',
             }}>
               <AgentGraph
                 orchestration={orchestration}
@@ -797,11 +866,45 @@ const App = () => {
               />
             </div>
 
-            {/* Reset button */}
+            {/* Floating Zoom Controls */}
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-2 rounded-2xl z-40 shadow-2xl transition-all duration-500">
+              <button onClick={() => adjustZoom(-0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">-</button>
+              <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
+              <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
+              <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
+              <button onClick={() => { setUserZoom(1); setPan({x:0, y:0}); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
+            </div>
+
+            {/* Minimap Widget */}
+            {showMinimap && (
+              <div className="absolute top-8 right-8 w-44 h-52 bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none group shadow-2xl">
+                {/* Background Representation */}
+                <div className="absolute inset-0 opacity-40 pointer-events-none p-4">
+                  <div className="scale-[0.28] origin-top-left transition-all">
+                    <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} />
+                  </div>
+                </div>
+                
+                {/* Viewport Indicator — Energy Orange */}
+                <div 
+                  className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all duration-75"
+                  style={{
+                    left: 20 - (pan.x * 0.28) / (graphScale * userZoom),
+                    top: 20 - (pan.y * 0.28) / (graphScale * userZoom),
+                    width: 140 / userZoom,
+                    height: 160 / userZoom,
+                  }}
+                />
+                
+                <div className="absolute bottom-2 right-3 text-[7px] font-mono font-black text-amber-500 drop-shadow-lg">{(graphScale * userZoom).toFixed(2)}x</div>
+              </div>
+            )}
+
+            {/* Reset button (Environment) */}
             {workflowState === 'completed' && (
               <button
                 onClick={reset}
-                className="mt-6 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 hover:border-indigo-500/40 transition-all group whitespace-nowrap"
+                className="absolute top-24 left-1/2 -translate-x-1/2 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 hover:border-indigo-500/40 transition-all group whitespace-nowrap z-30"
                 style={{ animation: 'float-up 0.5s ease-out both', animationDelay: '0.3s' }}
               >
                 Reset Environment <ArrowRight size={12} className="inline ml-2 group-hover:translate-x-1 transition-transform" />
@@ -812,21 +915,21 @@ const App = () => {
 
         {/* RIGHT RESIZER */}
         <div onMouseDown={startResizingRight}
-          className="w-1 hover:w-1.5 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/30 flex items-center justify-center relative z-30">
-          <div className={`w-0.5 h-12 rounded-full bg-white/5 transition-all ${isResizingRight ? 'bg-indigo-500 shadow-[0_0_10px_#6366f1] h-24' : ''}`} />
+          className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
+          <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
         </div>
 
         {/* ═══════════════════════════════════════════════════
             RIGHT — RESULTS VAULT
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full bg-[#05060a] flex flex-col relative z-20 shrink-0 overflow-hidden"
+          className="h-full bg-[var(--card-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: rightWidth }}
         >
           <div className="p-7 flex items-center justify-between border-b border-white/[0.04]">
             <div className="flex items-center gap-3">
               <TrendingUp size={17} className="text-emerald-500 shrink-0" />
-              {rightWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-white whitespace-nowrap">Results</h1>}
+              {rightWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Results</h1>}
             </div>
             {rightWidth > 180 && (
               <div className="flex items-center gap-2">
@@ -849,13 +952,13 @@ const App = () => {
               <div className="animate-in fade-in slide-in-from-right-6">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                  {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-white/35 whitespace-nowrap">Products Found</h3>}
+                  {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white/35 whitespace-nowrap">Products Found</h3>}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {results.map(prod => (
-                    <div key={prod.id} className="px-4 py-3 bg-[#0a0c14] border border-white/[0.05] rounded-xl hover:bg-white/[0.015] transition-all">
-                      <div className="text-[11px] font-bold text-white truncate">{prod.name}</div>
-                      <div className="text-[8.5px] font-black text-slate-600 uppercase tracking-widest mt-1">{prod.sku}</div>
+                    <div key={prod.id} className="px-5 py-4 bg-[var(--card-bg)] border border-[var(--glass-border)] rounded-xl hover:border-indigo-500/30 transition-all shadow-sm group">
+                      <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors truncate">{prod.name}</div>
+                      <div className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1.5">{prod.sku}</div>
                     </div>
                   ))}
                 </div>
@@ -870,15 +973,15 @@ const App = () => {
                 <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-5 rounded-2xl">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="text-[8.5px] font-black uppercase text-indigo-400 tracking-widest mb-1">Quote ID</div>
-                      <div className="text-[11px] font-bold text-white font-mono">{quote.id}</div>
+                      <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1.5">Quote ID</div>
+                      <div className="text-[11px] font-bold text-[var(--text-main)] font-mono">{quote.id}</div>
                     </div>
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={12} className="text-emerald-400" />
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
                     </div>
                   </div>
-                  <div className="border-t border-white/5 pt-3 flex items-center justify-between">
-                    <span className="text-[8.5px] font-black text-slate-600 uppercase tracking-widest">{quote.status}</span>
+                  <div className="border-t border-[var(--glass-border)] pt-4 flex items-center justify-between">
+                    <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{quote.status}</span>
                     {quote.sfLink && (
                       <a href={quote.sfLink} target="_blank" rel="noopener noreferrer"
                         className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1">
@@ -894,6 +997,45 @@ const App = () => {
 
       </div>
     </>
+  );
+};
+
+const App = () => {
+  const [view, setView] = useState('selection'); // selection, dashboard, chat
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
+  const handleSelect = (module) => {
+    setSelectedModule(module);
+    setView('dashboard');
+  };
+
+  const handleLaunchChat = () => {
+    setView('chat');
+  };
+
+  return (
+    <div className={isDark ? 'dark' : ''}>
+      <ThemeToggle isDark={isDark} setIsDark={setIsDark} />
+      {view === 'selection' && <SelectionHub onSelect={handleSelect} />}
+      {view === 'dashboard' && (
+        <Dashboard 
+          onLaunchChat={handleLaunchChat} 
+          onEditQuote={(id) => console.log('Edit quote', id)} 
+        />
+      )}
+      {view === 'chat' && (
+        <OrchestratorView onBack={() => setView('dashboard')} selectedModule={selectedModule} />
+      )}
+    </div>
   );
 };
 
