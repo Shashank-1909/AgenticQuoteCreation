@@ -10,6 +10,9 @@
 auth.json
 token.txt
 
+# auth.py contains hardcoded Salesforce credentials for local use — keep private
+rca-agentic-backend/auth.py
+
 # Google service account key files
 *.json
 # Exception: allow package.json and package-lock.json in frontend
