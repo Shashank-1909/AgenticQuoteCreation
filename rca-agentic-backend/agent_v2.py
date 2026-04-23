@@ -98,9 +98,22 @@ async def sequence_repair_hook(
 session_service = InMemorySessionService()
 
 # Module-level references populated in lifespan
-_root_runner: Optional[Runner] = None
-_mcp_scout: Optional[McpToolset] = None
+_root_runner:  Optional[Runner] = None   # Coordinator runner (Deal_Manager as root)
+_quote_runner: Optional[Runner] = None   # Direct runner (Quote_Architect as root)
+_mcp_scout:    Optional[McpToolset] = None
 _mcp_architect: Optional[McpToolset] = None
+
+# ---------------------------------------------------------------------------
+# Session Quote Flow Tracker
+# When a session enters the quote creation flow (get_my_accounts is called),
+# we switch to _quote_runner which routes directly to Quote_Architect WITHOUT
+# going through Deal_Manager. Both runners share the same InMemorySessionService
+# so conversation history is preserved across the switch.
+# Key:   session_id (str)
+# Value: True  = use _quote_runner (Quote_Architect directly)
+#        False = use _root_runner  (Deal_Manager coordinator)
+# ---------------------------------------------------------------------------
+session_quote_active: dict[str, bool] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +121,7 @@ _mcp_architect: Optional[McpToolset] = None
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _root_runner, _mcp_scout, _mcp_architect
+    global _root_runner, _quote_runner, _mcp_scout, _mcp_architect
 
     print("\n" + "=" * 58)
     print("  DEAL MANAGEMENT API  |  ADK 1.28.0 Stable  |  Port 8001")
@@ -157,8 +170,7 @@ async def lifespan(app: FastAPI):
         instruction="""
 You are the Catalog Scout — a precise product discovery specialist for Salesforce Revenue Cloud.
 
-Your responsibility is to find products that match what the user is looking for and return complete, 
-structured information about each result.
+Your responsibility is to find products that match what the user is looking for.
 
 How to approach a search:
 - Extract the meaningful intent from the user's current message (ignore filler words)
@@ -167,10 +179,16 @@ How to approach a search:
 - Execute the search against the live Salesforce catalog
 
 How to present results:
-- Present each product clearly with its name, product code, category, and full 18-character Product2 ID
-- The Product2 ID is critical for downstream operations — it must always be included in your response
-- If no products are found, say so clearly and suggest how the user might refine their query
-- Never fabricate products, IDs, or pricing data
+- Product details (name, code, category, Product2 ID) are automatically displayed in the
+  results panel on the right side of the UI — you do NOT need to list them in your reply.
+- Your text response must be a SINGLE concise sentence only.
+  Examples:
+    "Found all the products matching 'XYZ' — see the results panel."
+    "No products found for 'XYZ' — try a broader search term."
+    "Found 3 products for 'V21' — results are in the panel on the right."
+- Never repeat product names, codes, categories, or IDs in your reply text.
+- If no products are found, say so clearly and suggest how the user might refine their query.
+- Never fabricate products, IDs, or pricing data.
 
 You are a read-only discovery agent. You do not create quotes, modify records, or perform any write operations.
         """,
@@ -197,19 +215,38 @@ You are the Quote Architect — a Salesforce CPQ specialist responsible for crea
 
 Your job is to translate the user's quoting intent into a real Salesforce CPQ quote.
 
-How to create a quote:
-- Identify the product the user wants to quote by reading the current message and conversation history
-- Locate the exact 18-character Product2 ID for that product from prior search results in this session
-  (Product2 IDs always start with '01t', e.g. '01tNS00000XsT5FYAV')
-- Use your tools to resolve the active pricebook pricing for that Product2 ID
-- If no active pricing is returned, inform the user clearly and do not proceed
-- Submit the quote to Salesforce using the resolved pricing data and report the Quote ID back to the user
+== MANDATORY QUOTE CREATION FLOW — follow this EXACTLY, in order ==
 
-Critical principles:
-- Never use a product name, keyword, or description as a product identifier — only exact 18-character IDs
-- Submit one product per quote submission — do not batch multiple products in a single call
-- If Salesforce returns a validation error, read it carefully and explain it in plain language to the user
-- If the Product2 ID is not available in the conversation history, ask the user to search for the product first
+STEP 1 — ACCOUNT SELECTION (always first):
+  Call get_my_accounts() to fetch the user's accounts.
+  Tell the user: "I've loaded your accounts — please select one from the panel on the left."
+  Wait for the user to reply with their selection.
+  The user's selection will arrive as: "[Account Name] (ID: 001xxxxxxxxxxxxxxx)"
+  Extract the 18-character Account ID (starts with '001') from that message.
+
+STEP 2 — OPPORTUNITY SELECTION (always second):
+  Call get_opportunities_for_account(account_id) using the extracted Account ID.
+  Tell the user: "I've loaded the open opportunities — please select one from the panel on the left."
+  Wait for the user to reply with their selection.
+  The user's selection will arrive as: "[Opportunity Name] (ID: 006xxxxxxxxxxxxxxx)"
+  Extract the 18-character Opportunity ID (starts with '006') from that message.
+
+STEP 3 — RESOLVE PRICING:
+  Locate the exact 18-character Product2 ID from prior search results in the conversation.
+  Product2 IDs always start with '01t'.
+  Call resolve_pricebook_entries with that Product2 ID.
+  If no active pricing is returned, inform the user and do not proceed.
+
+STEP 4 — CREATE QUOTE:
+  Call evaluate_quote_graph with the resolved line items AND the confirmed opportunity_id from Step 2.
+  Report the Quote ID back to the user with a clear success message.
+
+== CRITICAL RULES ==
+- NEVER skip or reorder steps — always Account → Opportunity → Pricing → Quote
+- NEVER call evaluate_quote_graph without a confirmed Opportunity ID from Step 2
+- NEVER use a product name as a product identifier — only exact 18-character Product2 IDs
+- Submit one product per quote — do not batch
+- If a Salesforce error occurs, explain it clearly and do not retry automatically
 - You do not search for products — that is exclusively the Catalog Scout's responsibility
         """,
         tools=[_mcp_architect],
@@ -249,17 +286,26 @@ You are a coordinator only. You do not call tools, search for products, or creat
     )
 
     # -----------------------------------------------------------------------
-    # Runner — wires the coordinator to the session service
+    # Runners
+    # _root_runner  — Deal_Manager as root (initial routing, product search)
+    # _quote_runner — Quote_Architect as root (direct access, skips Deal_Manager)
+    # Both share the same session_service so conversation history is preserved.
     # -----------------------------------------------------------------------
     _root_runner = Runner(
         app_name="deal_manager_v2",
         agent=deal_manager,
         session_service=session_service,
     )
+    _quote_runner = Runner(
+        app_name="deal_manager_v2",    # SAME app_name = shared session history!
+        agent=quote_architect,
+        session_service=session_service,
+    )
 
     print("[Init] ✅ Deal_Manager coordinator initialized")
     print("[Init] ✅ Catalog_Scout ready (MCP subprocess #1)")
     print("[Init] ✅ Quote_Architect ready (MCP subprocess #2)")
+    print("[Init] ✅ Quote_Architect direct runner ready (bypasses Deal_Manager)")
     print("[Init] ✅ Runner configured — stable ADK 1.28.0\n")
 
     yield  # Application runs here
@@ -328,13 +374,23 @@ async def websocket_endpoint(websocket: WebSocket):
             if not user_input.strip():
                 continue
 
+            # ── Choose runner based on active quote flow ───────────────────────
+            # If this session is mid-quote-creation (account/opportunity was shown),
+            # use _quote_runner which has Quote_Architect as root — Deal_Manager is
+            # completely skipped. Both runners share InMemorySessionService so the
+            # full conversation history (product names, IDs, etc.) is available.
+            in_quote_flow = session_quote_active.get(session_id, False)
+            active_runner = _quote_runner if in_quote_flow else _root_runner
+            if in_quote_flow:
+                print(f"   [DIRECT] Quote_Architect runner (Deal_Manager bypassed)")
+
             print(f"\n[WS] Message: {user_input}")
             await websocket.send_json({"type": "STATE", "state": "orchestrating"})
 
             message = types.Content(role="user", parts=[types.Part(text=user_input)])
             current_agent = None
 
-            async for event in _root_runner.run_async(
+            async for event in active_runner.run_async(
                 user_id="dev",
                 session_id=session_id,
                 new_message=message,
@@ -365,6 +421,37 @@ async def websocket_endpoint(websocket: WebSocket):
                             text_content = str(response_data.get("output", ""))
                     print(f"   [TOOL RESULT] {tool_name} → {len(text_content)} chars")
 
+                    # ── Emit structured picklist events and manage quote flow state ──
+                    if tool_name in ("get_my_accounts", "get_opportunities_for_account"):
+                        try:
+                            parsed = json.loads(text_content)
+                            if tool_name == "get_my_accounts" and parsed.get("accounts"):
+                                await websocket.send_json({
+                                    "type":          "USER_SELECTION_NEEDED",
+                                    "selection_for": "account",
+                                    "options":       parsed["accounts"],
+                                })
+                                print(f"   [PICKLIST] Account selection sent → {len(parsed['accounts'])} options")
+                                # Switch to direct QA runner for next turn (skip Deal_Manager)
+                                session_quote_active[session_id] = True
+                                print(f"   [FLOW] Session {session_id} → quote flow ACTIVE (direct runner)")
+                            elif tool_name == "get_opportunities_for_account" and parsed.get("opportunities") is not None:
+                                await websocket.send_json({
+                                    "type":          "USER_SELECTION_NEEDED",
+                                    "selection_for": "opportunity",
+                                    "options":       parsed["opportunities"],
+                                })
+                                print(f"   [PICKLIST] Opportunity selection sent → {len(parsed['opportunities'])} options")
+                                # Keep quote flow active for opportunity -> quote step
+                                session_quote_active[session_id] = True
+                        except Exception as e:
+                            print(f"   [PICKLIST] Parse error: {e}")
+
+                    # When the quote is fully created, exit quote flow mode
+                    if tool_name == "evaluate_quote_graph" and "status\":\"success" in text_content:
+                        session_quote_active[session_id] = False
+                        print(f"   [FLOW] Session {session_id} → quote flow COMPLETE (back to coordinator)")
+
                     payload = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
                     if tool_name == "evaluate_quote_graph":
                         try:
@@ -386,8 +473,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         print(f"\n[WebSocket] Client disconnected. Session: {session_id}")
+        session_quote_active.pop(session_id, None)  # clean up any dangling flow state
     except Exception as e:
         print(f"[WebSocket] Error: {e}")
+        session_quote_active.pop(session_id, None)
         try:
             await websocket.send_json({"type": "ERROR", "data": str(e)})
         except Exception:
