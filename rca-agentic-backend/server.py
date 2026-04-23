@@ -444,15 +444,138 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
     }, indent=2)
 
 @mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
+def get_my_accounts() -> str:
+    """
+    Fetches the Salesforce accounts owned by the currently authenticated user.
+
+    MANDATORY FIRST STEP when the user wants to create a quote.
+    Call this before anything else in the quote creation flow.
+
+    Returns a JSON list of accounts with their IDs, names, and details.
+    After calling, the UI will display these as selectable cards.
+    Tell the user: 'Please select an account from the panel on the left.'
+    Do NOT proceed further until the user has selected an account.
+    """
+    headers, instance_url = get_salesforce_auth()
+
+    # Get current user's Salesforce ID via /userinfo
+    userinfo_resp = requests.get(
+        f"{instance_url}/services/oauth2/userinfo",
+        headers={"Authorization": headers["Authorization"]}
+    )
+    if userinfo_resp.status_code != 200:
+        return json.dumps({"error": "Could not determine current user identity.", "accounts": []})
+
+    user_id = userinfo_resp.json().get("user_id", "")
+    if not user_id:
+        return json.dumps({"error": "User identity unavailable.", "accounts": []})
+
+    query = (
+        f"SELECT Id, Name, Type, Industry FROM Account "
+        f"WHERE OwnerId = '{user_id}' "
+        f"ORDER BY LastModifiedDate DESC LIMIT 20"
+    )
+    resp = requests.get(
+        f"{instance_url}/services/data/v59.0/query",
+        headers=headers,
+        params={"q": query}
+    )
+    if resp.status_code != 200:
+        return json.dumps({"error": resp.text, "accounts": []})
+
+    accounts = []
+    for rec in resp.json().get("records", []):
+        type_val     = rec.get("Type", "") or ""
+        industry_val = rec.get("Industry", "") or ""
+        detail_parts = [p for p in [type_val, industry_val] if p]
+        accounts.append({
+            "id":     rec["Id"],
+            "name":   rec["Name"],
+            "type":   type_val,
+            "industry": industry_val,
+            "detail": " | ".join(detail_parts) if detail_parts else "—",
+        })
+
+    return json.dumps({
+        "action":   "ACCOUNT_SELECTION",
+        "accounts": accounts,
+        "count":    len(accounts),
+        "message":  f"Found {len(accounts)} accounts. Waiting for user selection.",
+    })
+
+
+@mcp.tool()
+def get_opportunities_for_account(account_id: str) -> str:
+    """
+    Fetches open Opportunities linked to a specific Salesforce Account.
+
+    Call this AFTER the user has selected an account from the account picklist.
+    The account_id must be the 18-character Salesforce Account ID (starts with '001')
+    extracted from the user's selection in format '[Account Name] (ID: 001xxxxxx)'.
+
+    Returns only open opportunities (excludes Closed Won / Closed Lost).
+    After calling, tell the user: 'Please select an opportunity from the panel on the left.'
+    Do NOT call evaluate_quote_graph until the user confirms an opportunity.
+
+    Args:
+        account_id: 18-character Salesforce Account ID (e.g. '001NS00000ABC...')
+    """
+    import re
+    # Sanitize — extract 18-char ID if the full string was passed
+    match = re.search(r'(001[A-Za-z0-9]{15})', account_id)
+    clean_id = match.group(1) if match else account_id.strip()
+
+    headers, instance_url = get_salesforce_auth()
+
+    query = (
+        f"SELECT Id, Name, StageName, Amount FROM Opportunity "
+        f"WHERE AccountId = '{clean_id}' "
+        f"AND StageName NOT IN ('Closed Won', 'Closed Lost') "
+        f"ORDER BY LastModifiedDate DESC LIMIT 20"
+    )
+    resp = requests.get(
+        f"{instance_url}/services/data/v59.0/query",
+        headers=headers,
+        params={"q": query}
+    )
+    if resp.status_code != 200:
+        return json.dumps({"error": resp.text, "opportunities": []})
+
+    opps = []
+    for rec in resp.json().get("records", []):
+        amount     = rec.get("Amount")
+        amount_str = f"${amount:,.0f}" if amount else "—"
+        stage      = rec.get("StageName", "") or ""
+        opps.append({
+            "id":     rec["Id"],
+            "name":   rec["Name"],
+            "stage":  stage,
+            "amount": amount_str,
+            "detail": f"{stage} | {amount_str}",
+        })
+
+    return json.dumps({
+        "action":        "OPPORTUNITY_SELECTION",
+        "opportunities": opps,
+        "count":         len(opps),
+        "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
+    })
+
+
+@mcp.tool()
+def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
-    When to call: Only after resolving pricebook entries for all products you want to quote.
+    When to call: Only after resolving pricebook entries for all products you want to quote
+    AND only after the user has confirmed an Opportunity via the opportunity picklist.
     Never call this tool if any line item is missing its PricebookEntryId — the API will
     reject the request. If you get a validation error, read it carefully and fix the payload.
 
     Args:
+        opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
+                        Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
+                        If not provided, the quote will be created without an Opportunity link.
         pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
                       Defaults to the standard pricebook if not specified.
         line_items: One dict per product, each containing:
@@ -465,27 +588,33 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "01sNS00000
     After calling: Return the Quote ID from the response to the user. If the response
                    includes a record ID, the quote was successfully created in Salesforce.
     """
+    import re
     headers, instance_url = get_salesforce_auth()
-    
-    records = [
-        {
-            "referenceId": "refQuote",
-            "record": {
-                "attributes": {
-                    "method": "POST",
-                    "type": "Quote"
-                },
-                "Name": "Agentic_Deal_Management_Quote",
-                "Pricebook2Id": pricebook_id
-            }
-        }
-    ]
-    
+
+    # Sanitize opportunity_id — extract 18-char ID if full string passed
+    clean_opp_id = ""
+    if opportunity_id:
+        match = re.search(r'(006[A-Za-z0-9]{15})', opportunity_id)
+        clean_opp_id = match.group(1) if match else opportunity_id.strip()
+
+    quote_record = {
+        "attributes": {
+            "method": "POST",
+            "type": "Quote"
+        },
+        "Name": "Agentic_Deal_Management_Quote",
+        "Pricebook2Id": pricebook_id
+    }
+    if clean_opp_id:
+        quote_record["OpportunityId"] = clean_opp_id
+
+    records = [{"referenceId": "refQuote", "record": quote_record}]
+
     for i, item in enumerate(line_items):
         if "Product2Id" not in item or "PricebookEntryId" not in item:
             import json
             return json.dumps({"status": "error", "message": "CRITICAL: Every line item MUST include Product2Id and PricebookEntryId."})
-            
+
         record_item = {
             "attributes": {
                 "type": "QuoteLineItem",
@@ -501,16 +630,12 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "01sNS00000
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
-        
-        # Merge extra optional CPQ fields the AI might have brilliantly added (like PeriodBoundary)
+
         for k, v in item.items():
             if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "StartDate", "EndDate"]:
                 record_item[k] = v
-                
-        records.append({
-            "referenceId": f"refQuoteLine{i}",
-            "record": record_item
-        })
+
+        records.append({"referenceId": f"refQuoteLine{i}", "record": record_item})
 
     payload = {
         "pricingPref": "Force",
@@ -530,25 +655,26 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "01sNS00000
             "records": records
         }
     }
-    
+
     endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
-    
+
     import json
     try:
         response = requests.post(endpoint, headers=headers, json=payload)
     except Exception as e:
         return f"Request Error: {str(e)}"
-        
-    # The magical Reflection Loop Bridge! Pass raw CPQ errors as clean text back to the LLM.
+
     if response.status_code not in [200, 201]:
         return f"SALESFORCE VALIDATION ERROR - Analyze this payload rejection and retry:\nStatus Code: {response.status_code}\nResponse: {response.text}"
-        
+
     return json.dumps({
         "status": "success",
         "message": "Salesforce successfully validated the Quote Graph!",
+        "opportunity_id": clean_opp_id or "not linked",
         "salesforce_response": response.json()
     }, indent=2)
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server
     mcp.run()
+
