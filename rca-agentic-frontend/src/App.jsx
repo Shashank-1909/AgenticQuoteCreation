@@ -36,13 +36,6 @@ const STYLES = `
     from { opacity: 0; transform: translateY(30px) scale(0.96); }
     to   { opacity: 1; transform: translateY(0)    scale(1);    }
   }
-  .dot-grid {
-    background-image: radial-gradient(circle, var(--glass-border) 1.5px, transparent 1.5px);
-    background-size: 24px 24px;
-  }
-  .minimap-preview {
-    mask-image: radial-gradient(circle at center, black, transparent);
-  }
 `;
 
 // ─────────────────────────────────────────────────────────────
@@ -90,14 +83,95 @@ const makeToolPath = (agentCx, agentBot, tp) =>
 
 // Short display names for tools
 const TOOL_LABELS = {
-  check_field_values:        'Field Check',
-  search_rca_products:       'Prod. Search',
-  search_products_by_filter: 'Filter Search',
-  resolve_pricebook_entries: 'Pricebook',
-  evaluate_quote_graph:      'CPQ Quote',
-  transfer_to_agent:         'Route',
+  check_field_values:             'Field Check',
+  search_rca_products:            'Prod. Search',
+  search_products_by_filter:      'Filter Search',
+  resolve_pricebook_entries:      'Pricebook',
+  evaluate_quote_graph:           'CPQ Quote',
+  get_my_accounts:                'Accounts',
+  get_opportunities_for_account:  'Opportunities',
+  transfer_to_agent:              'Route',
 };
 const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
+
+// ─────────────────────────────────────────────────────────────
+// SELECTION PANEL — account / opportunity picklist
+// ─────────────────────────────────────────────────────────────
+const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
+  if (!panel) return null;
+  const isOpp = panel.type === 'opportunity';
+  return (
+    <div style={{ animation: 'panel-in 0.28s ease' }} className="mx-5 mb-2">
+
+      {/* Confirmed account badge (shows above opportunity list) */}
+      {isOpp && confirmedAccount && (
+        <div className="flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-full w-fit"
+          style={{
+            background: 'rgba(16,185,129,0.08)',
+            border: '1px solid rgba(16,185,129,0.22)',
+          }}
+        >
+          <CheckCircle2 size={9} className="text-emerald-400 shrink-0" />
+          <span className="text-[9px] font-bold tracking-wide"
+            style={{ color: '#34d399' }}
+          >
+            {confirmedAccount}
+          </span>
+        </div>
+      )}
+
+      {/* Section label */}
+      <div className="text-[8.5px] uppercase tracking-[0.22em] font-black mb-2.5"
+        style={{ color: isOpp ? '#fbbf2480' : '#818cf880' }}
+      >
+        {isOpp ? '↳ Select Opportunity' : 'Select Account'}
+      </div>
+
+      {/* Cards */}
+      <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5 scrollbar-hide">
+        {panel.options.length === 0 && (
+          <div className="text-[10px] text-slate-600 px-1">No records found.</div>
+        )}
+        {panel.options.map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => onSelect(opt, panel.type)}
+            className="selection-card w-full text-left rounded-xl cursor-pointer"
+            style={{
+              padding: '10px 12px',
+              background: 'rgba(13,17,29,0.9)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            {/* Left accent strip */}
+            <div style={{
+              width: 3, borderRadius: 99, alignSelf: 'stretch', flexShrink: 0,
+              background: isOpp
+                ? 'linear-gradient(180deg,#fbbf24,#f59e0b)'
+                : 'linear-gradient(180deg,#818cf8,#6366f1)',
+              opacity: 0.5,
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="text-[11px] font-semibold truncate"
+                style={{ color: '#e2e8f0' }}
+              >{opt.name}</div>
+              {opt.detail && opt.detail !== '—' && (
+                <div className="text-[9px] mt-0.5 truncate"
+                  style={{ color: isOpp ? '#fbbf2470' : '#818cf870' }}
+                >{opt.detail}</div>
+              )}
+            </div>
+            {/* Chevron */}
+            <ArrowRight size={11} style={{ color: isOpp ? '#fbbf2440' : '#6366f140', flexShrink: 0 }} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // SUB-COMPONENTS
@@ -181,7 +255,7 @@ const NodeCard = ({
   );
 };
 
-/** Small circular tool node */
+/** Small circular tool node — active=pulsing, done=checkmark, idle=dim */
 const ToolNode = ({ cx, cy, label, color, active, done }) => (
   <div style={{
     position: 'absolute',
@@ -192,21 +266,27 @@ const ToolNode = ({ cx, cy, label, color, active, done }) => (
   }}>
     <div style={{
       width: TOOL_R * 2, height: TOOL_R * 2, borderRadius: '50%',
-      background: `${color}18`,
-      border: `1.5px solid ${color}${done ? '44' : '99'}`,
-      boxShadow: active ? `0 0 18px ${color}44` : 'none',
+      background: active ? `${color}22` : done ? `${color}0e` : `${color}10`,
+      border: `1.5px solid ${color}${active ? 'cc' : done ? '40' : '55'}`,
+      boxShadow: active ? `0 0 14px ${color}55, 0 0 28px ${color}22` : 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      transition: 'all 0.5s',
+      transition: 'all 0.4s',
+      animation: active ? 'tool-glow-pulse 1.4s ease-in-out infinite' : 'none',
     }}>
       {done
-        ? <CheckCircle2 size={13} color={color} opacity={0.6} />
-        : <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, opacity: 0.85 }} />
+        ? <CheckCircle2 size={13} color={color} opacity={0.55} />
+        : active
+        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, opacity: 0.95,
+            boxShadow: `0 0 6px ${color}` }} />
+        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, opacity: 0.35 }} />
       }
     </div>
     <div style={{
       fontSize: 7, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
-      color: `${color}88`, marginTop: 5, textAlign: 'center',
+      color: active ? `${color}cc` : done ? `${color}55` : `${color}66`,
+      marginTop: 5, textAlign: 'center',
       whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis',
+      transition: 'color 0.4s',
     }}>{label}</div>
   </div>
 );
@@ -220,6 +300,10 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
   const sActive = scout.state === 'active', sDone = scout.state === 'done';
   const aActive = arch.state  === 'active', aDone = arch.state  === 'done';
+
+  // Agent is composing its reply: it's still active but no tool is currently running
+  const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
+  const archComposing  = aActive && arch.tools.length  > 0 && !arch.tools.some(t  => t.state === 'active');
 
   const showScout  = scout.state !== 'idle';
   const showArch   = arch.state  !== 'idle';
@@ -357,22 +441,25 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
               const tp = scoutToolPos[i];
               const pid = `ps${i}`;
               const d = makeToolPath(scoutCx, SC_BOT, tp);
+              const toolActive = tool.state === 'active';
+              const toolDone   = tool.state === 'done';
               return (
-                <React.Fragment key={tool}>
-                  {/* L1: Ghost channel */}
+                <React.Fragment key={tool.name}>
+                  {/* L1: Ghost channel — dims once tool is done */}
                   <path id={pid} d={d}
                     stroke="#22d3ee" strokeWidth={1.2} fill="none"
-                    strokeOpacity={sDone ? 0.12 : 0.22}
+                    strokeOpacity={toolActive ? 0.30 : toolDone ? 0.08 : 0.18}
+                    style={{ transition: 'stroke-opacity 0.5s' }}
                   />
-                  {/* L2: Flowing dashes — active only */}
-                  {sActive && (
+                  {/* L2: Flowing dashes — only while THIS tool is active */}
+                  {toolActive && (
                     <path d={d}
                       stroke="#22d3ee" strokeWidth={1.5} fill="none"
                       style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite' }}
                     />
                   )}
-                  {/* L3: Leading dot — active only */}
-                  {sActive && (
+                  {/* L3: Leading dot — only while THIS tool is active */}
+                  {toolActive && (
                     <circle r="3" fill="#22d3ee" filter="url(#glow-cyan)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
                         <mpath href={`#${pid}`}/>
@@ -388,22 +475,25 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
               const tp = archToolPos[i];
               const pid = `pa${i}`;
               const d = makeToolPath(archCx, AC_BOT, tp);
+              const toolActive = tool.state === 'active';
+              const toolDone   = tool.state === 'done';
               return (
-                <React.Fragment key={tool}>
-                  {/* L1: Ghost channel */}
+                <React.Fragment key={tool.name}>
+                  {/* L1: Ghost channel — dims once tool is done */}
                   <path id={pid} d={d}
                     stroke="#fbbf24" strokeWidth={1.2} fill="none"
-                    strokeOpacity={aDone ? 0.12 : 0.22}
+                    strokeOpacity={toolActive ? 0.30 : toolDone ? 0.08 : 0.18}
+                    style={{ transition: 'stroke-opacity 0.5s' }}
                   />
-                  {/* L2: Flowing dashes — active only */}
-                  {aActive && (
+                  {/* L2: Flowing dashes — only while THIS tool is active */}
+                  {toolActive && (
                     <path d={d}
                       stroke="#fbbf24" strokeWidth={1.5} fill="none"
                       style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite' }}
                     />
                   )}
-                  {/* L3: Leading dot — active only */}
-                  {aActive && (
+                  {/* L3: Leading dot — only while THIS tool is active */}
+                  {toolActive && (
                     <circle r="3" fill="#fbbf24" filter="url(#glow-amber)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
                         <mpath href={`#${pid}`}/>
@@ -444,7 +534,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
           animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
         }}>
           <NodeCard
-            label="Catalog Scout" subLabel={sActive ? 'Executing…' : 'Completed'}
+            label="Catalog Scout"
+            subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={Search} w={SC.w} h={SC.h} borderRadius={16}
             accentColor="#22d3ee" glowColor="rgba(6,182,212,0.5)"
             isIdle={false} isActive={sActive} isDone={sDone}
@@ -466,7 +557,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
           animationDelay: showScout ? '0.1s' : '0s',
         }}>
           <NodeCard
-            label="Quote Architect" subLabel={aActive ? 'Executing…' : 'Completed'}
+            label="Quote Architect"
+            subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={FileText} w={AC.w} h={AC.h} borderRadius={16}
             accentColor="#fbbf24" glowColor="rgba(245,158,11,0.5)"
             isIdle={false} isActive={aActive} isDone={aDone}
@@ -479,27 +571,54 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
         </div>
       )}
 
-      {/* Tool circles — positions follow their parent agent's cx */}
+      {/* Tool circles — per-tool active/done state */}
       {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
         const tp = scoutToolPos[i];
         return (
-          <ToolNode key={tool} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool)} color="#22d3ee"
-            active={sActive} done={sDone} />
+          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool.name)} color="#22d3ee"
+            active={tool.state === 'active'} done={tool.state === 'done'} />
         );
       })}
 
       {graphReady && arch.tools.slice(0, 4).map((tool, i) => {
         const tp = archToolPos[i];
         return (
-          <ToolNode key={tool} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool)} color="#fbbf24"
-            active={aActive} done={aDone} />
+          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool.name)} color="#fbbf24"
+            active={tool.state === 'active'} done={tool.state === 'done'} />
         );
       })}
     </div>
   );
 };
+
+// ─────────────────────────────────────────────────────────────
+// TYPING INDICATOR — shown in left pane while agent is composing reply after tools
+// ─────────────────────────────────────────────────────────────
+const TypingIndicator = () => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '8px 13px',
+    background: 'rgba(129,140,248,0.04)',
+    border: '1px solid rgba(129,140,248,0.1)',
+    borderRadius: 12, width: 'fit-content',
+    marginBottom: 6,
+  }}>
+    {[0, 1, 2].map(i => (
+      <div key={i} style={{
+        width: 5, height: 5, borderRadius: '50%',
+        background: '#818cf8',
+        animation: `typing-bounce 1.1s ease-in-out ${i * 0.18}s infinite`,
+      }} />
+    ))}
+    <span style={{
+      fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
+      textTransform: 'uppercase', color: 'rgba(129,140,248,0.45)',
+      marginLeft: 7,
+    }}>Composing reply…</span>
+  </div>
+);
 
 // ─────────────────────────────────────────────────────────────
 // INITIAL ORCHESTRATION STATE
@@ -522,6 +641,14 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
   const [results, setResults]             = useState([]);
   const [quote, setQuote]                 = useState(null);
+  const [selectionPanel, setSelectionPanel]       = useState(null); // { type, options }
+  const [confirmedAccount, setConfirmedAccount]   = useState(null); // string name
+
+  // Composing-reply bridge: buffer product results until FINAL_REPLY fires
+  // so they appear in sync with the agent's text (Option A sync).
+  const pendingResultsRef = useRef(null);              // buffered product array
+  const [composingReply, setComposingReply] = useState(false); // drives typing indicator
+  const [selectedProducts, setSelectedProducts] = useState(new Set()); // right-pane selections
 
   // Graph animation state
   const [graphActive, setGraphActive]     = useState(false); // triggers DM slide-up
@@ -624,7 +751,15 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
                 }
                 return n;
               });
+              // NOTE: selectionPanel is intentionally NOT cleared here.
+              // It is only cleared when the user clicks a card (handleCardSelect)
+              // or resets the session. Clearing here would hide the panel before
+              // the user has a chance to interact with it.
             }
+            break;
+
+          case 'USER_SELECTION_NEEDED':
+            setSelectionPanel({ type: data.selection_for, options: data.options || [] });
             break;
 
           case 'AGENT_START':
@@ -649,8 +784,20 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
               const n = { ...prev };
               for (const k of ['Catalog_Scout', 'Quote_Architect']) {
                 if (n[k].state === 'active') {
-                  if (!n[k].tools.includes(data.tool)) {
-                    n[k] = { ...n[k], tools: [...n[k].tools, data.tool] };
+                  // Step 1: mark the currently-active tool as done (a new one is starting)
+                  const settled = n[k].tools.map(t =>
+                    t.state === 'active' ? { ...t, state: 'done' } : t
+                  );
+                  // Step 2: upsert — add if new, re-activate if this tool was called before
+                  const idx = settled.findIndex(t => t.name === data.tool);
+                  if (idx < 0) {
+                    // New tool — append it
+                    n[k] = { ...n[k], tools: [...settled, { name: data.tool, state: 'active' }] };
+                  } else {
+                    // Re-called tool (e.g. search retried) — flip it back to active
+                    n[k] = { ...n[k], tools: settled.map((t, i) =>
+                      i === idx ? { ...t, state: 'active' } : t
+                    )};
                   }
                   break;
                 }
@@ -660,14 +807,32 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
             break;
 
           case 'TOOL_RESULT':
+            // 1. Mark the specific tool as done in the orchestration graph
+            setOrchestration(prev => {
+              const n = { ...prev };
+              for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+                if (n[k].tools.some(t => t.name === data.tool)) {
+                  n[k] = { ...n[k], tools: n[k].tools.map(t =>
+                    t.name === data.tool ? { ...t, state: 'done' } : t
+                  )};
+                  break;
+                }
+              }
+              return n;
+            });
+            // 2. Parse results for right-pane cards
             try {
               const parsed = JSON.parse(data.data);
               if ((data.tool === 'search_rca_products' || data.tool === 'search_products_by_filter') && parsed.results) {
-                setResults(parsed.results.map((r, i) => ({
+                // ── Buffer products — release them only when FINAL_REPLY arrives ──
+                // This way products and agent text appear together (Option A sync).
+                pendingResultsRef.current = parsed.results.map((r, i) => ({
                   id: r.id || i, name: r.name || 'Unknown', sku: r.code || 'N/A',
-                })));
+                }));
+                setComposingReply(true);  // show typing indicator
               }
               if (data.tool === 'evaluate_quote_graph' && parsed.salesforce_response) {
+                // Quote card is NOT buffered — show immediately
                 const resp  = parsed.salesforce_response;
                 const graph = resp?.graphs?.[0];
                 const qRec  = graph?.graphNodes?.find(n => n.referenceId === 'refQuote');
@@ -679,6 +844,12 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
             break;
 
           case 'FINAL_REPLY':
+            // Flush buffered product results — they appear at the same time as text
+            if (pendingResultsRef.current) {
+              setResults(pendingResultsRef.current);
+              pendingResultsRef.current = null;
+            }
+            setComposingReply(false);  // hide typing indicator
             if (data.data?.trim()) {
               setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: data.data }]);
             }
@@ -712,6 +883,7 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
     // Reset orchestration only on a fresh session (idle state)
     if (workflowState === 'idle') {
       setResults([]); setQuote(null); setOrchestration(INIT_ORCH);
+      pendingResultsRef.current = null; setComposingReply(false);
     }
 
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -727,6 +899,48 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
     setGraphActive(false);
     setResults([]);
     setQuote(null);
+    setSelectionPanel(null);
+    setConfirmedAccount(null);
+    pendingResultsRef.current = null;
+    setComposingReply(false);
+    setSelectedProducts(new Set());
+  };
+
+  // ── Card selection handler ─────────────────────────────────
+  const handleCardSelect = (option, selectionType) => {
+    if (selectionType === 'account') {
+      setConfirmedAccount(option.name);
+    }
+    setSelectionPanel(null);
+    const text = `${option.name} (ID: ${option.id})`;
+    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
+  };
+
+  // ── Product selection handlers (right pane) ────────────────
+  const toggleProduct = (id) =>
+    setSelectedProducts(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+
+  const toggleSelectAll = () =>
+    setSelectedProducts(
+      selectedProducts.size === results.length ? new Set() : new Set(results.map(p => p.id))
+    );
+
+  const handleCreateQuoteFromSelection = () => {
+    if (selectedProducts.size === 0 || isBusy) return;
+    const selected = results.filter(p => selectedProducts.has(p.id));
+    const list = selected.map(p => `${p.name} (${p.sku})`).join(', ');
+    const text = selected.length === 1
+      ? `Create a quote for ${list}`
+      : `Create a quote for the following products: ${list}`;
+    // Inject as visible user message + send to agent — same path as typing
+    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
+    setSelectedProducts(new Set()); // clear selection after dispatch
   };
 
   const isBusy = workflowState === 'orchestrating' || workflowState === 'executing';
@@ -775,8 +989,30 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
                 </div>
               </div>
             ))}
+            {/* Typing indicator — visible while agent is composing reply after tool results */}
+            {composingReply && (
+              <div style={{ paddingLeft: 2, paddingBottom: 2 }}>
+                <TypingIndicator />
+              </div>
+            )}
             <div ref={chatEndRef} />
           </div>
+
+          {/* ── Selection Panel — slides in above input when agent needs a pick ── */}
+          {leftWidth > 110 && (
+            <SelectionPanel
+              panel={selectionPanel}
+              confirmedAccount={confirmedAccount}
+              onSelect={handleCardSelect}
+            />
+          )}
+
+          {/* Thin separator when panel is active */}
+          {selectionPanel && leftWidth > 110 && (
+            <div className="mx-5 mb-2" style={{ height: 1, background: 'rgba(255,255,255,0.04)' }} />
+          )}
+
+
 
           <div className="p-5">
             <form onSubmit={handleSend} className="relative">
@@ -931,12 +1167,20 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
               <TrendingUp size={17} className="text-emerald-500 shrink-0" />
               {rightWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Results</h1>}
             </div>
-            {rightWidth > 180 && (
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full transition-all duration-700 ${workflowState === 'idle' ? 'bg-slate-800' : 'bg-emerald-500 animate-pulse'}`} />
-                <span className="text-[8.5px] font-black text-slate-700 tracking-widest uppercase whitespace-nowrap">Live</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {results.length > 0 && rightWidth > 180 && (
+                <button onClick={toggleSelectAll}
+                  className="text-[7.5px] font-black uppercase tracking-widest text-slate-600 hover:text-indigo-400 transition-colors whitespace-nowrap">
+                  {selectedProducts.size === results.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
+              {rightWidth > 180 && (
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full transition-all duration-700 ${workflowState === 'idle' ? 'bg-slate-800' : 'bg-emerald-500 animate-pulse'}`} />
+                  <span className="text-[8.5px] font-black text-slate-700 tracking-widest uppercase whitespace-nowrap">Live</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
@@ -954,11 +1198,11 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
                   <div className="w-1 h-3 bg-indigo-500 rounded-full" />
                   {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white/35 whitespace-nowrap">Products Found</h3>}
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {results.map(prod => (
-                    <div key={prod.id} className="px-5 py-4 bg-[var(--card-bg)] border border-[var(--glass-border)] rounded-xl hover:border-indigo-500/30 transition-all shadow-sm group">
-                      <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors truncate">{prod.name}</div>
-                      <div className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1.5">{prod.sku}</div>
+                    <div key={prod.id} className="px-4 py-3 bg-[#0a0c14] border border-white/[0.05] rounded-xl hover:bg-white/[0.015] transition-all">
+                      <div className="text-[11px] font-bold text-white truncate">{prod.name}</div>
+                      <div className="text-[8.5px] font-black text-slate-600 uppercase tracking-widest mt-1">{prod.sku}</div>
                     </div>
                   ))}
                 </div>
@@ -993,6 +1237,34 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
               </div>
             )}
           </div>
+          {/* ── Floating action bar: slides up when products are selected ── */}
+          {selectedProducts.size > 0 && (
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              padding: '12px 16px 16px',
+              background: 'linear-gradient(to top, #05060a 65%, transparent)',
+              zIndex: 20,
+              animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
+            }}>
+              <button
+                onClick={handleCreateQuoteFromSelection}
+                disabled={isBusy}
+                style={{
+                  width: '100%', padding: '9px 14px',
+                  background: isBusy ? 'rgba(99,102,241,0.04)' : 'rgba(99,102,241,0.12)',
+                  border: `1px solid rgba(99,102,241,${isBusy ? 0.1 : 0.35})`,
+                  borderRadius: 10,
+                  color: isBusy ? 'rgba(255,255,255,0.2)' : '#818cf8',
+                  fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', cursor: isBusy ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                ⚡ Create Quote — {selectedProducts.size} Product{selectedProducts.size > 1 ? 's' : ''}
+              </button>
+            </div>
+          )}
         </section>
 
       </div>

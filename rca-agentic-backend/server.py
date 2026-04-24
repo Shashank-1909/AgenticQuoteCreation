@@ -36,19 +36,32 @@ def get_salesforce_auth():
 @mcp.tool()
 def search_rca_products(search_term: str, page_size: int = 15) -> str:
     """
-    Searches the Salesforce Revenue Cloud product catalog by product name or keyword.
+    Keyword/name-based product catalog search for Salesforce Revenue Cloud.
 
-    When to call: Only after the token classification tool confirms the search strategy
-    is 'name_search' or when the name_search_terms field is non-empty.
-    Do NOT call this directly without first classifying the search tokens.
+    WHEN TO CALL: Only after the field classification tool (the one that must run first
+    for any search) confirms the strategy is 'name_search' OR the name_search_terms
+    field is non-empty. Do NOT call this tool if the strategy is 'attribute_search'.
+    Do NOT call this without running field classification first.
+
+    IDENTIFIES AS: The search tool that accepts a single keyword/name string.
+    Use this tool when the classification result says to use keyword-based search.
 
     Args:
-        search_term: The product name or keyword returned by the classification tool's
-                     'name_search_terms' field. Never invent this value yourself.
+        search_term: The keyword or product name string. Use the 'name_search_terms'
+                     value returned by the field classification tool exactly.
+                     Never invent this value.
         page_size: Maximum results to return. Default is 15.
 
-    After calling: Present the returned product names and codes to the user.
-                   If the user wants a quote, proceed to resolve their pricebook entries.
+    RETURNS (JSON):
+        status:      "success" or error message
+        searchTerm:  the term that was searched
+        count:       number of products found
+        results:     list of product objects, each containing:
+                       id   — 18-character Product2 ID (starts with '01t')
+                              CRITICAL: this is required for pricing and quote creation
+                       name — product display name
+                       code — product SKU / product code
+                       category — product family/category
     """
     headers, instance_url = get_salesforce_auth()
     
@@ -124,21 +137,31 @@ def search_products_by_filter(
         page_size: int = 100
 ) -> str:
     """
-    Searches the Salesforce product catalog using strict custom field attribute filters.
+    Attribute/filter-based product catalog search for Salesforce Revenue Cloud.
 
-    When to call: Only after the token classification tool confirms the search strategy
-    is 'attribute_search' and provides 'matched_filters' like {"Region__c": "West"}.
-    Do NOT guess filter field names or values — use only what the classification tool returned.
-    The classification_id is pre-configured. Do NOT ask the user for it.
+    WHEN TO CALL: Only after the field classification tool confirms the strategy is
+    'attribute_search' and provides 'matched_filters'. Do NOT guess filter field names
+    or values — use only what the classification tool returned in matched_filters.
+
+    IDENTIFIES AS: The search tool that accepts a field-attribute filters dictionary.
+    Use this tool when the classification result says to use attribute-based search.
+    The classification_id is pre-configured — pass it through as-is, do not change it.
 
     Args:
-        classification_id: Salesforce ProductClassification ID. Pre-configured, do not change.
-        filters: Dict of field-to-value mappings from the classification tool result,
+        classification_id: Pass the 'classification_id' value from the field
+                           classification tool result exactly. Do not modify.
+        filters: Pass the 'matched_filters' dict from the field classification tool.
                  e.g. {"Region__c": "North", "Storage__c": "128GB"}.
         page_size: Maximum results. Default 100.
 
-    After calling: Present matched products to the user.
-                   If the user wants a quote, proceed to resolve their pricebook entries.
+    RETURNS (JSON):
+        status:   "success" or "empty"
+        count:    number of products found
+        results:  list of product objects, each containing:
+                    id   — 18-character Product2 ID (starts with '01t')
+                           CRITICAL: required for pricing and quote creation
+                    name — product display name
+                    code — product SKU / product code
     """
     headers, instance_url = get_salesforce_auth()
     
@@ -298,25 +321,42 @@ def get_picklist_values(field_api_name: str) -> str:
 @mcp.tool()
 def check_field_values(candidates: list[str]) -> str:
     """
-    Classifies search tokens against live Salesforce custom field picklist values.
-    This is the FIRST tool to call for any product search request, without exception.
+    FIELD CLASSIFICATION TOOL — must be the FIRST tool called for any product search,
+    without exception. Classifies search tokens against live Salesforce product field
+    picklist values to determine the correct search strategy.
 
-    How to use:
-      Take the user's raw query. Remove common stopwords (e.g. search, for, the, a,
-      products, in, with, and, or, related, to, find, show, me, get, all, of, at, by,
-      that, have, having, using). Pass everything that remains as the candidates list.
+    HOW TO USE:
+      Extract meaningful words from the user's query. Remove stopwords (e.g. search,
+      for, the, a, products, in, with, and, or, related, to, find, show, me, get,
+      all, of, at, by, that, have, having, using). Pass remaining words as candidates.
 
-    The tool will:
-      - Match each token against all known Salesforce field picklist values
-      - Return matched tokens as ready-to-use attribute filters
-      - Return unmatched tokens as the product name/keyword search term
-      - Return an explicit 'instruction' field telling you exactly what to do next
+    WHAT IT DOES:
+      - Matches each token against all known Salesforce field picklist values
+      - Matched tokens become attribute filters for filter-based product search
+      - Unmatched tokens become the keyword for name-based product search
+      - Returns an 'instruction' field that tells you which search capability to
+        use next, described by capability — not by tool name
 
-    Always follow the instruction field in the response. Do not deviate.
+    Always follow the 'instruction' field in the response exactly. Do not deviate.
 
     Args:
-        candidates: List of meaningful tokens extracted from the user query.
+        candidates: List of meaningful tokens from the user query.
                     Example: query="Manager Rule products in West" → ["Manager","Rule","West"]
+
+    RETURNS (JSON):
+        matched_filters:   dict  — field-to-value map for attribute-based search
+                                   e.g. {"Region__c": "West"}
+                                   Empty dict {} if no picklist values matched.
+        name_search_terms: str   — remaining tokens for keyword-based search
+                                   e.g. "Manager Rule"
+                                   Empty string if all tokens matched picklist values.
+        search_strategy:   str   — "attribute_search" | "name_search"
+                                   Tells you which search tool type to use.
+        classification_id: str   — pre-configured ID, pass through as-is to the
+                                   attribute-based search tool.
+        instruction:       str   — explicit guidance on which search CAPABILITY
+                                   to invoke next and with which values.
+                                   Follow this exactly.
     """
     global FIELD_VALUE_INDEX, _INDEX_BUILT
     
@@ -381,9 +421,15 @@ def check_field_values(candidates: list[str]) -> str:
         "search_strategy": strategy,
         "classification_id": "11BNS00000w2WSI2A2",
         "instruction": (
-            "Call search_products_by_filter with the matched_filters above and the provided classification_id."
+            "Attribute values matched Salesforce field picklists. "
+            "Use the attribute/filter-based product search tool "
+            "(the one whose description says it accepts a field-attribute 'filters' dict). "
+            "Pass matched_filters as the filters parameter and classification_id as-is."
             if strategy == "attribute_search" else
-            "Call search_rca_products with name_search_terms as the search_term."
+            "No picklist attribute matches found. "
+            "Use the keyword/name-based product search tool "
+            "(the one whose description says it accepts a single 'search_term' string). "
+            "Pass name_search_terms as the search_term value."
         )
     }, indent=2)
 
