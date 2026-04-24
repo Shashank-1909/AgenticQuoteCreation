@@ -200,11 +200,11 @@ const NodeCard = ({
       width: w, height: h, borderRadius,
       background: isActive
         ? `linear-gradient(135deg, ${accentColor}28, ${accentColor}10)`
-        : 'rgba(8,10,20,0.96)',
+        : 'var(--card-bg)',
       border: `1.5px solid ${
         isActive ? accentColor + 'cc'
         : isDone  ? accentColor + '55'
-        : 'rgba(255,255,255,0.05)'    /* idle: nearly invisible */
+        : 'var(--glass-border)'    /* idle: theme border */
       }`,
       boxShadow: isActive
         ? `0 0 30px ${glowColor}, 0 0 64px ${glowColor}50`
@@ -220,10 +220,10 @@ const NodeCard = ({
       {/* Icon circle */}
       <div style={{
         width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-        background: lit ? `${accentColor}22` : 'rgba(255,255,255,0.02)',
-        border: `1.5px solid ${lit ? accentColor + '88' : 'rgba(255,255,255,0.05)'}`,
+        background: lit ? `${accentColor}22` : 'var(--glass-border)',
+        border: `1.5px solid ${lit ? accentColor + '88' : 'var(--glass-border)'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: lit ? accentColor : 'rgba(255,255,255,0.12)',
+        color: lit ? accentColor : 'var(--text-muted)',
         transition: 'all 0.85s',
       }}>
         {isActive
@@ -238,13 +238,15 @@ const NodeCard = ({
       <div>
         <div style={{
           fontSize: 10, fontWeight: 900, letterSpacing: '0.17em', textTransform: 'uppercase',
-          color: isActive ? '#fff' : isDone ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.12)',
+          color: isActive ? 'var(--text-main)' : isDone ? 'var(--text-muted)' : 'var(--text-muted)',
+          opacity: isIdle ? 0.4 : 1,
           transition: 'color 0.85s',
         }}>{label}</div>
         <div style={{
           fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
           marginTop: 3,
-          color: isActive ? accentColor + 'dd' : isDone ? accentColor + '77' : 'rgba(255,255,255,0.07)',
+          color: isActive ? accentColor + 'dd' : isDone ? accentColor + '77' : 'var(--text-muted)',
+          opacity: isIdle ? 0.3 : 1,
           transition: 'color 0.85s',
           animation: isActive ? 'soft-pulse 1.8s ease-in-out infinite' : 'none',
         }}>{subLabel}</div>
@@ -1196,22 +1198,45 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
               <div className="animate-in fade-in slide-in-from-right-6">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                  {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white/35 whitespace-nowrap">Products Found</h3>}
+                  {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
                 </div>
-                <div className="space-y-2">
-                  {results.map(prod => (
-                    <div key={prod.id} className="px-4 py-3 bg-[#0a0c14] border border-white/[0.05] rounded-xl hover:bg-white/[0.015] transition-all">
-                      <div className="text-[11px] font-bold text-white truncate">{prod.name}</div>
-                      <div className="text-[8.5px] font-black text-slate-600 uppercase tracking-widest mt-1">{prod.sku}</div>
-                    </div>
-                  ))}
+                <div className="space-y-2" style={{ paddingBottom: selectedProducts.size > 0 ? 72 : 0, transition: 'padding-bottom 0.3s' }}>
+                  {results.map(prod => {
+                    const isSel = selectedProducts.has(prod.id);
+                    return (
+                      <div key={prod.id}
+                        onClick={() => toggleProduct(prod.id)}
+                        className="px-4 py-3.5 border rounded-xl cursor-pointer transition-all select-none shadow-sm hover:shadow"
+                        style={{
+                          background: isSel ? 'rgba(99,102,241,0.08)' : 'var(--card-bg)',
+                          borderColor: isSel ? 'rgba(99,102,241,0.4)' : 'var(--glass-border)',
+                        }}>
+                        <div className="flex items-center gap-2.5">
+                          {/* Checkbox */}
+                          <div style={{
+                            width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+                            border: `1.5px solid ${isSel ? '#6366f1' : 'var(--glass-border)'}`,
+                            background: isSel ? '#6366f1' : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s',
+                          }}>
+                            {isSel && <CheckCircle2 size={9} color="white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[11px] font-bold text-[var(--text-main)] truncate">{prod.name}</div>
+                            <div className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{prod.sku}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {quote && rightWidth > 140 && (
               <div className="animate-in zoom-in-95" style={{ animationDelay: '0.1s' }}>
-                <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-white/25 mb-3 flex items-center gap-2">
+                <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-3 flex items-center gap-2">
                   <div className="w-1 h-3 bg-emerald-500 rounded-full" />CPQ Quote
                 </div>
                 <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-5 rounded-2xl">
@@ -1239,12 +1264,10 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
           </div>
           {/* ── Floating action bar: slides up when products are selected ── */}
           {selectedProducts.size > 0 && (
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
-              padding: '12px 16px 16px',
-              background: 'linear-gradient(to top, #05060a 65%, transparent)',
-              zIndex: 20,
-              animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
+            <div 
+              className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-2xl z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] transition-colors"
+              style={{
+                animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
             }}>
               <button
                 onClick={handleCreateQuoteFromSelection}
@@ -1254,7 +1277,7 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
                   background: isBusy ? 'rgba(99,102,241,0.04)' : 'rgba(99,102,241,0.12)',
                   border: `1px solid rgba(99,102,241,${isBusy ? 0.1 : 0.35})`,
                   borderRadius: 10,
-                  color: isBusy ? 'rgba(255,255,255,0.2)' : '#818cf8',
+                  color: isBusy ? 'var(--text-muted)' : '#6366f1',
                   fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em',
                   textTransform: 'uppercase', cursor: isBusy ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s', display: 'flex',

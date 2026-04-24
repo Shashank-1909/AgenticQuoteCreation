@@ -20,7 +20,7 @@
 :root {
   --site-bg: #f8fafc;
   --card-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(0, 0, 0, 0.09);
   --text-main: #0f172a;
   --text-muted: #64748b;
   --accent-primary: #4f46e5;
