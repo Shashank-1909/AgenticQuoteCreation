@@ -139,8 +139,8 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
             className="selection-card w-full text-left rounded-xl cursor-pointer"
             style={{
               padding: '10px 12px',
-              background: 'rgba(13,17,29,0.9)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'var(--card-bg)',
+              border: '1px solid var(--glass-border)',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
@@ -156,7 +156,7 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
             }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="text-[11px] font-semibold truncate"
-                style={{ color: '#e2e8f0' }}
+                style={{ color: 'var(--text-main)' }}
               >{opt.name}</div>
               {opt.detail && opt.detail !== '—' && (
                 <div className="text-[9px] mt-0.5 truncate"
@@ -258,7 +258,7 @@ const NodeCard = ({
 };
 
 /** Small circular tool node — active=pulsing, done=checkmark, idle=dim */
-const ToolNode = ({ cx, cy, label, color, active, done }) => (
+const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
   <div style={{
     position: 'absolute',
     left: cx - TOOL_R, top: cy - TOOL_R,
@@ -268,9 +268,9 @@ const ToolNode = ({ cx, cy, label, color, active, done }) => (
   }}>
     <div style={{
       width: TOOL_R * 2, height: TOOL_R * 2, borderRadius: '50%',
-      background: active ? color : done ? `${color}1a` : 'var(--card-bg)',
-      border: `2px solid ${active ? color : done ? `${color}88` : 'var(--glass-border)'}`,
-      boxShadow: active ? `0 0 15px ${color}80, 0 5px 20px -5px ${color}` : 'none',
+      background: active ? `${color}22` : done ? `${color}0e` : `${color}10`,
+      border: `${isDark ? 1.5 : 2}px solid ${color}${active ? (isDark ? 'cc' : 'ee') : done ? (isDark ? '40' : '99') : (isDark ? '55' : 'bb')}`,
+      boxShadow: active ? `0 0 ${isDark ? 14 : 20}px ${color}${isDark ? '55' : '99'}, 0 0 ${isDark ? 28 : 40}px ${color}${isDark ? '22' : '44'}` : 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.4s',
       animation: active ? 'tool-glow-pulse 1.4s ease-in-out infinite' : 'none',
@@ -284,8 +284,11 @@ const ToolNode = ({ cx, cy, label, color, active, done }) => (
     </div>
     <div style={{
       fontSize: 7, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
-      color: active ? 'var(--text-main)' : done ? color : 'var(--text-muted)',
-      opacity: active || done ? 1 : 0.5,
+      color: active
+        ? (isDark ? `${color}cc` : color)
+        : done
+        ? (isDark ? `${color}55` : `${color}cc`)
+        : (isDark ? `${color}66` : `${color}dd`),
       marginTop: 5, textAlign: 'center',
       whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis',
       transition: 'color 0.4s',
@@ -297,7 +300,20 @@ const ToolNode = ({ cx, cy, label, color, active, done }) => (
 // ─────────────────────────────────────────────────────────────
 // ORCHESTRATION GRAPH
 // ─────────────────────────────────────────────────────────────
-const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
+const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) => {
+  // Theme-aware SVG opacity + stroke helpers — light mode needs higher values to be visible
+  const ch   = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
+  const cq   = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
+  const ta   = isDark ? 0.30 : 0.75;   // tool channel active opacity
+  const td   = isDark ? 0.08 : 0.35;   // tool channel done opacity
+  const ti   = isDark ? 0.18 : 0.55;   // tool channel idle opacity
+  const csw  = isDark ? 1.5  : 2.5;    // coordinator channel stroke width
+  const dsw  = isDark ? 2.0  : 3.0;    // flowing dash stroke width
+  const tsw  = isDark ? 1.2  : 2.0;    // tool channel stroke width
+  const tdsw = isDark ? 1.5  : 2.5;    // tool dash stroke width
+  const dr   = isDark ? 4    : 5;      // leading dot radius
+  const tdr  = isDark ? 3    : 4;      // tool leading dot radius
+
   const { coordinator, Catalog_Scout: scout, Quote_Architect: arch } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
@@ -383,14 +399,14 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
                 {/* L1: Ghost channel — always visible, dim */}
                 <path id="pcs" d={pathToScout}
                   stroke="url(#grad-scout)"
-                  strokeWidth={1.5} fill="none"
-                  strokeOpacity={cLit ? 0.22 : 0.06}
+                  strokeWidth={csw} fill="none"
+                  strokeOpacity={cLit ? ch : cq}
                 />
                 {/* L2: Flowing dashes — active only */}
                 {sActive && (
                   <path d={pathToScout}
                     stroke="url(#grad-scout)"
-                    strokeWidth={2} fill="none"
+                    strokeWidth={dsw} fill="none"
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
@@ -399,7 +415,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
                 )}
                 {/* L3: Leading dot — active only */}
                 {sActive && (
-                  <circle r="4" fill="#22d3ee">
+                  <circle r={dr} fill="#22d3ee">
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
                       <mpath href="#pcs"/>
                     </animateMotion>
@@ -414,14 +430,14 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
                 {/* L1: Ghost channel */}
                 <path id="pca" d={pathToArch}
                   stroke="url(#grad-arch)"
-                  strokeWidth={1.5} fill="none"
-                  strokeOpacity={cLit ? 0.22 : 0.06}
+                  strokeWidth={csw} fill="none"
+                  strokeOpacity={cLit ? ch : cq}
                 />
                 {/* L2: Flowing dashes — active only */}
                 {aActive && (
                   <path d={pathToArch}
                     stroke="url(#grad-arch)"
-                    strokeWidth={2} fill="none"
+                    strokeWidth={dsw} fill="none"
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
@@ -430,7 +446,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
                 )}
                 {/* L3: Leading dot — active only */}
                 {aActive && (
-                  <circle r="4" fill="#fbbf24">
+                  <circle r={dr} fill="#fbbf24">
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
                       <mpath href="#pca"/>
                     </animateMotion>
@@ -450,20 +466,20 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
                   <path id={pid} d={d}
-                    stroke="#22d3ee" strokeWidth={1.2} fill="none"
-                    strokeOpacity={toolActive ? 0.30 : toolDone ? 0.08 : 0.18}
+                    stroke="#22d3ee" strokeWidth={tsw} fill="none"
+                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
                     style={{ transition: 'stroke-opacity 0.5s' }}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
-                      stroke="#22d3ee" strokeWidth={1.5} fill="none"
+                      stroke="#22d3ee" strokeWidth={tdsw} fill="none"
                       style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite' }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
                   {toolActive && (
-                    <circle r="3" fill="#22d3ee" filter="url(#glow-cyan)">
+                    <circle r={tdr} fill="#22d3ee" filter="url(#glow-cyan)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
                         <mpath href={`#${pid}`}/>
                       </animateMotion>
@@ -484,20 +500,20 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
                   <path id={pid} d={d}
-                    stroke="#fbbf24" strokeWidth={1.2} fill="none"
-                    strokeOpacity={toolActive ? 0.30 : toolDone ? 0.08 : 0.18}
+                    stroke="#fbbf24" strokeWidth={tsw} fill="none"
+                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
                     style={{ transition: 'stroke-opacity 0.5s' }}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
-                      stroke="#fbbf24" strokeWidth={1.5} fill="none"
+                      stroke="#fbbf24" strokeWidth={tdsw} fill="none"
                       style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite' }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
                   {toolActive && (
-                    <circle r="3" fill="#fbbf24" filter="url(#glow-amber)">
+                    <circle r={tdr} fill="#fbbf24" filter="url(#glow-amber)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
                         <mpath href={`#${pid}`}/>
                       </animateMotion>
@@ -580,7 +596,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#22d3ee"
-            active={tool.state === 'active'} done={tool.state === 'done'} />
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} />
         );
       })}
 
@@ -589,7 +605,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady }) => {
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#fbbf24"
-            active={tool.state === 'active'} done={tool.state === 'done'} />
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} />
         );
       })}
     </div>
@@ -635,7 +651,7 @@ const INIT_ORCH = {
 // ─────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
-const OrchestratorView = ({ onBack, selectedModule }) => {
+const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [messages, setMessages]           = useState([
     { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
@@ -1102,6 +1118,7 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
                 orchestration={orchestration}
                 graphActive={graphActive}
                 graphReady={graphReady}
+                isDark={isDark}
               />
             </div>
 
@@ -1120,7 +1137,7 @@ const OrchestratorView = ({ onBack, selectedModule }) => {
                 {/* Background Representation */}
                 <div className="absolute inset-0 opacity-40 pointer-events-none p-4">
                   <div className="scale-[0.28] origin-top-left transition-all">
-                    <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} />
+                    <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
                   </div>
                 </div>
                 
@@ -1329,7 +1346,7 @@ const App = () => {
         />
       )}
       {view === 'chat' && (
-        <OrchestratorView onBack={() => setView('dashboard')} selectedModule={selectedModule} />
+        <OrchestratorView onBack={() => setView('dashboard')} selectedModule={selectedModule} isDark={isDark} />
       )}
     </div>
   );
