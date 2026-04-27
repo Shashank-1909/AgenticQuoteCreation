@@ -198,36 +198,36 @@ const NodeCard = ({
   return (
     <div style={{
       width: w, height: h, borderRadius,
-      background: isActive
-        ? `linear-gradient(135deg, ${accentColor}28, ${accentColor}10)`
-        : 'var(--card-bg)',
-      border: `1.5px solid ${
-        isActive ? accentColor + 'cc'
+      background: 'var(--card-bg)',
+      backgroundImage: isActive ? `linear-gradient(135deg, ${accentColor}11, transparent)` : 'none',
+      border: `2px solid ${
+        isActive ? accentColor
         : isDone  ? accentColor + '55'
-        : 'var(--glass-border)'    /* idle: theme border */
+        : 'var(--glass-border)'
       }`,
       boxShadow: isActive
-        ? `0 0 30px ${glowColor}, 0 0 64px ${glowColor}50`
+        ? `0 10px 40px -10px ${accentColor}80`
         : isDone
-        ? `0 0 14px ${glowColor}30`
-        : 'none',                     /* idle: no glow */
+        ? `0 4px 15px rgba(0,0,0,0.05)`
+        : 'none',
       display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
       backdropFilter: 'blur(20px)',
       transition: 'all 0.85s cubic-bezier(0.4,0,0.2,1)',
       position: 'relative',
       ...style,
     }}>
-      {/* Icon circle */}
+      {/* Icon circle - Solid LED effect when active */}
       <div style={{
         width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-        background: lit ? `${accentColor}22` : 'var(--glass-border)',
-        border: `1.5px solid ${lit ? accentColor + '88' : 'var(--glass-border)'}`,
+        background: isActive ? accentColor : lit ? `${accentColor}15` : 'var(--glass-border)',
+        border: `2px solid ${isActive ? accentColor : lit ? accentColor + '66' : 'var(--glass-border)'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: lit ? accentColor : 'var(--text-muted)',
+        color: isActive ? '#fff' : lit ? accentColor : 'var(--text-muted)',
         transition: 'all 0.85s',
+        boxShadow: isActive ? `0 0 20px ${accentColor}80` : 'none',
       }}>
         {isActive
-          ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: accentColor }} />
+          ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: '#fff' }} />
           : isDone
           ? <CheckCircle2 size={18} color={accentColor} />
           : <Icon size={18} />
@@ -238,14 +238,14 @@ const NodeCard = ({
       <div>
         <div style={{
           fontSize: 10, fontWeight: 900, letterSpacing: '0.17em', textTransform: 'uppercase',
-          color: isActive ? 'var(--text-main)' : isDone ? 'var(--text-muted)' : 'var(--text-muted)',
+          color: 'var(--text-main)',
           opacity: isIdle ? 0.4 : 1,
           transition: 'color 0.85s',
         }}>{label}</div>
         <div style={{
           fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
           marginTop: 3,
-          color: isActive ? accentColor + 'dd' : isDone ? accentColor + '77' : 'var(--text-muted)',
+          color: isActive ? 'var(--text-main)' : isDone ? accentColor + 'aa' : 'var(--text-muted)',
           opacity: isIdle ? 0.3 : 1,
           transition: 'color 0.85s',
           animation: isActive ? 'soft-pulse 1.8s ease-in-out infinite' : 'none',
@@ -268,27 +268,28 @@ const ToolNode = ({ cx, cy, label, color, active, done }) => (
   }}>
     <div style={{
       width: TOOL_R * 2, height: TOOL_R * 2, borderRadius: '50%',
-      background: active ? `${color}22` : done ? `${color}0e` : `${color}10`,
-      border: `1.5px solid ${color}${active ? 'cc' : done ? '40' : '55'}`,
-      boxShadow: active ? `0 0 14px ${color}55, 0 0 28px ${color}22` : 'none',
+      background: active ? color : done ? `${color}1a` : 'var(--card-bg)',
+      border: `2px solid ${active ? color : done ? `${color}88` : 'var(--glass-border)'}`,
+      boxShadow: active ? `0 0 15px ${color}80, 0 5px 20px -5px ${color}` : 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.4s',
       animation: active ? 'tool-glow-pulse 1.4s ease-in-out infinite' : 'none',
     }}>
       {done
-        ? <CheckCircle2 size={13} color={color} opacity={0.55} />
+        ? <CheckCircle2 size={13} color={color} />
         : active
-        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, opacity: 0.95,
-            boxShadow: `0 0 6px ${color}` }} />
-        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, opacity: 0.35 }} />
+        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: `0 0 6px #fff` }} />
+        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.35 }} />
       }
     </div>
     <div style={{
       fontSize: 7, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
-      color: active ? `${color}cc` : done ? `${color}55` : `${color}66`,
+      color: active ? 'var(--text-main)' : done ? color : 'var(--text-muted)',
+      opacity: active || done ? 1 : 0.5,
       marginTop: 5, textAlign: 'center',
       whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis',
       transition: 'color 0.4s',
+
     }}>{label}</div>
   </div>
 );
