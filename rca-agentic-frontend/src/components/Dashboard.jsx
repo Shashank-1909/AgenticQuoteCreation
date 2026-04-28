@@ -1,266 +1,165 @@
-import React, { useState } from 'react';
-import Sidebar from './Sidebar';
-import { 
-  FileText, 
-  TrendingUp, 
-  Settings, 
-  Network, 
-  Zap, 
-  LayoutGrid,
-  History,
-  Activity,
-  ArrowUpRight,
-  Package,
-  ShieldCheck,
-  ArrowRight
-} from 'lucide-react';
+import React from 'react';
+import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles } from 'lucide-react';
 
-const Dashboard = ({ onLaunchChat, onEditQuote }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-
+const Dashboard = ({ onLaunchChat }) => {
   const stats = [
-    { label: 'Total Pipeline Value', value: '$4.28M', trend: '+14.2%', icon: TrendingUp, color: 'text-emerald-500' },
-    { label: 'Open Quote Volume', value: '38', trend: '+8.4%', icon: FileText, color: 'text-indigo-500' },
-    { label: 'Quote Aging (Avg Days)', value: '4.2', trend: '-1.8%', icon: Zap, color: 'text-amber-500' },
-    { label: 'Revenue Integrity', value: '94.2%', trend: 'Stable', icon: Activity, color: 'text-cyan-500' },
+    { label: 'Accounts',     value: '128',  sub: '+12 this month',  icon: Users,       color: '#6366f1', gradient: 'from-indigo-500/10 via-indigo-500/5 to-transparent' },
+    { label: 'Opportunities',value: '47',   sub: '8 closing soon',  icon: Network,     color: '#0ea5e9', gradient: 'from-sky-500/10 via-sky-500/5 to-transparent' },
+    { label: 'Quotes',       value: '38',   sub: '5 pending review',icon: FileText,    color: '#10b981', gradient: 'from-emerald-500/10 via-emerald-500/5 to-transparent' },
+    { label: 'Approvals',    value: '14',   sub: '3 need action',   icon: ShieldCheck, color: '#f59e0b', gradient: 'from-amber-500/10 via-amber-500/5 to-transparent' },
   ];
 
-  const renderDashboard = () => (
-    <section className="space-y-12 animate-in fade-in duration-700">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {stats.map((stat, i) => (
-          <div key={i} className="bg-[var(--card-bg)] border border-[var(--glass-border)] backdrop-blur-xl p-8 rounded-[40px] group hover:border-indigo-500/30 transition-all shadow-sm">
-            <div className="flex justify-between items-start mb-6">
-              <div className={`p-4 rounded-2xl bg-slate-50 dark:bg-white/5 ${stat.color} group-hover:scale-110 transition-transform duration-500`}>
-                <stat.icon size={20} />
-              </div>
-              <span className={`text-[10px] font-black tracking-tight px-2.5 py-1 rounded-lg ${stat.trend.startsWith('+') ? 'bg-emerald-500/10 text-emerald-600' : stat.trend === 'Stable' ? 'bg-cyan-500/10 text-cyan-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                {stat.trend}
-              </span>
-            </div>
-            <p className="text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest">{stat.label}</p>
-            <h3 className="text-3xl font-bold text-[var(--text-main)] mt-2 transition-colors">{stat.value}</h3>
-          </div>
-        ))}
+  const quotes = [
+    { id: 'Q-9210', opp: 'Quantum Tech Expansion',  account: 'Quantum Tech Ltd',    status: 'DRAFT',    date: '2026-04-22' },
+    { id: 'Q-9188', opp: 'Neon Dynamics Core',       account: 'Neon Dynamics Inc',   status: 'SENT',     date: '2026-04-21' },
+    { id: 'Q-9150', opp: 'Aether Logistics Hub',     account: 'Aether Logistics',    status: 'APPROVED', date: '2026-04-20' },
+    { id: 'Q-9142', opp: 'Stellar Systems Launch',   account: 'Stellar Systems Inc', status: 'DRAFT',    date: '2026-04-19' },
+    { id: 'Q-9130', opp: 'BluePeak Cloud Suite',     account: 'BluePeak plc',        status: 'SENT',     date: '2026-04-18' },
+    { id: 'Q-9102', opp: 'Global Freight Config',    account: 'Atlas Logistics',     status: 'EXPIRED',  date: '2026-04-12' },
+    { id: 'Q-9095', opp: 'Healthcare AI Core',       account: 'MediTech Gen',        status: 'DRAFT',    date: '2026-04-10' },
+  ];
+
+  const statusStyle = (s) => ({
+    DRAFT:    'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
+    SENT:     'bg-amber-50  dark:bg-amber-500/10  text-amber-600  dark:text-amber-400 border border-amber-200 dark:border-amber-500/20',
+    APPROVED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20',
+    EXPIRED:  'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20',
+  }[s] || 'bg-slate-100 text-slate-400');
+
+  return (
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--site-bg)] text-[var(--text-main)] transition-colors duration-500">
+      
+      {/* ─── Gradient mesh ─── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-indigo-500/8 dark:bg-indigo-500/5 blur-[120px]" />
+        <div className="absolute -bottom-40 left-0 w-[600px] h-[600px] rounded-full bg-emerald-500/6 dark:bg-emerald-500/5 blur-[120px]" />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-        <div className="xl:col-span-2 space-y-6">
-           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-muted)] flex items-center gap-2">
-              <FileText size={18} className="text-indigo-500" /> Recently Added Quotes
-            </h2>
+      <div className="relative z-10 flex flex-col h-full px-8 lg:px-14 py-6 lg:py-8 max-w-[1600px] mx-auto w-full">
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 font-black text-white tracking-tight">
+              AG
+            </div>
+            <div>
+              <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
+                Deal Intelligence
+              </h1>
+              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+                Salesforce Instance: 
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Production-01
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="bg-[var(--card-bg)] border border-[var(--glass-border)] rounded-[48px] overflow-hidden backdrop-blur-md shadow-xl transition-all">
+        </div>
+
+        {/* ── 4 Stat Cards ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className="group relative rounded-[24px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl px-6 py-5 flex items-center gap-4 overflow-hidden transition-all duration-300 hover:-translate-y-1"
+              style={{
+                animation: `float-up 0.5s ease-out ${i * 60}ms both`,
+                boxShadow: `0 4px 20px ${s.color}05`,
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = `0 12px 30px ${s.color}15`}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = `0 4px 20px ${s.color}05`}
+            >
+              {/* Wash overlay */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+              {/* Top border highlight */}
+              <div className="absolute top-0 left-6 right-6 h-[1.5px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-300" style={{ color: s.color }} />
+
+              <div className="relative z-10 flex items-center gap-4 w-full">
+                <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" 
+                     style={{ background: s.color + '15', border: `1.5px solid ${s.color}30` }}>
+                  <s.icon size={22} style={{ color: s.color }} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-[26px] font-black tracking-tight leading-none text-[var(--text-main)]">{s.value}</div>
+                  <div className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 mb-0.5">{s.label}</div>
+                  <div className="text-[10px] font-bold" style={{ color: s.color }}>{s.sub}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Recently Added Quotes Table ── */}
+        <div className="flex-1 flex flex-col rounded-[24px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-lg relative overflow-hidden" style={{ animation: 'float-up 0.5s ease-out 250ms both' }}>
+          
+          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
+
+          {/* Table Header */}
+          <div className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-[var(--glass-border)]">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10">
+                <FileText size={16} className="text-indigo-500" />
+              </div>
+              <h2 className="text-[12px] font-black uppercase tracking-widest text-[var(--text-main)]">Recently Added Quotes</h2>
+            </div>
+            <button className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1.5 bg-indigo-500/5 px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">
+              View All <ArrowUpRight size={13} />
+            </button>
+          </div>
+
+          {/* Table */}
+          <div className="relative z-10 flex-1 overflow-auto scrollbar-hide">
             <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] font-black uppercase text-slate-400">
-                  <th className="px-8 py-5">Quote ID</th>
-                  <th className="px-8 py-5">Opportunity</th>
-                  <th className="px-8 py-5 text-center">Status</th>
-                  <th className="px-8 py-5 text-right">Created Date</th>
+              <thead className="sticky top-0 bg-[var(--card-bg)]/90 backdrop-blur border-b border-[var(--glass-border)] z-20">
+                <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                  <th className="px-8 py-4">Quote ID</th>
+                  <th className="px-8 py-4">Opportunity</th>
+                  <th className="px-8 py-4">Account</th>
+                  <th className="px-8 py-4 text-center">Status</th>
+                  <th className="px-8 py-4 text-right">Date</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { id: 'Q-9210', opp: 'Quantum Tech Expansion', status: 'DRAFT', date: '2026-04-22' },
-                  { id: 'Q-9188', opp: 'Neon Dynamics Core', status: 'SENT', date: '2026-04-21' },
-                  { id: 'Q-9150', opp: 'Aether Logistics Hub', status: 'APPROVED', date: '2026-04-20' },
-                  { id: 'Q-9142', opp: 'Stellar Systems Inc', status: 'DRAFT', date: '2026-04-20' }
-                ].map((row, i) => (
-                  <tr key={i} className="border-b border-[var(--glass-border)] hover:bg-white/5 transition-colors group">
-                    <td className="px-8 py-5 font-mono font-bold text-indigo-500">{row.id}</td>
-                    <td className="px-8 py-5 font-bold text-[var(--text-main)]">{row.opp}</td>
-                    <td className="px-8 py-5 text-center">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest ${
-                        row.status === 'SENT' ? 'bg-amber-500/10 text-amber-500' : 
-                        row.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' : 
-                        'bg-slate-500/10 text-slate-400'
-                      }`}>{row.status}</span>
+                {quotes.map((row, i) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-border)] transition-colors group cursor-pointer"
+                  >
+                    <td className="px-8 py-4">
+                      <span className="font-mono font-bold text-indigo-500 dark:text-indigo-400 text-[12px] group-hover:text-indigo-600 transition-colors">
+                        {row.id}
+                      </span>
                     </td>
-                    <td className="px-8 py-5 text-right font-medium text-[var(--text-muted)]">{row.date}</td>
+                    <td className="px-8 py-4 font-bold text-[var(--text-main)] text-[13px]">{row.opp}</td>
+                    <td className="px-8 py-4 text-[var(--text-muted)] font-medium text-[12px]">{row.account}</td>
+                    <td className="px-8 py-4 text-center">
+                      <span className={`inline-block px-3 py-1 rounded-[6px] text-[9px] font-black uppercase tracking-widest shadow-sm ${statusStyle(row.status)}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-8 py-4 text-right text-[var(--text-muted)] text-[12px] font-semibold">{row.date}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-
-        <div className="space-y-6">
-          <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-muted)] flex items-center gap-2">
-            <History size={18} className="text-emerald-500" /> Recent Actions
-          </h2>
-          <div className="space-y-4">
-            {[
-              { id: 'Q-2025', opp: 'CloudX Enterprise', val: '$442k', status: 'Draft' },
-              { id: 'Q-2018', opp: 'Managed Svc', val: '$120k', status: 'Approved' },
-              { id: 'Q-1992', opp: 'Helix Platform', val: '$85k', status: 'Synced' },
-            ].map((q, i) => (
-              <div key={i} className="bg-[var(--card-bg)] border border-[var(--glass-border)] p-8 rounded-[40px] group hover:border-indigo-500/30 transition-all shadow-sm">
-                <div className="flex justify-between items-start mb-6">
-                  <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{q.id}</span>
-                  <button onClick={() => onEditQuote(q.id)} className="p-2.5 bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-2xl transition-all">
-                    <ArrowUpRight size={16} />
-                  </button>
-                </div>
-                <h4 className="text-lg font-bold text-[var(--text-main)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-4">{q.opp}</h4>
-                <div className="flex justify-between items-center text-xl font-mono font-black text-indigo-500">{q.val}</div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
-    </section>
-  );
 
-  const renderOpportunities = () => (
-    <section className="space-y-12 animate-in slide-in-from-right duration-500">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-muted)] flex items-center gap-2">
-          <Network size={18} className="text-indigo-500" /> All Active Opportunities
-        </h2>
-        <button className="text-[10px] font-black uppercase text-indigo-500 tracking-widest hover:text-indigo-600 transition-colors">Global Export</button>
-      </div>
-      <div className="bg-[var(--card-bg)] border border-[var(--glass-border)] rounded-[48px] overflow-hidden backdrop-blur-md shadow-xl transition-all">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] font-black uppercase text-slate-400">
-              <th className="px-10 py-8">Opportunity Name</th>
-              <th className="px-10 py-8">Account Name</th>
-              <th className="px-10 py-8 text-center">Amount</th>
-              <th className="px-10 py-8 text-right">Close Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { name: 'RioVerde Expansion', account: 'RioVerde Manufacturing', amount: '$450,000', date: '2026-12-12' },
-              { name: 'Sakura Robotics Core', account: 'Sakura Robotics Co.', amount: '$1.2M', date: '2026-11-20' },
-              { name: 'BluePeak Financial', account: 'BluePeak plc', amount: '$85,000', date: '2026-10-05' },
-              { name: 'AtlasLogix Logistics', account: 'AtlasLogix LLC', amount: '$50,437', date: '2026-09-15' },
-              { name: 'Quantum Cloud Hub', account: 'Quantum Tech', amount: '$220,000', date: '2026-08-30' }
-            ].map((row, i) => (
-              <tr key={i} className="border-b border-[var(--glass-border)] hover:bg-white/5 transition-colors group">
-                <td className="px-10 py-8 font-bold text-[var(--text-main)] group-hover:text-indigo-600 transition-colors">{row.name}</td>
-                <td className="px-10 py-8 text-[var(--text-muted)] font-medium">{row.account}</td>
-                <td className="px-10 py-8 text-center font-mono text-emerald-500 font-bold">{row.amount}</td>
-                <td className="px-10 py-8 text-right font-medium text-[var(--text-muted)]">{row.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-
-  const renderQuotes = () => (
-    <section className="space-y-12 animate-in slide-in-from-right duration-500">
-       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-muted)] flex items-center gap-2">
-          <FileText size={18} className="text-indigo-500" /> Enterprise Quote Ledger
-        </h2>
-      </div>
-      <div className="bg-[var(--card-bg)] border border-[var(--glass-border)] rounded-[48px] overflow-hidden backdrop-blur-md shadow-xl transition-all">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] font-black uppercase text-slate-400">
-              <th className="px-10 py-8">Quote #</th>
-              <th className="px-10 py-8">Opportunity</th>
-              <th className="px-10 py-8">Total Value</th>
-              <th className="px-10 py-8 text-center">Status</th>
-              <th className="px-10 py-8 text-right">Owner</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { id: 'Q-2025', opp: 'CloudX Enterprise', val: '$442,000', status: 'DRAFT', owner: 'Indra Gane' },
-              { id: 'Q-2018', opp: 'Managed Services', val: '$120,500', status: 'APPROVED', owner: 'Brenna W.' },
-              { id: 'Q-1992', opp: 'Helix Platform', val: '$85,000', status: 'SYNCED', owner: 'Fenton M.' },
-              { id: 'Q-1980', opp: 'Legacy Core', val: '$33,000', status: 'EXPIRED', owner: 'Deepa A.' }
-            ].map((row, i) => (
-              <tr key={i} className="border-b border-[var(--glass-border)] hover:bg-white/5 transition-colors group">
-                <td className="px-10 py-8 font-mono font-bold text-indigo-500">{row.id}</td>
-                <td className="px-10 py-8 font-bold text-[var(--text-main)]">{row.opp}</td>
-                <td className="px-10 py-8 font-mono font-black text-slate-900 dark:text-white">{row.val}</td>
-                <td className="px-10 py-8 text-center text-[9px] font-black tracking-widest">{row.status}</td>
-                <td className="px-10 py-8 text-right font-medium text-[var(--text-muted)]">{row.owner}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-
-  const renderPlaceholder = (title, icon) => (
-    <section className="h-[600px] flex flex-col items-center justify-center space-y-6 animate-in slide-in-from-right duration-500">
-       <div className="w-24 h-24 rounded-[32px] bg-indigo-500/10 flex items-center justify-center">
-          {React.createElement(icon, { size: 40, className: "text-indigo-500" })}
-       </div>
-       <h1 className="text-3xl font-black text-[var(--text-main)] uppercase tracking-[0.2em]">{title}</h1>
-       <p className="text-slate-400 font-medium text-center max-w-md">The agentic environment for {title.toLowerCase()} is being initialized. Real-time Salesforce synchronization will appear here.</p>
-    </section>
-  );
-
-  return (
-    <div className="flex bg-[var(--site-bg)] min-h-screen">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div className="flex-1 transition-colors duration-500 overflow-x-hidden relative">
-        <div className="mesh-bg opacity-20 dark:opacity-40 pointer-events-none">
-          <div className="mesh-circle-1" />
-          <div className="mesh-circle-2" />
-        </div>
-
-        <main className="w-full max-w-7xl mx-auto p-8 lg:p-16 relative z-10">
-          <header className="flex items-center justify-between mb-16">
-            <div className="flex items-center gap-6">
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20">
-                <LayoutGrid className="text-white" size={24} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[var(--text-main)] transition-colors">Deal Intelligence</h1>
-                <p className="text-sm text-[var(--text-muted)] font-medium">Monitoring Salesforce Instance: <span className="text-indigo-500 font-bold">Production-01</span></p>
-              </div>
-            </div>
-            <div className="flex items-center gap-6">
-               {/* <div className="hidden md:flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Live Feed</span>
-                  <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" /> SF Sync</span>
-               </div> */}
-               <div className="w-10 h-10 bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10" />
-            </div>
-          </header>
-
-          {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'opportunities' && renderOpportunities()}
-          {activeTab === 'quotes' && renderQuotes()}
-          {activeTab === 'products' && renderPlaceholder('Products', Package)}
-          {activeTab === 'approvals' && renderPlaceholder('Approvals', ShieldCheck)}
-          {activeTab === 'settings' && renderPlaceholder('Settings', Settings)}
-
-          <footer className="mt-24 pt-10 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-white/10">Enterprise Intelligence Nexus</p>
-            <div className="flex gap-10 text-[10px] font-black uppercase tracking-widest text-slate-400">
-               <span className="hover:text-indigo-500 cursor-help transition-colors">Documentation</span>
-               <span className="hover:text-indigo-500 cursor-help transition-colors">System Logs</span>
-               <span className="hover:text-indigo-500 cursor-help transition-colors">API Keys</span>
-            </div>
-          </footer>
-        </main>
-
-        <div className="fixed bottom-12 right-12 z-50">
-          <button
-            onClick={onLaunchChat}
-            className="group relative h-14 px-8 flex items-center gap-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:scale-110 active:scale-95"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl opacity-20 blur-xl group-hover:opacity-40 transition-opacity" />
-            <div className="relative flex items-center gap-4">
-              <Zap size={18} className="text-indigo-500 fill-indigo-500 animate-pulse" />
-              <span>Neural Orchestrator</span>
-            </div>
-          </button>
-        </div>
-      </div>
+      {/* ── Floating Neural Orchestrator Button (fixed bottom-right) ── */}
+      <button
+        onClick={onLaunchChat}
+        className="fixed bottom-8 right-10 group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-4 px-8 rounded-2xl bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition-all shadow-xl hover:shadow-indigo-500/30 overflow-hidden z-50 backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <span className="relative z-10 flex items-center gap-2">
+          <Sparkles size={16} className="group-hover:animate-pulse" />
+          Neural Orchestrator
+          <ArrowUpRight size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
+        </span>
+      </button>
     </div>
   );
 };
