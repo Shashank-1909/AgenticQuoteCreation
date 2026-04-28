@@ -34,7 +34,7 @@ def get_salesforce_auth():
     return headers, auth_data['instance_url']
 
 @mcp.tool()
-def search_rca_products(search_term: str, page_size: int = 15) -> str:
+def search_rca_products(search_term: str, page_size: int = 100) -> str:
     """
     Keyword/name-based product catalog search for Salesforce Revenue Cloud.
 
@@ -66,13 +66,12 @@ def search_rca_products(search_term: str, page_size: int = 15) -> str:
     headers, instance_url = get_salesforce_auth()
     
     # Using the exact endpoint referenced in the Angular application
-    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?include=/products"
+    endpoint = f"{instance_url}/services/data/v65.0/connect/cpq/products/search?include=/result"
     
     # Building the payload matching rca-api.service.ts expectations
     payload = {
         "searchTerm": search_term,
-        "pageSize": page_size,
-        "offset": 0,
+        "limit": page_size,
         "filter": {
             "criteria": [
                 {"property": "isActive", "operator": "eq", "value": True}
@@ -94,11 +93,11 @@ def search_rca_products(search_term: str, page_size: int = 15) -> str:
     results = []
     
     # The RCA PCM endpoint usually returns products directly in a list or within a 'products' wrapper
-    products = data.get("products", [])
+    products = data.get("result", [])
     if not products and isinstance(data, list):
         products = data
-    if not products and "result" in data:
-        products = data.get("result", [])
+    if not products and "products" in data:
+        products = data.get("products", [])
     if not products and "items" in data:
         products = data.get("items", [])
     
@@ -132,7 +131,6 @@ def search_rca_products(search_term: str, page_size: int = 15) -> str:
 
 @mcp.tool()
 def search_products_by_filter(
-        classification_id: str = "11BNS00000w2WSI2A2",
         filters: dict = None,
         page_size: int = 100
 ) -> str:
@@ -145,11 +143,9 @@ def search_products_by_filter(
 
     IDENTIFIES AS: The search tool that accepts a field-attribute filters dictionary.
     Use this tool when the classification result says to use attribute-based search.
-    The classification_id is pre-configured — pass it through as-is, do not change it.
+    No catalog, category, or classification ID is required — searches across all products.
 
     Args:
-        classification_id: Pass the 'classification_id' value from the field
-                           classification tool result exactly. Do not modify.
         filters: Pass the 'matched_filters' dict from the field classification tool.
                  e.g. {"Region__c": "North", "Storage__c": "128GB"}.
         page_size: Maximum results. Default 100.
@@ -165,7 +161,7 @@ def search_products_by_filter(
     """
     headers, instance_url = get_salesforce_auth()
     
-    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?productClassificationId={classification_id}&include=/products"
+    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?include=/products"
     
     criteria = []
     if filters:
