@@ -36,6 +36,31 @@ const STYLES = `
     from { opacity: 0; transform: translateY(30px) scale(0.96); }
     to   { opacity: 1; transform: translateY(0)    scale(1);    }
   }
+  .glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05);
+  }
+  .glass-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.12);
+    transform: translateY(-1px);
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.25);
+  }
 `;
 
 // ─────────────────────────────────────────────────────────────
@@ -100,73 +125,59 @@ const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
   if (!panel) return null;
   const isOpp = panel.type === 'opportunity';
+  const accentColor = isOpp ? '#fbbf24' : '#818cf8';
   return (
-    <div style={{ animation: 'panel-in 0.28s ease' }} className="mx-5 mb-2">
-
+    <div className="overflow-hidden p-6" style={{ animation: 'panel-in 0.28s ease' }}>
       {/* Confirmed account badge (shows above opportunity list) */}
       {isOpp && confirmedAccount && (
-        <div className="flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-full w-fit"
-          style={{
-            background: 'rgba(16,185,129,0.08)',
-            border: '1px solid rgba(16,185,129,0.22)',
-          }}
-        >
-          <CheckCircle2 size={9} className="text-emerald-400 shrink-0" />
-          <span className="text-[9px] font-bold tracking-wide"
-            style={{ color: '#34d399' }}
-          >
+        <div className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-2xl w-fit bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.1)]">
+          <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
+          <span className="text-[9px] font-black tracking-widest text-emerald-600 uppercase">
             {confirmedAccount}
           </span>
         </div>
       )}
 
-      {/* Section label */}
-      <div className="text-[8.5px] uppercase tracking-[0.22em] font-black mb-2.5"
-        style={{ color: isOpp ? '#fbbf2480' : '#818cf880' }}
-      >
-        {isOpp ? '↳ Select Opportunity' : 'Select Account'}
+      {/* Section header — matches "Products Found" style */}
+      <div className="flex items-center gap-3 mb-3">
+        <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, flexShrink: 0 }} />
+        <div className="text-[8.5px] font-black uppercase tracking-[0.3em]"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {isOpp ? 'Select Opportunity' : 'Select Account'}
+        </div>
       </div>
 
-      {/* Cards */}
-      <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5 scrollbar-hide">
+      {/* Cards — Single Column for full names */}
+      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
         {panel.options.length === 0 && (
-          <div className="text-[10px] text-slate-600 px-1">No records found.</div>
+          <div className="text-[10px] text-slate-600 px-1 py-4 text-center opacity-50 font-black uppercase tracking-widest">No records found</div>
         )}
         {panel.options.map(opt => (
-          <button
+          <div
             key={opt.id}
             onClick={() => onSelect(opt, panel.type)}
-            className="selection-card w-full text-left rounded-xl cursor-pointer"
-            style={{
-              padding: '10px 12px',
-              background: 'var(--card-bg)',
-              border: '1px solid var(--glass-border)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
+            title={opt.name}
+            className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all select-none hover:bg-white/[0.08] active:scale-[0.99] group relative overflow-hidden"
           >
-            {/* Left accent strip */}
-            <div style={{
-              width: 3, borderRadius: 99, alignSelf: 'stretch', flexShrink: 0,
-              background: isOpp
-                ? 'linear-gradient(180deg,#fbbf24,#f59e0b)'
-                : 'linear-gradient(180deg,#818cf8,#6366f1)',
-              opacity: 0.5,
-            }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="text-[11px] font-semibold truncate"
-                style={{ color: 'var(--text-main)' }}
-              >{opt.name}</div>
-              {opt.detail && opt.detail !== '—' && (
-                <div className="text-[9px] mt-0.5 truncate"
-                  style={{ color: isOpp ? '#fbbf2470' : '#818cf870' }}
-                >{opt.detail}</div>
-              )}
+            <div className="flex items-center gap-4 min-w-0">
+              <div 
+                className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]"
+                style={{ background: accentColor, color: accentColor }} 
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-bold text-[var(--text-main)] leading-tight uppercase tracking-tight group-hover:text-indigo-500 transition-colors whitespace-normal">{opt.name}</div>
+                {opt.detail && opt.detail !== '—' && (
+                  <div className="mt-1.5 inline-block px-1.5 py-0.5 rounded-md bg-white/5 border border-white/5 text-[7px] font-black uppercase tracking-widest opacity-60"
+                    style={{ color: accentColor }}
+                  >{opt.detail}</div>
+                )}
+              </div>
             </div>
-            {/* Chevron */}
-            <ArrowRight size={11} style={{ color: isOpp ? '#fbbf2440' : '#6366f140', flexShrink: 0 }} />
-          </button>
+            <div className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 ml-4">
+              <ArrowRight size={14} style={{ color: accentColor }} />
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -198,36 +209,36 @@ const NodeCard = ({
   return (
     <div style={{
       width: w, height: h, borderRadius,
-      background: isActive
-        ? `linear-gradient(135deg, ${accentColor}28, ${accentColor}10)`
-        : 'var(--card-bg)',
-      border: `1.5px solid ${
-        isActive ? accentColor + 'cc'
+      background: 'var(--card-bg)',
+      backgroundImage: isActive ? `linear-gradient(135deg, ${accentColor}11, transparent)` : 'none',
+      border: `2px solid ${
+        isActive ? accentColor
         : isDone  ? accentColor + '55'
-        : 'var(--glass-border)'    /* idle: theme border */
+        : 'var(--glass-border)'
       }`,
       boxShadow: isActive
-        ? `0 0 30px ${glowColor}, 0 0 64px ${glowColor}50`
+        ? `0 10px 40px -10px ${accentColor}80`
         : isDone
-        ? `0 0 14px ${glowColor}30`
-        : 'none',                     /* idle: no glow */
+        ? `0 4px 15px rgba(0,0,0,0.05)`
+        : 'none',
       display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
       backdropFilter: 'blur(20px)',
       transition: 'all 0.85s cubic-bezier(0.4,0,0.2,1)',
       position: 'relative',
       ...style,
     }}>
-      {/* Icon circle */}
+      {/* Icon circle - Solid LED effect when active */}
       <div style={{
         width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-        background: lit ? `${accentColor}22` : 'var(--glass-border)',
-        border: `1.5px solid ${lit ? accentColor + '88' : 'var(--glass-border)'}`,
+        background: isActive ? accentColor : lit ? `${accentColor}15` : 'var(--glass-border)',
+        border: `2px solid ${isActive ? accentColor : lit ? accentColor + '66' : 'var(--glass-border)'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: lit ? accentColor : 'var(--text-muted)',
+        color: isActive ? '#fff' : lit ? accentColor : 'var(--text-muted)',
         transition: 'all 0.85s',
+        boxShadow: isActive ? `0 0 20px ${accentColor}80` : 'none',
       }}>
         {isActive
-          ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: accentColor }} />
+          ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: '#fff' }} />
           : isDone
           ? <CheckCircle2 size={18} color={accentColor} />
           : <Icon size={18} />
@@ -238,14 +249,14 @@ const NodeCard = ({
       <div>
         <div style={{
           fontSize: 10, fontWeight: 900, letterSpacing: '0.17em', textTransform: 'uppercase',
-          color: isActive ? 'var(--text-main)' : isDone ? 'var(--text-muted)' : 'var(--text-muted)',
+          color: 'var(--text-main)',
           opacity: isIdle ? 0.4 : 1,
           transition: 'color 0.85s',
         }}>{label}</div>
         <div style={{
           fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
           marginTop: 3,
-          color: isActive ? accentColor + 'dd' : isDone ? accentColor + '77' : 'var(--text-muted)',
+          color: isActive ? 'var(--text-main)' : isDone ? accentColor + 'aa' : 'var(--text-muted)',
           opacity: isIdle ? 0.3 : 1,
           transition: 'color 0.85s',
           animation: isActive ? 'soft-pulse 1.8s ease-in-out infinite' : 'none',
@@ -276,11 +287,10 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
       animation: active ? 'tool-glow-pulse 1.4s ease-in-out infinite' : 'none',
     }}>
       {done
-        ? <CheckCircle2 size={13} color={color} opacity={0.55} />
+        ? <CheckCircle2 size={13} color={color} />
         : active
-        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, opacity: 0.95,
-            boxShadow: `0 0 6px ${color}` }} />
-        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, opacity: 0.35 }} />
+        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: `0 0 6px #fff` }} />
+        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.35 }} />
       }
     </div>
     <div style={{
@@ -293,6 +303,7 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
       marginTop: 5, textAlign: 'center',
       whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis',
       transition: 'color 0.4s',
+
     }}>{label}</div>
   </div>
 );
@@ -649,6 +660,30 @@ const INIT_ORCH = {
 };
 
 // ─────────────────────────────────────────────────────────────
+const SUGGESTIONS = [
+  {
+    label: 'QUOTE CREATION',
+    text: 'Quote for CloudTech Module 1 with manager rules.',
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.04)',
+    border: 'rgba(129, 140, 248, 0.2)'
+  },
+  {
+    label: 'PRODUCT DISCOVERY',
+    text: "Find 'manager rule' products.",
+    color: '#10b981',
+    bg: 'rgba(16, 185, 129, 0.04)',
+    border: 'rgba(16, 185, 129, 0.2)'
+  },
+  {
+    label: 'DEAL HISTORY',
+    text: 'Show CloudTech deal history.',
+    color: '#f59e0b',
+    bg: 'rgba(245, 158, 11, 0.04)',
+    border: 'rgba(245, 158, 11, 0.2)'
+  }
+];
+
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
 const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
@@ -661,7 +696,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [results, setResults]             = useState([]);
   const [quote, setQuote]                 = useState(null);
   const [selectionPanel, setSelectionPanel]       = useState(null); // { type, options }
-  const [confirmedAccount, setConfirmedAccount]   = useState(null); // string name
+  const [confirmedAccount, setConfirmedAccount]   = useState(null); // string name (for badge)
+  const [confirmedSelections, setConfirmedSelections] = useState([]); // history for right panel [{type, id, name, detail}]
+
+  const handleSuggestionClick = (text) => {
+    setInputValue(text);
+  };
 
   // Composing-reply bridge: buffer product results until FINAL_REPLY fires
   // so they appear in sync with the agent's text (Option A sync).
@@ -674,16 +714,17 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [graphReady, setGraphReady]       = useState(false); // shows paths+agents after slide
 
   const [leftWidth,  setLeftWidth]        = useState(260);
-  const [rightWidth, setRightWidth]       = useState(300);
+  const [rightWidth, setRightWidth]       = useState(380);
   const [isResizingLeft,  setIsResizingLeft]  = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
-  const chatEndRef = useRef(null);
+  const chatEndRef      = useRef(null);
+  const rightPanelEndRef = useRef(null);  // auto-scroll for right panel
   const ws         = useRef(null);
   const centerRef  = useRef(null);
   const [graphScale, setGraphScale] = useState(1);
   const [userZoom, setUserZoom]     = useState(1);
-  const [showMinimap, setShowMinimap] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(false);
   const [pan, setPan]               = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning]   = useState(false);
 
@@ -693,7 +734,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const stopResizing = useCallback(() => { setIsResizingLeft(false); setIsResizingRight(false); }, []);
   const resize = useCallback((e) => {
     if (isResizingLeft)  setLeftWidth(Math.max(80, Math.min(e.clientX, window.innerWidth * 0.25)));
-    if (isResizingRight) setRightWidth(Math.max(80, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.3)));
+    if (isResizingRight) setRightWidth(Math.max(80, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.4)));
   }, [isResizingLeft, isResizingRight]);
 
   useEffect(() => {
@@ -706,6 +747,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   // ── Chat scroll ────────────────────────────────────────────
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // ── Right-panel auto-scroll (selection panel + results + history) ───
+  useEffect(() => {
+    rightPanelEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectionPanel, results, confirmedSelections]);
 
   // ── Graph scale (responsive) ───────────────────────────────
   useEffect(() => {
@@ -920,6 +966,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setQuote(null);
     setSelectionPanel(null);
     setConfirmedAccount(null);
+    setConfirmedSelections([]);
     pendingResultsRef.current = null;
     setComposingReply(false);
     setSelectedProducts(new Set());
@@ -930,6 +977,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     if (selectionType === 'account') {
       setConfirmedAccount(option.name);
     }
+    setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
     setSelectionPanel(null);
     const text = `${option.name} (ID: ${option.id})`;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
@@ -981,29 +1029,38 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             LEFT — COMMAND PANEL
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full border-r border-[var(--glass-border)] bg-[var(--card-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
+          className="h-full border-r border-[var(--glass-border)] bg-[var(--site-bg)] dark:bg-[#0c0d12] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: leftWidth }}
         >
-          <div className="p-7 pb-4 flex items-center justify-between">
+          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-white/[0.02]">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.4)] shrink-0">
-                <Zap size={16} fill="white" className="text-white" />
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(79,70,229,0.4)] flex-shrink-0 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                <span className="text-white font-black text-[11px] tracking-tight relative z-10">AG</span>
               </div>
-              {leftWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Command</h1>}
+              {leftWidth > 140 && (
+                <div className="flex flex-col">
+                  <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white whitespace-nowrap">Agivant</h1>
+                  <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Control Center</span>
+                </div>
+              )}
             </div>
             {leftWidth > 140 && <Settings size={14} className="text-slate-400 hover:text-indigo-600 cursor-pointer transition-colors shrink-0" />}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-6 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-hide custom-scrollbar">
             {leftWidth > 110 && messages.map(msg => (
-              <div key={msg.id} className="animate-in fade-in">
-                <div className={`text-[9px] uppercase font-black tracking-[0.2em] mb-2 ${msg.role === 'user' ? 'text-indigo-400' : 'text-slate-700'}`}>
-                  {msg.role === 'user' ? 'Commander' : 'Nexus AI'}
+              <div key={msg.id} className="animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className={`w-1 h-2.5 rounded-full ${msg.role === 'user' ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                  <div className={`text-[8.5px] uppercase font-black tracking-[0.2em] ${msg.role === 'user' ? 'text-indigo-500' : 'text-slate-500 italic'}`}>
+                    {msg.role === 'user' ? 'Commander' : 'Agivant AI'}
+                  </div>
                 </div>
-                <div className={`p-5 rounded-2xl text-[11px] leading-relaxed shadow-sm transition-all ${
+                <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${
                   msg.role === 'user'
-                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20'
-                    : 'bg-[var(--card-bg)] border border-[var(--glass-border)] text-[var(--text-main)]'}`}>
+                    ? 'bg-indigo-600 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)] ring-1 ring-white/10'
+                    : 'glass-card text-[var(--text-main)] shadow-xl shadow-black/[0.02] border-slate-200/60 dark:border-white/5'}`}>
                   {msg.content}
                 </div>
               </div>
@@ -1014,37 +1071,55 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 <TypingIndicator />
               </div>
             )}
+            {leftWidth > 110 && messages.length === 1 && (
+              <div className="pt-2 pb-6 space-y-4">
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                  <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">Suggestions</span>
+                </div>
+                {SUGGESTIONS.map((s, i) => (
+                  <div 
+                    key={i}
+                    onClick={() => handleSuggestionClick(s.text)}
+                    className="p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                    style={{
+                      background: isDark ? 'rgba(0,0,0,0.1)' : s.bg,
+                      borderColor: isDark ? 'rgba(255,255,255,0.05)' : s.border,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
+                      <span className="text-[8.5px] font-black uppercase tracking-widest" style={{ color: s.color }}>{s.label}</span>
+                    </div>
+                    <div className="text-[10px] leading-relaxed text-[var(--text-main)] opacity-70 group-hover:opacity-100 transition-opacity">
+                      {s.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div ref={chatEndRef} />
           </div>
 
-          {/* ── Selection Panel — slides in above input when agent needs a pick ── */}
-          {leftWidth > 110 && (
-            <SelectionPanel
-              panel={selectionPanel}
-              confirmedAccount={confirmedAccount}
-              onSelect={handleCardSelect}
-            />
-          )}
-
-          {/* Thin separator when panel is active */}
-          {selectionPanel && leftWidth > 110 && (
-            <div className="mx-5 mb-2" style={{ height: 1, background: 'rgba(255,255,255,0.04)' }} />
-          )}
 
 
 
-          <div className="p-5">
-            <form onSubmit={handleSend} className="relative">
-              <input
-                type="text" value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
-                disabled={isBusy}
-                className="w-full bg-[var(--site-bg)] border border-[var(--glass-border)] rounded-2xl py-4 pl-4 pr-10 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all"
-              />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-600">
-                <Send size={15} />
-              </button>
+
+          <div className="p-6 bg-white/[0.02] border-t border-[var(--glass-border)]">
+            <form onSubmit={handleSend} className="group">
+              <div className="relative flex items-center">
+                <div className="absolute inset-0 bg-indigo-500/5 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+                <input
+                  type="text" value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
+                  disabled={isBusy}
+                  className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-5 pr-12 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all relative z-10 shadow-inner"
+                />
+                <button type="submit" className="absolute right-2.5 p-2.5 text-indigo-600 hover:scale-110 transition-transform relative z-20 flex items-center justify-center">
+                  <Send size={16} />
+                </button>
+              </div>
             </form>
           </div>
         </section>
@@ -1073,26 +1148,40 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <ArrowLeft size={16} />
                   </button>
                 )}
-                <span className="text-[9px] font-black tracking-[0.75em] text-slate-400 dark:text-white/15 uppercase">
-                  Orchestration Flow
+                <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
+                  <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">
+                    Orchestration
+                  </span>
+                  <span className="text-slate-300 dark:text-white/20">Flow</span>
                 </span>
               </div>
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <span className="text-[8px] font-black uppercase text-slate-500">Minimap</span>
+              <div className="flex items-center gap-3 bg-white/[0.03] dark:bg-black/5 px-4 py-2 rounded-full border border-white/5 shadow-inner transition-all hover:bg-white/5">
+                <span className="text-[8.5px] font-bold uppercase text-slate-400 tracking-wider">Minimap</span>
                 <button 
                   onClick={() => setShowMinimap(!showMinimap)}
-                  className={`w-8 h-4 rounded-full relative transition-colors ${showMinimap ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                  className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${
+                    showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-700 ring-slate-600/30'
+                  }`}
                 >
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${showMinimap ? 'left-4.5' : 'left-0.5'}`} />
+                  <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${
+                    showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'
+                  }`} />
                 </button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-all duration-500 ${
+                isBusy ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]' : 
+                workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-800/10 border-slate-500/10'
+              }`}>
                 <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${
-                  isBusy ? 'bg-emerald-400 animate-pulse' : workflowState === 'completed' ? 'bg-emerald-600' : 'bg-slate-800'
+                  isBusy ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 
+                  workflowState === 'completed' ? 'bg-indigo-400' : 'bg-slate-500/40'
                 }`} />
-                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">
-                  {workflowState === 'idle' ? 'Idle' : workflowState === 'completed' ? 'Done' : 'Live'}
+                <span className={`text-[8.5px] font-black uppercase tracking-widest ${
+                  isBusy ? 'text-emerald-500' : 
+                  workflowState === 'completed' ? 'text-indigo-400' : 'text-slate-400'
+                }`}>
+                  {workflowState === 'idle' ? 'Standby' : workflowState === 'completed' ? 'Done' : 'Live'}
                 </span>
               </div>
             </div>
@@ -1179,75 +1268,150 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             RIGHT — RESULTS VAULT
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full bg-[var(--card-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
+          className="h-full border-l border-[var(--glass-border)] bg-[#fcfdfe] dark:bg-[#08090b] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: rightWidth }}
         >
-          <div className="p-7 flex items-center justify-between border-b border-white/[0.04]">
+          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-white/[0.04] dark:bg-black/10">
             <div className="flex items-center gap-3">
-              <TrendingUp size={17} className="text-emerald-500 shrink-0" />
-              {rightWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Results</h1>}
+              <div className="w-1.5 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
+              {rightWidth > 140 && (
+                <div className="flex flex-col">
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white leading-none">Insights</h2>
+                  <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5">Data Vault 01</span>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {results.length > 0 && rightWidth > 180 && (
                 <button onClick={toggleSelectAll}
-                  className="text-[7.5px] font-black uppercase tracking-widest text-slate-600 hover:text-indigo-400 transition-colors whitespace-nowrap">
-                  {selectedProducts.size === results.length ? 'Deselect All' : 'Select All'}
+                  className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-colors p-1 px-2 rounded-lg hover:bg-indigo-500/5">
+                  {selectedProducts.size === results.length ? 'Reset' : 'Select All'}
                 </button>
               )}
-              {rightWidth > 180 && (
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full transition-all duration-700 ${workflowState === 'idle' ? 'bg-slate-800' : 'bg-emerald-500 animate-pulse'}`} />
-                  <span className="text-[8.5px] font-black text-slate-700 tracking-widest uppercase whitespace-nowrap">Live</span>
+              {rightWidth > 200 && (
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/10 dark:bg-black/20 border border-white/5 shadow-sm">
+                  <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${workflowState === 'idle' ? 'bg-slate-700' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse'}`} />
+                  <span className="text-[8.5px] font-black text-slate-500 dark:text-slate-400 tracking-widest uppercase">Streaming</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-7 space-y-10 custom-scrollbar scroll-smooth">
 
-            {workflowState === 'idle' && (
+            {workflowState === 'idle' && !selectionPanel && (
               <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
                 <Database size={38} strokeWidth={1} className="mb-5" />
-                {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking-widest">Awaiting Streams</p>}
+                {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking_widest">Awaiting Streams</p>}
               </div>
             )}
 
-            {results.length > 0 && rightWidth > 110 && (
-              <div className="animate-in fade-in slide-in-from-right-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                  {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
-                </div>
-                <div className="space-y-2" style={{ paddingBottom: selectedProducts.size > 0 ? 72 : 0, transition: 'padding-bottom 0.3s' }}>
-                  {results.map(prod => {
-                    const isSel = selectedProducts.has(prod.id);
-                    return (
-                      <div key={prod.id}
-                        onClick={() => toggleProduct(prod.id)}
-                        className="px-4 py-3.5 border rounded-xl cursor-pointer transition-all select-none shadow-sm hover:shadow"
-                        style={{
-                          background: isSel ? 'rgba(99,102,241,0.08)' : 'var(--card-bg)',
-                          borderColor: isSel ? 'rgba(99,102,241,0.4)' : 'var(--glass-border)',
-                        }}>
-                        <div className="flex items-center gap-2.5">
-                          {/* Checkbox */}
-                          <div style={{
-                            width: 14, height: 14, borderRadius: 4, flexShrink: 0,
-                            border: `1.5px solid ${isSel ? '#6366f1' : 'var(--glass-border)'}`,
-                            background: isSel ? '#6366f1' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}>
-                            {isSel && <CheckCircle2 size={9} color="white" />}
+
+
+            {/* ── Persistent Selections (Confirmed) ── */}
+            {confirmedSelections.length > 0 && (
+              <div className="animate-in fade-in slide-in-from-right-4 mb-10 overflow-hidden">
+                <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-6">
+                  <div className="space-y-6">
+                    {confirmedSelections.map((sel, idx) => {
+                      const isOpp = sel.type === 'opportunity';
+                      const accentColor = isOpp ? '#fbbf24' : '#818cf8';
+                      return (
+                        <div key={`${sel.id}-${idx}`}>
+                          <div className="flex items-center gap-3 mb-3">
+                            <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, opacity: 0.5 }} />
+                            <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">
+                              Confirmed {isOpp ? 'Opportunity' : 'Account'}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[11px] font-bold text-[var(--text-main)] truncate">{prod.name}</div>
-                            <div className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{prod.sku}</div>
+                          <div className="px-5 py-4 bg-white/[0.03] border border-white/5 rounded-2xl transition-all">
+                            <div className="flex items-center gap-2.5">
+                              <div style={{
+                                width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+                                border: `1.5px solid ${accentColor}33`,
+                                background: `${accentColor}11`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <CheckCircle2 size={9} style={{ color: accentColor }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="text-[11px] font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{sel.name}</div>
+                                  <div className="px-1.5 py-0.5 rounded-md bg-indigo-500/5 border border-indigo-500/10 text-[7px] font-black text-indigo-500 uppercase tracking-widest">Saved</div>
+                                </div>
+                                {sel.detail && sel.detail !== '—' && (
+                                  <div className="text-[8.5px] font-black uppercase tracking-[0.12em] opacity-60"
+                                    style={{ color: accentColor }}
+                                  >{sel.detail}</div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+            {results.length > 0 && rightWidth > 110 && (
+              <div className="animate-in fade-in slide-in-from-right-6 mb-10 overflow-hidden">
+                <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                  <div className="p-6 pb-2 flex items-center gap-3">
+                    <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                    {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
+                  </div>
+                  
+                  <div className="p-6 pt-4">
+                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 10 }}>
+                      {results.map(prod => {
+                        const isSel = selectedProducts.has(prod.id);
+                        return (
+                          <div key={prod.id}
+                            onClick={() => toggleProduct(prod.id)}
+                            title={prod.name}
+                            className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all select-none relative overflow-hidden group ${isSel ? 'bg-indigo-500/15 ring-2 ring-indigo-500/50 shadow-[0_12px_24px_-8px_rgba(79,70,229,0.3)]' : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/5'}`}
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div style={{
+                                width: 16, height: 16, borderRadius: 5, flexShrink: 0,
+                                border: `1.5px solid ${isSel ? '#6366f1' : 'rgba(99,102,241,0.2)'}`,
+                                background: isSel ? '#6366f1' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s',
+                              }}>
+                                {isSel && <CheckCircle2 size={10} color="white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors uppercase tracking-tight leading-tight mb-1 whitespace-normal">{prod.name}</div>
+                                <div className="flex items-center gap-3">
+                                  <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">{prod.sku}</div>
+                                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                  <div className="text-[8px] font-black text-indigo-400/80 uppercase tracking-widest whitespace-nowrap">Global Std.</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Selection Panel — slides in when agent needs a pick ── */}
+            {selectionPanel && rightWidth > 110 && (
+              <div className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-10">
+                <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                   <SelectionPanel
+                    panel={selectionPanel}
+                    confirmedAccount={confirmedAccount}
+                    onSelect={handleCardSelect}
+                    rightWidth={rightWidth}
+                  />
                 </div>
               </div>
             )}
@@ -1279,6 +1443,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
               </div>
             )}
+            {/* Scroll anchor — right panel scrolls here on new data */}
+            <div ref={rightPanelEndRef} />
           </div>
           {/* ── Floating action bar: slides up when products are selected ── */}
           {selectedProducts.size > 0 && (
