@@ -202,6 +202,7 @@ How to present results:
 - Never fabricate products, IDs, or pricing data.
 
 You are a read-only discovery agent. You do not create quotes, modify records, or perform any write operations.
+- **CRITICAL TRANSFER RULE**: You must NEVER use the `transfer_to_agent` tool yourself. Once you have found the products, you must ALWAYS provide your concise text reply directly to the user so the UI can render the products.
         """,
         tools=[_mcp_scout],
         before_model_callback=sequence_repair_hook,
@@ -304,6 +305,7 @@ How to delegate:
 - Delegate to the specialist whose role best matches what the user needs right now
 - The specialists share the same conversation history — you do not need to summarize or relay prior context
 - Never answer product or pricing questions yourself — always delegate to the right specialist
+- **DEPENDENCY RULE**: The Quote_Architect CANNOT function unless the Catalog_Scout has ALREADY found the product in a previous turn. If the user asks to create a quote for a product that hasn't been searched for yet, you MUST delegate to Catalog_Scout to find it. Do not even mention the Quote_Architect until the product has been found.
 
 You are a coordinator only. You do not call tools, search for products, or create quotes directly.
         """,
@@ -474,9 +476,14 @@ async def websocket_endpoint(websocket: WebSocket):
                             print(f"   [PICKLIST] Parse error: {e}")
 
                     # When the quote is fully created, exit quote flow mode
-                    if tool_name == "evaluate_quote_graph" and "status\":\"success" in text_content:
-                        session_quote_active[session_id] = False
-                        print(f"   [FLOW] Session {session_id} → quote flow COMPLETE (back to coordinator)")
+                    if tool_name == "evaluate_quote_graph":
+                        try:
+                            parsed = json.loads(text_content)
+                            if parsed.get("status") == "success":
+                                session_quote_active[session_id] = False
+                                print(f"   [FLOW] Session {session_id} → quote flow COMPLETE (back to coordinator)")
+                        except Exception:
+                            pass
 
                     payload = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
                     if tool_name == "evaluate_quote_graph":
@@ -500,6 +507,11 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         print(f"\n[WebSocket] Client disconnected. Session: {session_id}")
         session_quote_active.pop(session_id, None)  # clean up any dangling flow state
+        try:
+            await session_service.delete_session(app_name="deal_manager_v2", user_id="dev", session_id=session_id)
+            print(f"   [MEMORY] Cleared conversation history for {session_id}")
+        except Exception as e:
+            print(f"   [MEMORY] Failed to clear session: {e}")
     except Exception as e:
         print(f"[WebSocket] Error: {e}")
         session_quote_active.pop(session_id, None)
