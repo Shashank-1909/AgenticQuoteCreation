@@ -109,8 +109,7 @@ const makeToolPath = (agentCx, agentBot, tp) =>
 // Short display names for tools
 const TOOL_LABELS = {
   check_field_values:             'Field Check',
-  search_rca_products:            'Prod. Search',
-  search_products_by_filter:      'Filter Search',
+  search_catalog:                 'Unified Search',
   resolve_pricebook_entries:      'Pricebook',
   evaluate_quote_graph:           'CPQ Quote',
   get_my_accounts:                'Accounts',
@@ -888,7 +887,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             // 2. Parse results for right-pane cards
             try {
               const parsed = JSON.parse(data.data);
-              if ((data.tool === 'search_rca_products' || data.tool === 'search_products_by_filter') && parsed.results) {
+              if (data.tool === 'search_catalog' && parsed.results) {
                 // ── Buffer products — release them only when FINAL_REPLY arrives ──
                 // This way products and agent text appear together (Option A sync).
                 pendingResultsRef.current = parsed.results.map((r, i) => ({
