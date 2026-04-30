@@ -664,22 +664,22 @@ const SUGGESTIONS = [
     label: 'QUOTE CREATION',
     text: 'Quote for CloudTech Module 1 with manager rules.',
     color: '#818cf8',
-    bg: 'rgba(129, 140, 248, 0.04)',
-    border: 'rgba(129, 140, 248, 0.2)'
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
   },
   {
     label: 'PRODUCT DISCOVERY',
     text: "Find 'manager rule' products.",
     color: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.04)',
-    border: 'rgba(16, 185, 129, 0.2)'
+    bg: 'rgba(16, 185, 129, 0.08)',
+    border: 'rgba(16, 185, 129, 0.3)'
   },
   {
     label: 'DEAL HISTORY',
     text: 'Show CloudTech deal history.',
     color: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.04)',
-    border: 'rgba(245, 158, 11, 0.2)'
+    bg: 'rgba(245, 158, 11, 0.08)',
+    border: 'rgba(245, 158, 11, 0.3)'
   }
 ];
 
@@ -1028,10 +1028,10 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             LEFT — COMMAND PANEL
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full border-r border-[var(--glass-border)] bg-[var(--site-bg)] dark:bg-[#0c0d12] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
+          className="h-full border-r border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: leftWidth }}
         >
-          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-white/[0.02]">
+          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(79,70,229,0.4)] flex-shrink-0 relative overflow-hidden group">
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
@@ -1058,7 +1058,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
                 <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${
                   msg.role === 'user'
-                    ? 'bg-indigo-600 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)] ring-1 ring-white/10'
+                    ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)]'
                     : 'glass-card text-[var(--text-main)] shadow-xl shadow-black/[0.02] border-slate-200/60 dark:border-white/5'}`}>
                   {msg.content}
                 </div>
@@ -1080,9 +1080,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   <div 
                     key={i}
                     onClick={() => handleSuggestionClick(s.text)}
-                    className="p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                    className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
                     style={{
-                      background: isDark ? 'rgba(0,0,0,0.1)' : s.bg,
+                      background: isDark ? 'rgba(255,255,255,0.02)' : s.bg,
                       borderColor: isDark ? 'rgba(255,255,255,0.05)' : s.border,
                     }}
                   >
@@ -1104,7 +1104,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
 
 
-          <div className="p-6 bg-white/[0.02] border-t border-[var(--glass-border)]">
+          <div className="p-6 bg-slate-500/[0.03] dark:bg-white/[0.02] border-t border-[var(--glass-border)]">
             <form onSubmit={handleSend} className="group">
               <div className="relative flex items-center">
                 <div className="absolute inset-0 bg-indigo-500/5 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
@@ -1142,7 +1142,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 {onBack && (
                   <button 
                     onClick={onBack}
-                    className="p-2 -ml-2 rounded-full hover:bg-white/5 text-slate-500 hover:text-white transition-all"
+                    className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all"
                   >
                     <ArrowLeft size={16} />
                   </button>
@@ -1160,7 +1160,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 <button 
                   onClick={() => setShowMinimap(!showMinimap)}
                   className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${
-                    showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-700 ring-slate-600/30'
+                    showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700 ring-slate-400/20 dark:ring-slate-600/30'
                   }`}
                 >
                   <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${
@@ -1169,16 +1169,16 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 </button>
               </div>
               <div className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-all duration-500 ${
-                isBusy ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]' : 
-                workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-800/10 border-slate-500/10'
+                isBusy ? 'bg-emerald-500/10 border-emerald-500/20' : 
+                workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-500/5 dark:bg-slate-800/10 border-slate-500/10'
               }`}>
                 <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${
-                  isBusy ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 
-                  workflowState === 'completed' ? 'bg-indigo-400' : 'bg-slate-500/40'
+                  isBusy ? 'bg-emerald-500 animate-pulse' : 
+                  workflowState === 'completed' ? 'bg-indigo-500' : 'bg-slate-400 dark:bg-slate-600'
                 }`} />
                 <span className={`text-[8.5px] font-black uppercase tracking-widest ${
-                  isBusy ? 'text-emerald-500' : 
-                  workflowState === 'completed' ? 'text-indigo-400' : 'text-slate-400'
+                  isBusy ? 'text-emerald-600 dark:text-emerald-400' : 
+                  workflowState === 'completed' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'
                 }`}>
                   {workflowState === 'idle' ? 'Standby' : workflowState === 'completed' ? 'Done' : 'Live'}
                 </span>
@@ -1221,7 +1221,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
             {/* Minimap Widget */}
             {showMinimap && (
-              <div className="absolute top-8 right-8 w-44 h-52 bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none group shadow-2xl">
+              <div className="absolute top-8 right-8 w-44 h-52 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-3xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none group shadow-2xl">
                 {/* Background Representation */}
                 <div className="absolute inset-0 opacity-40 pointer-events-none p-4">
                   <div className="scale-[0.28] origin-top-left transition-all">
@@ -1267,10 +1267,10 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             RIGHT — RESULTS VAULT
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full border-l border-[var(--glass-border)] bg-[#fcfdfe] dark:bg-[#08090b] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
+          className="h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: rightWidth }}
         >
-          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-white/[0.04] dark:bg-black/10">
+          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
               {rightWidth > 140 && (
@@ -1422,10 +1422,10 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
                 <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-5 rounded-2xl">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1.5">Quote ID</div>
-                      <div className="text-[11px] font-bold text-[var(--text-main)] font-mono">{quote.id}</div>
-                    </div>
+                <div className="flex flex-col gap-1">
+                  <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
+                  <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{quote.id}</div>
+                </div>
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm">
                       <CheckCircle2 size={16} className="text-emerald-500" />
                     </div>
@@ -1448,26 +1448,21 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           {/* ── Floating action bar: slides up when products are selected ── */}
           {selectedProducts.size > 0 && (
             <div 
-              className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-2xl z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] transition-colors"
+              className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-3xl z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] transition-all"
               style={{
                 animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
             }}>
               <button
                 onClick={handleCreateQuoteFromSelection}
                 disabled={isBusy}
-                style={{
-                  width: '100%', padding: '9px 14px',
-                  background: isBusy ? 'rgba(99,102,241,0.04)' : 'rgba(99,102,241,0.12)',
-                  border: `1px solid rgba(99,102,241,${isBusy ? 0.1 : 0.35})`,
-                  borderRadius: 10,
-                  color: isBusy ? 'var(--text-muted)' : '#6366f1',
-                  fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', cursor: isBusy ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
+                className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${
+                  isBusy 
+                  ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
+                }`}
               >
-                ⚡ Create Quote — {selectedProducts.size} Product{selectedProducts.size > 1 ? 's' : ''}
+                {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                Create Quote — {selectedProducts.size} Product{selectedProducts.size > 1 ? 's' : ''}
               </button>
             </div>
           )}
@@ -1507,6 +1502,7 @@ const App = () => {
       {view === 'dashboard' && (
         <Dashboard 
           onLaunchChat={handleLaunchChat} 
+          onBack={() => setView('selection')}
           onEditQuote={(id) => console.log('Edit quote', id)} 
         />
       )}
