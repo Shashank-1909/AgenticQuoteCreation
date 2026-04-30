@@ -1113,9 +1113,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   onChange={e => setInputValue(e.target.value)}
                   placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
                   disabled={isBusy}
-                  className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-5 pr-12 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all relative z-10 shadow-inner"
+                  className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-6 pr-14 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all z-10 shadow-inner"
                 />
-                <button type="submit" className="absolute right-2.5 p-2.5 text-indigo-600 hover:scale-110 transition-transform relative z-20 flex items-center justify-center">
+                <button type="submit" className="absolute right-3.5 p-2.5 text-indigo-600 hover:scale-110 transition-transform z-20 flex items-center justify-center">
                   <Send size={16} />
                 </button>
               </div>
