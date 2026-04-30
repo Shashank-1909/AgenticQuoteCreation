@@ -1,7 +1,6 @@
-import React from 'react';
-import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles } from 'lucide-react';
+import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles, ArrowLeft } from 'lucide-react';
 
-const Dashboard = ({ onLaunchChat }) => {
+const Dashboard = ({ onBack, onLaunchChat }) => {
   const stats = [
     { label: 'Accounts',     value: '128',  sub: '+12 this month',  icon: Users,       color: '#6366f1', gradient: 'from-indigo-500/10 via-indigo-500/5 to-transparent' },
     { label: 'Opportunities',value: '47',   sub: '8 closing soon',  icon: Network,     color: '#0ea5e9', gradient: 'from-sky-500/10 via-sky-500/5 to-transparent' },
@@ -40,6 +39,14 @@ const Dashboard = ({ onLaunchChat }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
+            {onBack && (
+              <button 
+                onClick={onBack}
+                className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all mr-2"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 font-black text-white tracking-tight">
               AG
             </div>
