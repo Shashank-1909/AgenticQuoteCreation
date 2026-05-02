@@ -1,0 +1,13 @@
+# Runtime secrets — never commit these
+.env
+auth.json
+token.txt
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.venv/

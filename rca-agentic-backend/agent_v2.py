@@ -8,35 +8,20 @@ Run with: python agent_v2.py
 Serves on: http://0.0.0.0:8001
 """
 
+import json
+import logging
 import os
 import sys
-import json
 import uuid
-from typing import Optional
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-load_dotenv()
-
-# ---------------------------------------------------------------------------
-# Salesforce instance URL — loaded from auth.json for frontend deep links
-# ---------------------------------------------------------------------------
-_AUTH_PATH = os.path.join(os.path.dirname(__file__), "auth.json")
-_SF_INSTANCE_URL = "https://login.salesforce.com"
-try:
-    with open(_AUTH_PATH) as _f:
-        _auth = json.load(_f)
-        _SF_INSTANCE_URL = _auth.get("instance_url", _SF_INSTANCE_URL)
-except Exception:
-    pass
-
-# ---------------------------------------------------------------------------
-# ADK Stable 1.28.0 imports
-# ---------------------------------------------------------------------------
 from google.genai import types
 from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
@@ -47,6 +32,75 @@ from google.adk.models.llm_response import LlmResponse
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters
+
+load_dotenv()
+
+# ---------------------------------------------------------------------------
+# Logging — replaces all raw print() calls.
+# Using the standard library `logging` module gives us:
+#   - Log levels (INFO, WARNING, ERROR) for filtering
+#   - Timestamps and caller info for free
+#   - Redirectable output (file, stream, external service) without code changes
+# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Constants — single source of truth for every magic string.
+# If any name changes, update it here only.
+# ---------------------------------------------------------------------------
+APP_NAME:            str = "deal_manager_v2"
+USER_ID:             str = "dev"
+MODEL_NAME:          str = "gemini-2.5-pro"
+SERVER_PORT:         int = 8001
+MCP_TIMEOUT:       float = 60.0
+MCP_SERVER_SCRIPT:   str = "server.py"
+
+# Tool names referenced in the event-routing logic
+TOOL_ACCOUNTS:      str = "get_my_accounts"
+TOOL_OPPORTUNITIES: str = "get_opportunities_for_account"
+TOOL_QUOTE:         str = "evaluate_quote_graph"
+
+# Salesforce fallback instance URL (overridden by auth.json if present)
+_SF_INSTANCE_URL: str = "https://login.salesforce.com"
+_AUTH_PATH: str = os.path.join(os.path.dirname(__file__), "auth.json")
+try:
+    with open(_AUTH_PATH) as _f:
+        _auth_data = json.load(_f)
+        _SF_INSTANCE_URL = _auth_data.get("instance_url", _SF_INSTANCE_URL)
+except FileNotFoundError:
+    logger.warning("auth.json not found — using default Salesforce login URL.")
+except json.JSONDecodeError as exc:
+    logger.warning("auth.json is malformed and could not be parsed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# AppState — replaces module-level mutable globals.
+# All mutable runtime state lives in one explicit, inspectable object.
+# This makes dependencies visible and the code far easier to test.
+# ---------------------------------------------------------------------------
+@dataclass
+class AppState:
+    """Holds all runtime state for the lifetime of the FastAPI application."""
+    root_runner:  Runner
+    quote_runner: Runner
+    # Tracks which sessions are mid-quote-creation.
+    # True  → use quote_runner (Quote_Architect directly, Deal_Manager bypassed)
+    # False → use root_runner  (Deal_Manager coordinator)
+    quote_flow: dict[str, bool] = field(default_factory=dict)
+
+
+# Module-level reference to AppState, set during lifespan startup.
+_app_state: Optional[AppState] = None
+
+# Shared session service — single instance for all runners so conversation
+# history is preserved even when switching between root_runner and quote_runner.
+session_service = InMemorySessionService()
 
 
 # ---------------------------------------------------------------------------
@@ -59,104 +113,59 @@ async def sequence_repair_hook(
     callback_context: Context,
     llm_request: LlmRequest,
 ) -> Optional[LlmResponse]:
+    """Repairs model→model or leading model sequences before each LLM call."""
     if not llm_request or not llm_request.contents:
         return None
 
-    repaired = []
+    sync_turn = types.Content(role="user", parts=[types.Part(text="[SYSTEM: sequence sync]")])
+    repaired: list[types.Content] = []
+
     for content in llm_request.contents:
         role = getattr(content, "role", None) or "unknown"
         if repaired:
             last_role = getattr(repaired[-1], "role", None) or "unknown"
             if last_role == "model" and role == "model":
-                repaired.append(types.Content(
-                    role="user",
-                    parts=[types.Part(text="[SYSTEM: sequence sync]")]
-                ))
+                repaired.append(sync_turn)
         repaired.append(content)
 
-    # Trailing model turn
+    # Fix trailing model turn
     if repaired and getattr(repaired[-1], "role", "") == "model":
-        repaired.append(types.Content(
-            role="user",
-            parts=[types.Part(text="[SYSTEM: sequence sync]")]
-        ))
+        repaired.append(sync_turn)
 
-    # Leading model turn
+    # Fix leading model turn
     if repaired and getattr(repaired[0], "role", "") == "model":
-        repaired.insert(0, types.Content(
-            role="user",
-            parts=[types.Part(text="[SYSTEM: sequence sync]")]
-        ))
+        repaired.insert(0, sync_turn)
 
     llm_request.contents = repaired
     return None
 
 
 # ---------------------------------------------------------------------------
-# Shared session service
+# MCP Toolset Factory
+# Extracted so each call is self-contained and testable independently.
 # ---------------------------------------------------------------------------
-session_service = InMemorySessionService()
-
-# Module-level references populated in lifespan
-_root_runner:  Optional[Runner] = None   # Coordinator runner (Deal_Manager as root)
-_quote_runner: Optional[Runner] = None   # Direct runner (Quote_Architect as root)
-_mcp_scout:    Optional[McpToolset] = None
-_mcp_architect: Optional[McpToolset] = None
-
-# ---------------------------------------------------------------------------
-# Session Quote Flow Tracker
-# When a session enters the quote creation flow (get_my_accounts is called),
-# we switch to _quote_runner which routes directly to Quote_Architect WITHOUT
-# going through Deal_Manager. Both runners share the same InMemorySessionService
-# so conversation history is preserved across the switch.
-# Key:   session_id (str)
-# Value: True  = use _quote_runner (Quote_Architect directly)
-#        False = use _root_runner  (Deal_Manager coordinator)
-# ---------------------------------------------------------------------------
-session_quote_active: dict[str, bool] = {}
-
-
-# ---------------------------------------------------------------------------
-# Lifespan — agent initialization and teardown
-# ---------------------------------------------------------------------------
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global _root_runner, _quote_runner, _mcp_scout, _mcp_architect
-
-    print("\n" + "=" * 58)
-    print("  DEAL MANAGEMENT API  |  ADK 1.28.0 Stable  |  Port 8001")
-    print("=" * 58)
-    print("[Init] Starting MCP server connections...")
-
-    # Each sub-agent gets its own isolated MCP subprocess to avoid state sharing.
-    # Native `timeout=60.0` in stable ADK — no monkey-patching required.
-    _mcp_scout = McpToolset(
+def _build_mcp_toolset() -> McpToolset:
+    """Creates a new isolated MCP subprocess toolset for one agent."""
+    return McpToolset(
         connection_params=StdioConnectionParams(
             server_params=StdioServerParameters(
                 command=sys.executable,
-                args=["-u", "server.py"],
+                args=["-u", MCP_SERVER_SCRIPT],
             ),
-            timeout=60.0,
+            timeout=MCP_TIMEOUT,
         )
     )
 
-    _mcp_architect = McpToolset(
-        connection_params=StdioConnectionParams(
-            server_params=StdioServerParameters(
-                command=sys.executable,
-                args=["-u", "server.py"],
-            ),
-            timeout=60.0,
-        )
-    )
 
-    # -----------------------------------------------------------------------
-    # Catalog Scout
-    # Responsible for all product discovery operations.
-    # -----------------------------------------------------------------------
-    catalog_scout = LlmAgent(
+# ---------------------------------------------------------------------------
+# Agent Builders
+# Each builder is a focused function with one job.
+# ---------------------------------------------------------------------------
+def _build_catalog_scout(toolset: McpToolset) -> LlmAgent:
+    """Builds the Catalog Scout sub-agent (product discovery specialist)."""
+    return LlmAgent(
         name="Catalog_Scout",
-        model="gemini-2.5-pro",
+        model=MODEL_NAME,
         description=(
             "Searches and retrieves products from the Salesforce product catalog. "
             "Handles name-based searches, attribute-based filtering, and product discovery."
@@ -205,17 +214,16 @@ How to present results:
 You are a read-only discovery agent. You do not create quotes, modify records, or perform any write operations.
 - **CRITICAL TRANSFER RULE**: You must NEVER use the `transfer_to_agent` tool yourself. Once you have found the products, you must ALWAYS provide your concise text reply directly to the user so the UI can render the products.
         """,
-        tools=[_mcp_scout],
+        tools=[toolset],
         before_model_callback=sequence_repair_hook,
     )
 
-    # -----------------------------------------------------------------------
-    # Quote Architect
-    # Responsible for all CPQ quote creation operations.
-    # -----------------------------------------------------------------------
-    quote_architect = LlmAgent(
+
+def _build_quote_architect(toolset: McpToolset) -> LlmAgent:
+    """Builds the Quote Architect sub-agent (CPQ quote creation specialist)."""
+    return LlmAgent(
         name="Quote_Architect",
-        model="gemini-2.5-pro",
+        model=MODEL_NAME,
         description=(
             "Creates Salesforce CPQ quotes for products. Resolves active pricing from the pricebook "
             "and submits structured quote graphs to the Salesforce Revenue Cloud API."
@@ -277,17 +285,19 @@ STEP 4 — CREATE QUOTE:
 - If a Salesforce error occurs, explain it clearly and do not retry automatically
 - You do not search for products — that is exclusively the Catalog Scout's responsibility
         """,
-        tools=[_mcp_architect],
+        tools=[toolset],
         before_model_callback=sequence_repair_hook,
     )
 
-    # -----------------------------------------------------------------------
-    # Deal Manager — Coordinator
-    # Routes every user turn to the correct specialist via LLM-driven delegation.
-    # -----------------------------------------------------------------------
-    deal_manager = LlmAgent(
+
+def _build_deal_manager(
+    catalog_scout: LlmAgent,
+    quote_architect: LlmAgent,
+) -> LlmAgent:
+    """Builds the Deal Manager coordinator agent."""
+    return LlmAgent(
         name="Deal_Manager",
-        model="gemini-2.5-pro",
+        model=MODEL_NAME,
         description=(
             "Routes any Salesforce deal management request to the appropriate specialist agent. "
             "Use this coordinator for all product catalog and quoting operations."
@@ -314,43 +324,62 @@ You are a coordinator only. You do not call tools, search for products, or creat
         before_model_callback=sequence_repair_hook,
     )
 
-    # -----------------------------------------------------------------------
-    # Runners
+
+# ---------------------------------------------------------------------------
+# Lifespan — application startup and shutdown
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initializes all agents and MCP connections on startup, tears them down on shutdown."""
+    global _app_state
+
+    logger.info("=" * 58)
+    logger.info("  DEAL MANAGEMENT API  |  ADK 1.28.0 Stable  |  Port %d", SERVER_PORT)
+    logger.info("=" * 58)
+    logger.info("Starting MCP server connections...")
+
+    # Each sub-agent gets its own isolated MCP subprocess to avoid shared state.
+    mcp_scout = _build_mcp_toolset()
+    mcp_architect = _build_mcp_toolset()
+
+    catalog_scout   = _build_catalog_scout(mcp_scout)
+    quote_architect = _build_quote_architect(mcp_architect)
+    deal_manager    = _build_deal_manager(catalog_scout, quote_architect)
+
     # _root_runner  — Deal_Manager as root (initial routing, product search)
     # _quote_runner — Quote_Architect as root (direct access, skips Deal_Manager)
-    # Both share the same session_service so conversation history is preserved.
-    # -----------------------------------------------------------------------
-    _root_runner = Runner(
-        app_name="deal_manager_v2",
+    # Both share the same session_service so conversation history is preserved
+    # when the active runner switches mid-conversation.
+    root_runner = Runner(
+        app_name=APP_NAME,
         agent=deal_manager,
         session_service=session_service,
     )
-    _quote_runner = Runner(
-        app_name="deal_manager_v2",    # SAME app_name = shared session history!
+    quote_runner = Runner(
+        app_name=APP_NAME,    # SAME app_name = shared session history!
         agent=quote_architect,
         session_service=session_service,
     )
 
-    print("[Init] ✅ Deal_Manager coordinator initialized")
-    print("[Init] ✅ Catalog_Scout ready (MCP subprocess #1)")
-    print("[Init] ✅ Quote_Architect ready (MCP subprocess #2)")
-    print("[Init] ✅ Quote_Architect direct runner ready (bypasses Deal_Manager)")
-    print("[Init] ✅ Runner configured — stable ADK 1.28.0\n")
+    _app_state = AppState(root_runner=root_runner, quote_runner=quote_runner)
+
+    logger.info("✅ Deal_Manager coordinator initialized")
+    logger.info("✅ Catalog_Scout ready (MCP subprocess #1)")
+    logger.info("✅ Quote_Architect ready (MCP subprocess #2)")
+    logger.info("✅ Quote_Architect direct runner ready (bypasses Deal_Manager)")
+    logger.info("✅ Runner configured — stable ADK 1.28.0")
 
     yield  # Application runs here
 
-    # -----------------------------------------------------------------------
-    # Shutdown: release MCP subprocess connections
-    # -----------------------------------------------------------------------
-    print("\n[Shutdown] Closing MCP connections...")
-    for toolset in [_mcp_scout, _mcp_architect]:
+    logger.info("Closing MCP connections...")
+    for toolset in [mcp_scout, mcp_architect]:
         try:
             result = toolset.close()
             if hasattr(result, "__await__"):
                 await result
-        except Exception as e:
-            print(f"[Shutdown] Warning: {e}")
-    print("[Shutdown] Done.")
+        except Exception as exc:
+            logger.warning("MCP toolset close warning: %s", exc)
+    logger.info("Shutdown complete.")
 
 
 # ---------------------------------------------------------------------------
@@ -372,158 +401,207 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# WebSocket Endpoint
+# Helper: Extract text from a tool function response object
+# Extracted from the WebSocket handler to keep it focused on orchestration.
+# ---------------------------------------------------------------------------
+def _extract_tool_text(fn_resp: object) -> str:
+    """Pulls the plain-text payload out of an ADK function response object."""
+    response_data = getattr(fn_resp, "response", {})
+    if not isinstance(response_data, dict):
+        return ""
+    content_list = response_data.get("content", [])
+    if content_list and isinstance(content_list, list):
+        return content_list[0].get("text", "")
+    if "output" in response_data:
+        return str(response_data.get("output", ""))
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Helper: Handle tool result side effects
+# Responsible for picklist emission and quote flow state transitions.
+# Isolated here so the main event loop stays readable.
+# ---------------------------------------------------------------------------
+async def _handle_tool_result(
+    tool_name: str,
+    text_content: str,
+    session_id: str,
+    websocket: WebSocket,
+    state: AppState,
+) -> None:
+    """Processes side effects triggered by specific tool results."""
+
+    # ── Account and opportunity picklists ────────────────────────────────
+    if tool_name in (TOOL_ACCOUNTS, TOOL_OPPORTUNITIES):
+        try:
+            parsed = json.loads(text_content)
+            if tool_name == TOOL_ACCOUNTS and parsed.get("accounts"):
+                await websocket.send_json({
+                    "type":          "USER_SELECTION_NEEDED",
+                    "selection_for": "account",
+                    "options":       parsed["accounts"],
+                })
+                logger.info("Account picklist sent → %d options", len(parsed["accounts"]))
+                state.quote_flow[session_id] = True
+                logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+
+            elif tool_name == TOOL_OPPORTUNITIES and parsed.get("opportunities") is not None:
+                await websocket.send_json({
+                    "type":          "USER_SELECTION_NEEDED",
+                    "selection_for": "opportunity",
+                    "options":       parsed["opportunities"],
+                })
+                logger.info(
+                    "Opportunity picklist sent → %d options",
+                    len(parsed["opportunities"]),
+                )
+                state.quote_flow[session_id] = True
+
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse picklist tool response: %s", exc)
+
+    # ── Quote completion — exit quote flow mode ───────────────────────────
+    if tool_name == TOOL_QUOTE:
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                state.quote_flow[session_id] = False
+                logger.info("Session %s → quote flow COMPLETE (back to coordinator)", session_id)
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse quote tool response: %s", exc)
+
+    # ── Build and send the TOOL_RESULT payload ────────────────────────────
+    payload: dict = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
+    if tool_name == TOOL_QUOTE:
+        try:
+            parsed = json.loads(text_content)
+            parsed["instance_url"] = _SF_INSTANCE_URL
+            payload["data"] = json.dumps(parsed)
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not inject instance_url into quote response: %s", exc)
+
+    await websocket.send_json(payload)
+
+
+# ---------------------------------------------------------------------------
+# Helper: Process ADK event stream for one user turn
+# Contains the entire event loop logic, separated from session setup/teardown.
+# ---------------------------------------------------------------------------
+async def _process_events(
+    runner: Runner,
+    message: types.Content,
+    session_id: str,
+    websocket: WebSocket,
+    state: AppState,
+) -> None:
+    """Streams ADK events for a single user turn and emits WebSocket messages."""
+    current_agent: Optional[str] = None
+
+    async for event in runner.run_async(
+        user_id=USER_ID,
+        session_id=session_id,
+        new_message=message,
+    ):
+        # ── Agent transition ──────────────────────────────────────────────
+        agent_name = getattr(event, "author", None)
+        if agent_name and agent_name != current_agent:
+            current_agent = agent_name
+            logger.info("[AGENT] %s", agent_name)
+            await websocket.send_json({"type": "AGENT_START", "agent": agent_name})
+
+        # ── Tool call (LLM → Tool) ────────────────────────────────────────
+        for fn_call in (event.get_function_calls() or []):
+            tool_name: str = getattr(fn_call, "name", "unknown")
+            logger.info("[TOOL CALL] → %s", tool_name)
+            await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
+
+        # ── Tool response (Tool → LLM) ────────────────────────────────────
+        for fn_resp in (event.get_function_responses() or []):
+            tool_name = getattr(fn_resp, "name", "")
+            text_content = _extract_tool_text(fn_resp)
+            logger.info("[TOOL RESULT] %s → %d chars", tool_name, len(text_content))
+            await _handle_tool_result(tool_name, text_content, session_id, websocket, state)
+
+        # ── Final text reply ──────────────────────────────────────────────
+        if event.is_final_response() and event.content:
+            for part in event.content.parts or []:
+                if hasattr(part, "text") and part.text:
+                    logger.info("[REPLY] %s...", part.text[:120])
+                    await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
+
+
+# ---------------------------------------------------------------------------
+# WebSocket Endpoint — lean orchestrator
+# Responsibilities: session lifecycle, runner selection, and error handling.
+# All event processing is delegated to _process_events().
 # ---------------------------------------------------------------------------
 @app.websocket("/ws/orchestrate")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()
-    print("\n[WebSocket] Client connected.")
+    logger.info("Client connected.")
 
-    if _root_runner is None:
+    if _app_state is None:
         await websocket.send_json({"type": "ERROR", "data": "Server not initialized yet."})
         await websocket.close()
         return
 
-    # Each WebSocket connection = one persistent conversation session
     session_id = f"session_{uuid.uuid4().hex[:10]}"
     try:
         await session_service.create_session(
-            app_name="deal_manager_v2",
-            user_id="dev",
+            app_name=APP_NAME,
+            user_id=USER_ID,
             session_id=session_id,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        # Session may already exist from a reconnect — this is non-fatal.
+        logger.debug("Session creation note for %s: %s", session_id, exc)
 
-    print(f"[WebSocket] Session: {session_id}")
+    logger.info("Session started: %s", session_id)
 
     try:
         while True:
-            user_input = await websocket.receive_text()
+            user_input: str = await websocket.receive_text()
             if not user_input.strip():
                 continue
 
-            # ── Choose runner based on active quote flow ───────────────────────
-            # If this session is mid-quote-creation (account/opportunity was shown),
-            # use _quote_runner which has Quote_Architect as root — Deal_Manager is
-            # completely skipped. Both runners share InMemorySessionService so the
-            # full conversation history (product names, IDs, etc.) is available.
-            in_quote_flow = session_quote_active.get(session_id, False)
-            active_runner = _quote_runner if in_quote_flow else _root_runner
+            # Choose runner based on active quote flow.
+            # If mid-quote-creation, use quote_runner which routes directly to
+            # Quote_Architect, skipping Deal_Manager entirely. Both runners
+            # share InMemorySessionService so conversation history is preserved.
+            in_quote_flow = _app_state.quote_flow.get(session_id, False)
+            active_runner = _app_state.quote_runner if in_quote_flow else _app_state.root_runner
             if in_quote_flow:
-                print(f"   [DIRECT] Quote_Architect runner (Deal_Manager bypassed)")
+                logger.info("Quote_Architect runner active (Deal_Manager bypassed)")
 
-            print(f"\n[WS] Message: {user_input}")
+            logger.info("Message received: %s", user_input)
             await websocket.send_json({"type": "STATE", "state": "orchestrating"})
 
             message = types.Content(role="user", parts=[types.Part(text=user_input)])
-            current_agent = None
-
-            async for event in active_runner.run_async(
-                user_id="dev",
-                session_id=session_id,
-                new_message=message,
-            ):
-                # --- Agent transition ---
-                agent_name = getattr(event, "author", None)
-                if agent_name and agent_name != current_agent:
-                    current_agent = agent_name
-                    print(f"   [AGENT] {agent_name}")
-                    await websocket.send_json({"type": "AGENT_START", "agent": agent_name})
-
-                # --- Tool call (LLM → Tool) ---
-                for fn_call in (event.get_function_calls() or []):
-                    tool_name = getattr(fn_call, "name", "unknown")
-                    print(f"   [TOOL CALL] → {tool_name}")
-                    await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
-
-                # --- Tool response (Tool → LLM) ---
-                for fn_resp in (event.get_function_responses() or []):
-                    tool_name = getattr(fn_resp, "name", "")
-                    response_data = getattr(fn_resp, "response", {})
-                    text_content = ""
-                    if isinstance(response_data, dict):
-                        content_list = response_data.get("content", [])
-                        if content_list and isinstance(content_list, list):
-                            text_content = content_list[0].get("text", "")
-                        elif "output" in response_data:
-                            text_content = str(response_data.get("output", ""))
-                    print(f"   [TOOL RESULT] {tool_name} → {len(text_content)} chars")
-
-                    # ── Emit structured picklist events and manage quote flow state ──
-                    if tool_name in ("get_my_accounts", "get_opportunities_for_account"):
-                        try:
-                            parsed = json.loads(text_content)
-                            if tool_name == "get_my_accounts" and parsed.get("accounts"):
-                                await websocket.send_json({
-                                    "type":          "USER_SELECTION_NEEDED",
-                                    "selection_for": "account",
-                                    "options":       parsed["accounts"],
-                                })
-                                print(f"   [PICKLIST] Account selection sent → {len(parsed['accounts'])} options")
-                                # Switch to direct QA runner for next turn (skip Deal_Manager)
-                                session_quote_active[session_id] = True
-                                print(f"   [FLOW] Session {session_id} → quote flow ACTIVE (direct runner)")
-                            elif tool_name == "get_opportunities_for_account" and parsed.get("opportunities") is not None:
-                                await websocket.send_json({
-                                    "type":          "USER_SELECTION_NEEDED",
-                                    "selection_for": "opportunity",
-                                    "options":       parsed["opportunities"],
-                                })
-                                print(f"   [PICKLIST] Opportunity selection sent → {len(parsed['opportunities'])} options")
-                                # Keep quote flow active for opportunity -> quote step
-                                session_quote_active[session_id] = True
-                        except Exception as e:
-                            print(f"   [PICKLIST] Parse error: {e}")
-
-                    # When the quote is fully created, exit quote flow mode
-                    if tool_name == "evaluate_quote_graph":
-                        try:
-                            parsed = json.loads(text_content)
-                            if parsed.get("status") == "success":
-                                session_quote_active[session_id] = False
-                                print(f"   [FLOW] Session {session_id} → quote flow COMPLETE (back to coordinator)")
-                        except Exception:
-                            pass
-
-                    payload = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
-                    if tool_name == "evaluate_quote_graph":
-                        try:
-                            parsed = json.loads(text_content)
-                            parsed["instance_url"] = _SF_INSTANCE_URL
-                            payload["data"] = json.dumps(parsed)
-                        except Exception:
-                            pass
-                    await websocket.send_json(payload)
-
-                # --- Final text reply ---
-                if event.is_final_response() and event.content:
-                    for part in event.content.parts or []:
-                        if hasattr(part, "text") and part.text:
-                            print(f"   [REPLY] {part.text[:120]}...")
-                            await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
-
+            await _process_events(active_runner, message, session_id, websocket, _app_state)
             await websocket.send_json({"type": "STATE", "state": "completed"})
 
     except WebSocketDisconnect:
-        print(f"\n[WebSocket] Client disconnected. Session: {session_id}")
-        session_quote_active.pop(session_id, None)  # clean up any dangling flow state
+        logger.info("Client disconnected. Session: %s", session_id)
+        _app_state.quote_flow.pop(session_id, None)
         try:
-            await session_service.delete_session(app_name="deal_manager_v2", user_id="dev", session_id=session_id)
-            print(f"   [MEMORY] Cleared conversation history for {session_id}")
-        except Exception as e:
-            print(f"   [MEMORY] Failed to clear session: {e}")
-    except Exception as e:
-        print(f"[WebSocket] Error: {e}")
-        session_quote_active.pop(session_id, None)
+            await session_service.delete_session(
+                app_name=APP_NAME, user_id=USER_ID, session_id=session_id,
+            )
+            logger.info("Conversation history cleared for session %s", session_id)
+        except Exception as exc:
+            logger.warning("Failed to clear session %s: %s", session_id, exc)
+
+    except Exception as exc:
+        logger.error("WebSocket error for session %s: %s", session_id, exc, exc_info=True)
+        _app_state.quote_flow.pop(session_id, None)
         try:
-            await websocket.send_json({"type": "ERROR", "data": str(e)})
+            await websocket.send_json({"type": "ERROR", "data": str(exc)})
         except Exception:
-            pass
+            pass  # Client already disconnected — nothing we can do.
 
 
 # ---------------------------------------------------------------------------
 # Entry Point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT)
