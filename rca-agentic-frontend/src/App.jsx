@@ -71,24 +71,24 @@ const GH = 560;   // graph canvas height
 
 // Deal Manager card (active / top position)
 const DM_W = 160, DM_H = 76;
-const DM_ACTIVE_TOP  = 30;                            // top when active
-const DM_IDLE_TOP    = GH / 2 - DM_H / 2 - 20;       // vertically centered when idle
-const DM_LEFT        = GW / 2 - DM_W / 2;            // always horizontally centered
-const DM_ACTIVE_CY   = DM_ACTIVE_TOP + DM_H / 2;     // = 68
-const DM_ACTIVE_BOT  = DM_ACTIVE_TOP + DM_H;         // = 106
+const DM_ACTIVE_TOP = 30;                            // top when active
+const DM_IDLE_TOP = GH / 2 - DM_H / 2 - 20;       // vertically centered when idle
+const DM_LEFT = GW / 2 - DM_W / 2;            // always horizontally centered
+const DM_ACTIVE_CY = DM_ACTIVE_TOP + DM_H / 2;     // = 68
+const DM_ACTIVE_BOT = DM_ACTIVE_TOP + DM_H;         // = 106
 
 // Agent cards (Catalog Scout = left, Quote Architect = right)
 const SC = { cx: 118, cy: 255, w: 140, h: 70 };  // Scout center
 const AC = { cx: 362, cy: 255, w: 140, h: 70 };  // Arch  center
-const SC_TOP  = SC.cy - SC.h / 2;  // 220
-const AC_TOP  = AC.cy - AC.h / 2;  // 220
-const SC_BOT  = SC.cy + SC.h / 2;  // 290
-const AC_BOT  = AC.cy + AC.h / 2;  // 290
-const MID_Y   = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
+const SC_TOP = SC.cy - SC.h / 2;  // 220
+const AC_TOP = AC.cy - AC.h / 2;  // 220
+const SC_BOT = SC.cy + SC.h / 2;  // 290
+const AC_BOT = AC.cy + AC.h / 2;  // 290
+const MID_Y = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
 
 // SVG bezier paths: DM-bottom → agent-top
-const PATH_CS = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${MID_Y} ${SC.cx} ${MID_Y} ${SC.cx} ${SC_TOP}`;
-const PATH_CA = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${MID_Y} ${AC.cx} ${MID_Y} ${AC.cx} ${AC_TOP}`;
+const PATH_CS = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${SC.cx} ${MID_Y} ${SC.cx} ${SC_TOP}`;
+const PATH_CA = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${AC.cx} ${MID_Y} ${AC.cx} ${AC_TOP}`;
 
 // Tool circle radius
 const TOOL_R = 22;
@@ -97,8 +97,8 @@ const TOOL_CURVE_MID_Y = 368;
 // Dynamic tool positions — 4 circles spread symmetrically around the agent's cx
 const getToolPositions = (agentCx) => [
   { x: agentCx - 80, y: 435 },
-  { x: agentCx - 26, y: 450 },
-  { x: agentCx + 26, y: 450 },
+  { x: agentCx - 38, y: 450 },
+  { x: agentCx + 38, y: 450 },
   { x: agentCx + 80, y: 435 },
 ];
 
@@ -108,13 +108,13 @@ const makeToolPath = (agentCx, agentBot, tp) =>
 
 // Short display names for tools
 const TOOL_LABELS = {
-  check_field_values:             'Field Check',
-  search_catalog:                 'Unified Search',
-  resolve_pricebook_entries:      'Pricebook',
-  evaluate_quote_graph:           'CPQ Quote',
-  get_my_accounts:                'Accounts',
-  get_opportunities_for_account:  'Opportunities',
-  transfer_to_agent:              'Route',
+  check_field_values: 'Field Check',
+  search_catalog:     'Product Search',
+  resolve_pricebook_entries: 'Pricebook',
+  evaluate_quote_graph: 'CPQ Quote',
+  get_my_accounts: 'Accounts',
+  get_opportunities_for_account: 'Opportunity',
+  transfer_to_agent: 'Route',
 };
 const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
@@ -160,9 +160,9 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
             className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all select-none hover:bg-white/[0.08] active:scale-[0.99] group relative overflow-hidden"
           >
             <div className="flex items-center gap-4 min-w-0">
-              <div 
+              <div
                 className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]"
-                style={{ background: accentColor, color: accentColor }} 
+                style={{ background: accentColor, color: accentColor }}
               />
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-bold text-[var(--text-main)] leading-tight uppercase tracking-tight group-hover:text-indigo-500 transition-colors whitespace-normal">{opt.name}</div>
@@ -210,16 +210,15 @@ const NodeCard = ({
       width: w, height: h, borderRadius,
       background: 'var(--card-bg)',
       backgroundImage: isActive ? `linear-gradient(135deg, ${accentColor}11, transparent)` : 'none',
-      border: `2px solid ${
-        isActive ? accentColor
-        : isDone  ? accentColor + '55'
-        : 'var(--glass-border)'
-      }`,
+      border: `2px solid ${isActive ? accentColor
+          : isDone ? accentColor + '55'
+            : 'var(--glass-border)'
+        }`,
       boxShadow: isActive
         ? `0 10px 40px -10px ${accentColor}80`
         : isDone
-        ? `0 4px 15px rgba(0,0,0,0.05)`
-        : 'none',
+          ? `0 4px 15px rgba(0,0,0,0.05)`
+          : 'none',
       display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
       backdropFilter: 'blur(20px)',
       transition: 'all 0.85s cubic-bezier(0.4,0,0.2,1)',
@@ -239,8 +238,8 @@ const NodeCard = ({
         {isActive
           ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: '#fff' }} />
           : isDone
-          ? <CheckCircle2 size={18} color={accentColor} />
-          : <Icon size={18} />
+            ? <CheckCircle2 size={18} color={accentColor} />
+            : <Icon size={18} />
         }
       </div>
 
@@ -288,8 +287,8 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
       {done
         ? <CheckCircle2 size={13} color={color} />
         : active
-        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: `0 0 6px #fff` }} />
-        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.35 }} />
+          ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: `0 0 6px #fff` }} />
+          : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.35 }} />
       }
     </div>
     <div style={{
@@ -297,10 +296,12 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
       color: active
         ? (isDark ? `${color}cc` : color)
         : done
-        ? (isDark ? `${color}55` : `${color}cc`)
-        : (isDark ? `${color}66` : `${color}dd`),
+          ? (isDark ? `${color}55` : `${color}cc`)
+          : (isDark ? `${color}66` : `${color}dd`),
       marginTop: 5, textAlign: 'center',
-      whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis',
+      whiteSpace: 'normal', wordBreak: 'break-word',
+      maxWidth: 68, lineHeight: 1.25,
+      overflow: 'visible',
       transition: 'color 0.4s',
 
     }}>{label}</div>
@@ -312,47 +313,53 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
 // ─────────────────────────────────────────────────────────────
 const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) => {
   // Theme-aware SVG opacity + stroke helpers — light mode needs higher values to be visible
-  const ch   = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
-  const cq   = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
-  const ta   = isDark ? 0.30 : 0.75;   // tool channel active opacity
-  const td   = isDark ? 0.08 : 0.35;   // tool channel done opacity
-  const ti   = isDark ? 0.18 : 0.55;   // tool channel idle opacity
-  const csw  = isDark ? 1.5  : 2.5;    // coordinator channel stroke width
-  const dsw  = isDark ? 2.0  : 3.0;    // flowing dash stroke width
-  const tsw  = isDark ? 1.2  : 2.0;    // tool channel stroke width
-  const tdsw = isDark ? 1.5  : 2.5;    // tool dash stroke width
-  const dr   = isDark ? 4    : 5;      // leading dot radius
-  const tdr  = isDark ? 3    : 4;      // tool leading dot radius
+  const ch = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
+  const cq = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
+  const ta = isDark ? 0.30 : 0.75;   // tool channel active opacity
+  const td = isDark ? 0.08 : 0.35;   // tool channel done opacity
+  const ti = isDark ? 0.18 : 0.55;   // tool channel idle opacity
+  const csw = isDark ? 1.5 : 2.5;    // coordinator channel stroke width
+  const dsw = isDark ? 2.0 : 3.0;    // flowing dash stroke width
+  const tsw = isDark ? 1.2 : 2.0;    // tool channel stroke width
+  const tdsw = isDark ? 1.5 : 2.5;    // tool dash stroke width
+  const dr = isDark ? 4 : 5;      // leading dot radius
+  const tdr = isDark ? 3 : 4;      // tool leading dot radius
 
   const { coordinator, Catalog_Scout: scout, Quote_Architect: arch } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
   const sActive = scout.state === 'active', sDone = scout.state === 'done';
-  const aActive = arch.state  === 'active', aDone = arch.state  === 'done';
+  const aActive = arch.state === 'active', aDone = arch.state === 'done';
 
   // Agent is composing its reply: it's still active but no tool is currently running
   const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
-  const archComposing  = aActive && arch.tools.length  > 0 && !arch.tools.some(t  => t.state === 'active');
+  const archComposing = aActive && arch.tools.length > 0 && !arch.tools.some(t => t.state === 'active');
 
-  const showScout  = scout.state !== 'idle';
-  const showArch   = arch.state  !== 'idle';
+  // DM→Agent line flows ONLY during the brief handoff window:
+  //   - Agent just activated (no tools called yet), AND DM was the one who routed it.
+  // Once the first tool fires, or if DM was bypassed (Turn 2+ quote flow), the line dims.
+  const scoutHandoffActive = sActive && scout.tools.length === 0 && scout.routedByDm;
+  const archHandoffActive  = aActive && arch.tools.length  === 0 && arch.routedByDm;
+
+  const showScout = scout.state !== 'idle';
+  const showArch = arch.state !== 'idle';
   const bothAgents = showScout && showArch;
 
   // ── Dynamic agent positions ──────────────────────────────
   // Single agent → centered (GW/2). Both agents → original left/right split.
-  const scoutCx   = bothAgents ? SC.cx   : GW / 2;
-  const archCx    = bothAgents ? AC.cx   : GW / 2;
+  const scoutCx = bothAgents ? SC.cx : GW / 2;
+  const archCx = bothAgents ? AC.cx : GW / 2;
   const scoutLeft = scoutCx - SC.w / 2;
-  const archLeft  = archCx  - AC.w / 2;
+  const archLeft = archCx - AC.w / 2;
 
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
-  const midY        = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
-  const pathToScout = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${midY} ${scoutCx} ${midY} ${scoutCx} ${SC_TOP}`;
-  const pathToArch  = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${midY} ${archCx}  ${midY} ${archCx}  ${AC_TOP}`;
+  const midY = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
+  const pathToScout = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${midY} ${scoutCx} ${midY} ${scoutCx} ${SC_TOP}`;
+  const pathToArch = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${midY} ${archCx}  ${midY} ${archCx}  ${AC_TOP}`;
 
   // ── Dynamic tool positions (relative to agent cx) ─────────
   const scoutToolPos = getToolPositions(scoutCx);
-  const archToolPos  = getToolPositions(archCx);
+  const archToolPos = getToolPositions(archCx);
 
   // DM vertical position
   const dmTop = graphActive ? DM_ACTIVE_TOP : DM_IDLE_TOP;
@@ -366,38 +373,38 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         overflow: 'visible', pointerEvents: 'none',
       }}>
         <defs>
-          {[['cyan','2.5'],['amber','2.5']].map(([n,s]) => (
+          {[['cyan', '2.5'], ['amber', '2.5']].map(([n, s]) => (
             <filter key={n} id={`glow-${n}`}>
-              <feGaussianBlur stdDeviation={s} result="b"/>
-              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              <feGaussianBlur stdDeviation={s} result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           ))}
           {/* Dedicated glow for coordinator connector lines */}
           <filter id="glow-conn" filterUnits="userSpaceOnUse"
             x="0" y="0" width={GW} height={GH}>
-            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
 
           {/* Gradient: DM indigo → Scout cyan  (follows the bezier direction) */}
           <linearGradient id="grad-scout"
-            x1={GW/2} y1={DM_ACTIVE_BOT}
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
             x2={scoutCx} y2={SC_TOP}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#818cf8"/>
-            <stop offset="100%" stopColor="#22d3ee"/>
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
 
           {/* Gradient: DM indigo → Arch amber */}
           <linearGradient id="grad-arch"
-            x1={GW/2} y1={DM_ACTIVE_BOT}
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
             x2={archCx} y2={AC_TOP}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#818cf8"/>
-            <stop offset="100%" stopColor="#fbbf24"/>
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#fbbf24" />
           </linearGradient>
         </defs>
 
@@ -412,8 +419,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
                 />
-                {/* L2: Flowing dashes — active only */}
-                {sActive && (
+                {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
+                {scoutHandoffActive && (
                   <path d={pathToScout}
                     stroke="url(#grad-scout)"
                     strokeWidth={dsw} fill="none"
@@ -423,11 +430,11 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     }}
                   />
                 )}
-                {/* L3: Leading dot — active only */}
-                {sActive && (
+                {/* L3: Leading dot — handoff only */}
+                {scoutHandoffActive && (
                   <circle r={dr} fill="#22d3ee">
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
-                      <mpath href="#pcs"/>
+                      <mpath href="#pcs" />
                     </animateMotion>
                   </circle>
                 )}
@@ -443,8 +450,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
                 />
-                {/* L2: Flowing dashes — active only */}
-                {aActive && (
+                {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
+                {archHandoffActive && (
                   <path d={pathToArch}
                     stroke="url(#grad-arch)"
                     strokeWidth={dsw} fill="none"
@@ -454,11 +461,11 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     }}
                   />
                 )}
-                {/* L3: Leading dot — active only */}
-                {aActive && (
+                {/* L3: Leading dot — handoff only */}
+                {archHandoffActive && (
                   <circle r={dr} fill="#fbbf24">
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
-                      <mpath href="#pca"/>
+                      <mpath href="#pca" />
                     </animateMotion>
                   </circle>
                 )}
@@ -471,7 +478,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               const pid = `ps${i}`;
               const d = makeToolPath(scoutCx, SC_BOT, tp);
               const toolActive = tool.state === 'active';
-              const toolDone   = tool.state === 'done';
+              const toolDone = tool.state === 'done';
               return (
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
@@ -491,7 +498,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   {toolActive && (
                     <circle r={tdr} fill="#22d3ee" filter="url(#glow-cyan)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
-                        <mpath href={`#${pid}`}/>
+                        <mpath href={`#${pid}`} />
                       </animateMotion>
                     </circle>
                   )}
@@ -505,7 +512,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               const pid = `pa${i}`;
               const d = makeToolPath(archCx, AC_BOT, tp);
               const toolActive = tool.state === 'active';
-              const toolDone   = tool.state === 'done';
+              const toolDone = tool.state === 'done';
               return (
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
@@ -525,7 +532,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   {toolActive && (
                     <circle r={tdr} fill="#fbbf24" filter="url(#glow-amber)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
-                        <mpath href={`#${pid}`}/>
+                        <mpath href={`#${pid}`} />
                       </animateMotion>
                     </circle>
                   )}
@@ -654,8 +661,8 @@ const TypingIndicator = () => (
 // ─────────────────────────────────────────────────────────────
 const INIT_ORCH = {
   coordinator: 'idle',
-  Catalog_Scout:   { state: 'idle', tools: [] },
-  Quote_Architect: { state: 'idle', tools: [] },
+  Catalog_Scout: { state: 'idle', tools: [], routedByDm: false },
+  Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -686,60 +693,61 @@ const SUGGESTIONS = [
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
 const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
-  const [messages, setMessages]           = useState([
+  const [messages, setMessages] = useState([
     { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
-  const [inputValue, setInputValue]       = useState('');
+  const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
-  const [results, setResults]             = useState([]);
-  const [quote, setQuote]                 = useState(null);
-  const [selectionPanel, setSelectionPanel]       = useState(null); // { type, options }
-  const [confirmedAccount, setConfirmedAccount]   = useState(null); // string name (for badge)
+  const [results, setResults] = useState([]);
+  const [quote, setQuote] = useState(null);
+  const [selectionPanel, setSelectionPanel] = useState(null); // { type, options }
+  const [confirmedAccount, setConfirmedAccount] = useState(null); // string name (for badge)
   const [confirmedSelections, setConfirmedSelections] = useState([]); // history for right panel [{type, id, name, detail}]
 
   const handleSuggestionClick = (text) => {
     setInputValue(text);
   };
 
-  // Composing-reply bridge: buffer product results until FINAL_REPLY fires
-  // so they appear in sync with the agent's text (Option A sync).
+  // Composing-reply bridge: buffer product results AND selection panel until FINAL_REPLY fires
+  // so they appear in sync with the agent's text.
   const pendingResultsRef = useRef(null);              // buffered product array
+  const pendingSelectionRef = useRef(null);            // buffered selection panel {type, options}
   const [composingReply, setComposingReply] = useState(false); // drives typing indicator
   const [selectedProducts, setSelectedProducts] = useState(new Set()); // right-pane selections
 
   // Graph animation state
-  const [graphActive, setGraphActive]     = useState(false); // triggers DM slide-up
-  const [graphReady, setGraphReady]       = useState(false); // shows paths+agents after slide
+  const [graphActive, setGraphActive] = useState(false); // triggers DM slide-up
+  const [graphReady, setGraphReady] = useState(false); // shows paths+agents after slide
 
-  const [leftWidth,  setLeftWidth]        = useState(260);
-  const [rightWidth, setRightWidth]       = useState(380);
-  const [isResizingLeft,  setIsResizingLeft]  = useState(false);
+  const [leftWidth, setLeftWidth] = useState(260);
+  const [rightWidth, setRightWidth] = useState(380);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
-  const chatEndRef      = useRef(null);
+  const chatEndRef = useRef(null);
   const rightPanelEndRef = useRef(null);  // auto-scroll for right panel
-  const ws         = useRef(null);
-  const centerRef  = useRef(null);
+  const ws = useRef(null);
+  const centerRef = useRef(null);
   const [graphScale, setGraphScale] = useState(1);
-  const [userZoom, setUserZoom]     = useState(1);
+  const [userZoom, setUserZoom] = useState(1);
   const [showMinimap, setShowMinimap] = useState(false);
-  const [pan, setPan]               = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning]   = useState(false);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
 
   // ── Panel resizing ──────────────────────────────────────────
-  const startResizingLeft  = useCallback(() => setIsResizingLeft(true),  []);
+  const startResizingLeft = useCallback(() => setIsResizingLeft(true), []);
   const startResizingRight = useCallback(() => setIsResizingRight(true), []);
   const stopResizing = useCallback(() => { setIsResizingLeft(false); setIsResizingRight(false); }, []);
   const resize = useCallback((e) => {
-    if (isResizingLeft)  setLeftWidth(Math.max(80, Math.min(e.clientX, window.innerWidth * 0.25)));
+    if (isResizingLeft) setLeftWidth(Math.max(80, Math.min(e.clientX, window.innerWidth * 0.25)));
     if (isResizingRight) setRightWidth(Math.max(80, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.4)));
   }, [isResizingLeft, isResizingRight]);
 
   useEffect(() => {
     if (isResizingLeft || isResizingRight) {
       window.addEventListener('mousemove', resize);
-      window.addEventListener('mouseup',  stopResizing);
+      window.addEventListener('mouseup', stopResizing);
     }
     return () => { window.removeEventListener('mousemove', resize); window.removeEventListener('mouseup', stopResizing); };
   }, [isResizingLeft, isResizingRight, resize, stopResizing]);
@@ -774,7 +782,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   // ── Panning ────────────────────────────────────────────────
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  
+
   const handlePanStart = (e) => {
     if (e.target.closest('button') || e.target.closest('form')) return;
     setIsPanning(true);
@@ -823,7 +831,13 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             break;
 
           case 'USER_SELECTION_NEEDED':
-            setSelectionPanel({ type: data.selection_for, options: data.options || [] });
+            // Buffer the selection panel — show only when FINAL_REPLY fires.
+            // This ensures the agent's text ("I've loaded your accounts...") and
+            // the selection panel appear simultaneously, preventing the user from
+            // selecting before they've read the instruction, and preventing the
+            // stale "I've loaded accounts" message appearing after they've already selected.
+            pendingSelectionRef.current = { type: data.selection_for, options: data.options || [] };
+            setComposingReply(true); // show typing indicator while LLM generates reply
             break;
 
           case 'AGENT_START':
@@ -836,8 +850,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 for (const k of ['Catalog_Scout', 'Quote_Architect']) {
                   if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
                 }
+                // Was DM the one actively routing to this agent right now?
+                // If coordinator was 'active' just before this agent started,
+                // DM routed it. Otherwise (Turn 2+ quote flow), DM was bypassed.
+                const dmWasActive = n.coordinator === 'active';
                 if (n.coordinator === 'active') n.coordinator = 'done';
-                n[name] = { ...n[name], state: 'active' };
+                n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
               }
               return n;
             });
@@ -859,9 +877,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     n[k] = { ...n[k], tools: [...settled, { name: data.tool, state: 'active' }] };
                   } else {
                     // Re-called tool (e.g. search retried) — flip it back to active
-                    n[k] = { ...n[k], tools: settled.map((t, i) =>
-                      i === idx ? { ...t, state: 'active' } : t
-                    )};
+                    n[k] = {
+                      ...n[k], tools: settled.map((t, i) =>
+                        i === idx ? { ...t, state: 'active' } : t
+                      )
+                    };
                   }
                   break;
                 }
@@ -876,9 +896,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               const n = { ...prev };
               for (const k of ['Catalog_Scout', 'Quote_Architect']) {
                 if (n[k].tools.some(t => t.name === data.tool)) {
-                  n[k] = { ...n[k], tools: n[k].tools.map(t =>
-                    t.name === data.tool ? { ...t, state: 'done' } : t
-                  )};
+                  n[k] = {
+                    ...n[k], tools: n[k].tools.map(t =>
+                      t.name === data.tool ? { ...t, state: 'done' } : t
+                    )
+                  };
                   break;
                 }
               }
@@ -897,14 +919,14 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               }
               if (data.tool === 'evaluate_quote_graph' && parsed.salesforce_response) {
                 // Quote card is NOT buffered — show immediately
-                const resp  = parsed.salesforce_response;
+                const resp = parsed.salesforce_response;
                 const graph = resp?.graphs?.[0];
-                const qRec  = graph?.graphNodes?.find(n => n.referenceId === 'refQuote');
-                const qId   = qRec?.record?.id || resp?.id || 'Generated';
-                const inst  = parsed.instance_url || 'https://login.salesforce.com';
+                const qRec = graph?.graphNodes?.find(n => n.referenceId === 'refQuote');
+                const qId = qRec?.record?.id || resp?.id || 'Generated';
+                const inst = parsed.instance_url || 'https://login.salesforce.com';
                 setQuote({ id: qId, status: 'Draft', sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null });
               }
-            } catch (_) {}
+            } catch (_) { }
             break;
 
           case 'FINAL_REPLY':
@@ -912,6 +934,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             if (pendingResultsRef.current) {
               setResults(pendingResultsRef.current);
               pendingResultsRef.current = null;
+            }
+            // Flush buffered selection panel — appears at the same time as agent text
+            if (pendingSelectionRef.current) {
+              setSelectionPanel(pendingSelectionRef.current);
+              pendingSelectionRef.current = null;
             }
             setComposingReply(false);  // hide typing indicator
             if (data.data?.trim()) {
@@ -967,6 +994,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setConfirmedAccount(null);
     setConfirmedSelections([]);
     pendingResultsRef.current = null;
+    pendingSelectionRef.current = null;
     setComposingReply(false);
     setSelectedProducts(new Set());
   };
@@ -1056,8 +1084,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     {msg.role === 'user' ? 'Commander' : 'Agivant AI'}
                   </div>
                 </div>
-                <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${
-                  msg.role === 'user'
+                <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${msg.role === 'user'
                     ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)]'
                     : 'glass-card text-[var(--text-main)] shadow-xl shadow-black/[0.02] border-slate-200/60 dark:border-white/5'}`}>
                   {msg.content}
@@ -1077,7 +1104,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">Suggestions</span>
                 </div>
                 {SUGGESTIONS.map((s, i) => (
-                  <div 
+                  <div
                     key={i}
                     onClick={() => handleSuggestionClick(s.text)}
                     className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
@@ -1137,49 +1164,44 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           className="flex-1 h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-colors duration-500"
         >
           {/* Title bar */}
-            <div className="w-full flex items-center justify-between px-8 pt-7 pb-2 shrink-0">
-              <div className="flex items-center gap-4">
-                {onBack && (
-                  <button 
-                    onClick={onBack}
-                    className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                )}
-                <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
-                  <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">
-                    Orchestration
-                  </span>
-                  <span className="text-slate-300 dark:text-white/20">Flow</span>
+          <div className="w-full flex items-center justify-between px-8 pt-7 pb-2 shrink-0">
+            <div className="flex items-center gap-4">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+              )}
+              <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
+                <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">
+                  Orchestration
                 </span>
-              </div>
+                <span className="text-slate-300 dark:text-white/20">Flow</span>
+              </span>
+            </div>
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 bg-white/[0.03] dark:bg-black/5 px-4 py-2 rounded-full border border-white/5 shadow-inner transition-all hover:bg-white/5">
                 <span className="text-[8.5px] font-bold uppercase text-slate-400 tracking-wider">Minimap</span>
-                <button 
+                <button
                   onClick={() => setShowMinimap(!showMinimap)}
-                  className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${
-                    showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700 ring-slate-400/20 dark:ring-slate-600/30'
-                  }`}
+                  className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700 ring-slate-400/20 dark:ring-slate-600/30'
+                    }`}
                 >
-                  <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${
-                    showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'
-                  }`} />
+                  <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'
+                    }`} />
                 </button>
               </div>
-              <div className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-all duration-500 ${
-                isBusy ? 'bg-emerald-500/10 border-emerald-500/20' : 
-                workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-500/5 dark:bg-slate-800/10 border-slate-500/10'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${
-                  isBusy ? 'bg-emerald-500 animate-pulse' : 
-                  workflowState === 'completed' ? 'bg-indigo-500' : 'bg-slate-400 dark:bg-slate-600'
-                }`} />
-                <span className={`text-[8.5px] font-black uppercase tracking-widest ${
-                  isBusy ? 'text-emerald-600 dark:text-emerald-400' : 
-                  workflowState === 'completed' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'
+              <div className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-all duration-500 ${isBusy ? 'bg-emerald-500/10 border-emerald-500/20' :
+                  workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-500/5 dark:bg-slate-800/10 border-slate-500/10'
                 }`}>
+                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${isBusy ? 'bg-emerald-500 animate-pulse' :
+                    workflowState === 'completed' ? 'bg-indigo-500' : 'bg-slate-400 dark:bg-slate-600'
+                  }`} />
+                <span className={`text-[8.5px] font-black uppercase tracking-widest ${isBusy ? 'text-emerald-600 dark:text-emerald-400' :
+                    workflowState === 'completed' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'
+                  }`}>
                   {workflowState === 'idle' ? 'Standby' : workflowState === 'completed' ? 'Done' : 'Live'}
                 </span>
               </div>
@@ -1187,7 +1209,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           </div>
 
           {/* Graph viewport */}
-          <div 
+          <div
             className={`flex-1 w-full overflow-hidden flex flex-col items-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
             onMouseDown={handlePanStart}
             onMouseMove={handlePanMove}
@@ -1216,7 +1238,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
               <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
               <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
-              <button onClick={() => { setUserZoom(1); setPan({x:0, y:0}); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
+              <button onClick={() => { setUserZoom(1); setPan({ x: 0, y: 0 }); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
             </div>
 
             {/* Minimap Widget */}
@@ -1228,9 +1250,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
                   </div>
                 </div>
-                
+
                 {/* Viewport Indicator — Energy Orange */}
-                <div 
+                <div
                   className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all duration-75"
                   style={{
                     left: 20 - (pan.x * 0.28) / (graphScale * userZoom),
@@ -1239,7 +1261,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     height: 160 / userZoom,
                   }}
                 />
-                
+
                 <div className="absolute bottom-2 right-3 text-[7px] font-mono font-black text-amber-500 drop-shadow-lg">{(graphScale * userZoom).toFixed(2)}x</div>
               </div>
             )}
@@ -1362,7 +1384,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <div className="w-1 h-3 bg-indigo-500 rounded-full" />
                     {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
                   </div>
-                  
+
                   <div className="p-6 pt-4">
                     <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 10 }}>
                       {results.map(prod => {
@@ -1405,7 +1427,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             {selectionPanel && rightWidth > 110 && (
               <div className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-10">
                 <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
-                   <SelectionPanel
+                  <SelectionPanel
                     panel={selectionPanel}
                     confirmedAccount={confirmedAccount}
                     onSelect={handleCardSelect}
@@ -1422,10 +1444,10 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
                 <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-5 rounded-2xl">
                   <div className="flex items-start justify-between mb-3">
-                <div className="flex flex-col gap-1">
-                  <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
-                  <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{quote.id}</div>
-                </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
+                      <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{quote.id}</div>
+                    </div>
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm">
                       <CheckCircle2 size={16} className="text-emerald-500" />
                     </div>
@@ -1447,19 +1469,18 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           </div>
           {/* ── Floating action bar: slides up when products are selected ── */}
           {selectedProducts.size > 0 && (
-            <div 
+            <div
               className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-3xl z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] transition-all"
               style={{
                 animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
-            }}>
+              }}>
               <button
                 onClick={handleCreateQuoteFromSelection}
                 disabled={isBusy}
-                className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${
-                  isBusy 
-                  ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed' 
-                  : 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
-                }`}
+                className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isBusy
+                    ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed'
+                    : 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
+                  }`}
               >
                 {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
                 Create Quote — {selectedProducts.size} Product{selectedProducts.size > 1 ? 's' : ''}
@@ -1500,10 +1521,10 @@ const App = () => {
       <ThemeToggle isDark={isDark} setIsDark={setIsDark} />
       {view === 'selection' && <SelectionHub onSelect={handleSelect} />}
       {view === 'dashboard' && (
-        <Dashboard 
-          onLaunchChat={handleLaunchChat} 
+        <Dashboard
+          onLaunchChat={handleLaunchChat}
           onBack={() => setView('selection')}
-          onEditQuote={(id) => console.log('Edit quote', id)} 
+          onEditQuote={(id) => console.log('Edit quote', id)}
         />
       )}
       {view === 'chat' && (
