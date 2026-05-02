@@ -121,15 +121,15 @@ const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 // ─────────────────────────────────────────────────────────────
 // SELECTION PANEL — account / opportunity picklist
 // ─────────────────────────────────────────────────────────────
-const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
+const SelectionPanel = ({ panel, confirmedAccount, onSelect, scrollRef }) => {
   if (!panel) return null;
   const isOpp = panel.type === 'opportunity';
   const accentColor = isOpp ? '#fbbf24' : '#818cf8';
   return (
-    <div className="overflow-hidden p-6" style={{ animation: 'panel-in 0.28s ease' }}>
+    <div className="overflow-hidden p-4" style={{ animation: 'panel-in 0.28s ease' }}>
       {/* Confirmed account badge (shows above opportunity list) */}
       {isOpp && confirmedAccount && (
-        <div className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-2xl w-fit bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.1)]">
+        <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-2xl w-fit bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.1)]">
           <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
           <span className="text-[9px] font-black tracking-widest text-emerald-600 uppercase">
             {confirmedAccount}
@@ -148,7 +148,7 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
       </div>
 
       {/* Cards — Single Column for full names */}
-      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
+      <div ref={scrollRef} className="space-y-2 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
         {panel.options.length === 0 && (
           <div className="text-[10px] text-slate-600 px-1 py-4 text-center opacity-50 font-black uppercase tracking-widest">No records found</div>
         )}
@@ -157,7 +157,7 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
             key={opt.id}
             onClick={() => onSelect(opt, panel.type)}
             title={opt.name}
-            className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all select-none hover:bg-white/[0.08] active:scale-[0.99] group relative overflow-hidden"
+            className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all select-none hover:bg-white/[0.08] active:scale-[0.99] group relative overflow-hidden"
           >
             <div className="flex items-center gap-4 min-w-0">
               <div
@@ -729,6 +729,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const rightPanelEndRef = useRef(null);  // auto-scroll for right panel
   const ws = useRef(null);
   const centerRef = useRef(null);
+  const resultsScrollRef = useRef(null);
+  const selectionScrollRef = useRef(null);
   const [graphScale, setGraphScale] = useState(1);
   const [userZoom, setUserZoom] = useState(1);
   const [showMinimap, setShowMinimap] = useState(false);
@@ -759,6 +761,15 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   useEffect(() => {
     rightPanelEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectionPanel, results, confirmedSelections]);
+
+  // ── Internal auto-scroll for long lists ──
+  useEffect(() => {
+    if (results.length > 0) resultsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [results]);
+
+  useEffect(() => {
+    if (selectionPanel) selectionScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectionPanel]);
 
   // ── Graph scale (responsive) ───────────────────────────────
   useEffect(() => {
@@ -1164,7 +1175,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           className="flex-1 h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-colors duration-500"
         >
           {/* Title bar */}
-          <div className="w-full flex items-center justify-between px-8 pt-7 pb-2 shrink-0">
+          <div className="w-full flex items-center justify-between px-8 pt-5 pb-2 shrink-0">
             <div className="flex items-center gap-4">
               {onBack && (
                 <button
@@ -1292,7 +1303,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           className="h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
           style={{ width: rightWidth }}
         >
-          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
+          <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
               {rightWidth > 140 && (
@@ -1318,7 +1329,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-7 space-y-10 custom-scrollbar scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar scroll-smooth">
 
             {workflowState === 'idle' && !selectionPanel && (
               <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
@@ -1329,11 +1340,57 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
 
 
-            {/* ── Persistent Selections (Confirmed) ── */}
+            {results.length > 0 && rightWidth > 110 && (
+              <div className="animate-in fade-in slide-in-from-right-6 mb-6 overflow-hidden">
+                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                  <div className="p-5 pb-2 flex items-center gap-3">
+                    <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                    {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
+                  </div>
+
+                  <div className="p-5 pt-3">
+                    <div ref={resultsScrollRef} className="space-y-2 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 10 }}>
+                      {results.map(prod => {
+                        const isSel = selectedProducts.has(prod.id);
+                        return (
+                          <div key={prod.id}
+                            onClick={() => toggleProduct(prod.id)}
+                            title={prod.name}
+                            className={`flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all select-none relative overflow-hidden group ${isSel ? 'bg-indigo-500/15 ring-1 ring-indigo-500/50 shadow-lg shadow-indigo-500/20' : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/5'}`}
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div style={{
+                                width: 14, height: 14, borderRadius: 5, flexShrink: 0,
+                                border: `1.5px solid ${isSel ? '#6366f1' : 'rgba(99,102,241,0.2)'}`,
+                                background: isSel ? '#6366f1' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s',
+                              }}>
+                                {isSel && <CheckCircle2 size={10} color="white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors uppercase tracking-tight leading-tight mb-1 whitespace-normal">{prod.name}</div>
+                                <div className="flex items-center gap-3">
+                                  <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">{prod.sku}</div>
+                                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                  <div className="text-[8px] font-black text-indigo-400/80 uppercase tracking-widest whitespace-nowrap">Global Std.</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Persistent Selections (Confirmed) — Now comes AFTER results ── */}
             {confirmedSelections.length > 0 && (
-              <div className="animate-in fade-in slide-in-from-right-4 mb-10 overflow-hidden">
-                <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-6">
-                  <div className="space-y-6">
+              <div className="animate-in fade-in slide-in-from-right-4 mb-6 overflow-hidden">
+                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-5">
+                  <div className="space-y-4">
                     {confirmedSelections.map((sel, idx) => {
                       const isOpp = sel.type === 'opportunity';
                       const accentColor = isOpp ? '#fbbf24' : '#818cf8';
@@ -1376,62 +1433,16 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               </div>
             )}
 
-
-            {results.length > 0 && rightWidth > 110 && (
-              <div className="animate-in fade-in slide-in-from-right-6 mb-10 overflow-hidden">
-                <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
-                  <div className="p-6 pb-2 flex items-center gap-3">
-                    <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                    {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
-                  </div>
-
-                  <div className="p-6 pt-4">
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 10 }}>
-                      {results.map(prod => {
-                        const isSel = selectedProducts.has(prod.id);
-                        return (
-                          <div key={prod.id}
-                            onClick={() => toggleProduct(prod.id)}
-                            title={prod.name}
-                            className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all select-none relative overflow-hidden group ${isSel ? 'bg-indigo-500/15 ring-2 ring-indigo-500/50 shadow-[0_12px_24px_-8px_rgba(79,70,229,0.3)]' : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/5'}`}
-                          >
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div style={{
-                                width: 16, height: 16, borderRadius: 5, flexShrink: 0,
-                                border: `1.5px solid ${isSel ? '#6366f1' : 'rgba(99,102,241,0.2)'}`,
-                                background: isSel ? '#6366f1' : 'transparent',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.2s',
-                              }}>
-                                {isSel && <CheckCircle2 size={10} color="white" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors uppercase tracking-tight leading-tight mb-1 whitespace-normal">{prod.name}</div>
-                                <div className="flex items-center gap-3">
-                                  <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">{prod.sku}</div>
-                                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                  <div className="text-[8px] font-black text-indigo-400/80 uppercase tracking-widest whitespace-nowrap">Global Std.</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* ── Selection Panel — slides in when agent needs a pick ── */}
             {selectionPanel && rightWidth > 110 && (
-              <div className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-10">
-                <div className="glass-card rounded-[2rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+              <div className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-6">
+                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
                   <SelectionPanel
                     panel={selectionPanel}
                     confirmedAccount={confirmedAccount}
                     onSelect={handleCardSelect}
                     rightWidth={rightWidth}
+                    scrollRef={selectionScrollRef}
                   />
                 </div>
               </div>
