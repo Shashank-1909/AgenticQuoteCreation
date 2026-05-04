@@ -700,7 +700,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
   const [results, setResults] = useState([]);
-  const [quote, setQuote] = useState(null);
+  const [quotes, setQuotes] = useState([]);
   const [selectionPanel, setSelectionPanel] = useState(null); // { type, options }
   const [confirmedAccount, setConfirmedAccount] = useState(null); // string name (for badge)
   const [confirmedSelections, setConfirmedSelections] = useState([]); // history for right panel [{type, id, name, detail}]
@@ -928,14 +928,20 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 }));
                 setComposingReply(true);  // show typing indicator
               }
-              if (data.tool === 'evaluate_quote_graph' && parsed.salesforce_response) {
-                // Quote card is NOT buffered — show immediately
-                const resp = parsed.salesforce_response;
-                const graph = resp?.graphs?.[0];
-                const qRec = graph?.graphNodes?.find(n => n.referenceId === 'refQuote');
-                const qId = qRec?.record?.id || resp?.id || 'Generated';
+              if (data.tool === 'evaluate_quote_graph') {
+                // Regex scan the raw data string for the Quote ID (100% reliable)
+                const qIdMatch = data.data.match(/0Q0[a-zA-Z0-9]{12,15}/);
+                const qId = qIdMatch ? qIdMatch[0] : 'Generated';
+                
                 const inst = parsed.instance_url || 'https://login.salesforce.com';
-                setQuote({ id: qId, status: 'Draft', sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null });
+                const newQuote = { 
+                  id: qId, 
+                  status: 'Draft', 
+                  sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null 
+                };
+                
+                // Append to list of quotes
+                setQuotes(prev => [...prev, newQuote]);
               }
             } catch (_) { }
             break;
@@ -984,7 +990,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
     // Reset orchestration only on a fresh session (idle state)
     if (workflowState === 'idle') {
-      setResults([]); setQuote(null); setOrchestration(INIT_ORCH);
+      setResults([]); setQuotes([]); setOrchestration(INIT_ORCH);
       pendingResultsRef.current = null; setComposingReply(false);
     }
 
@@ -1000,7 +1006,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setOrchestration(INIT_ORCH);
     setGraphActive(false);
     setResults([]);
-    setQuote(null);
+    setQuotes([]);
     setSelectionPanel(null);
     setConfirmedAccount(null);
     setConfirmedSelections([]);
@@ -1448,29 +1454,41 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               </div>
             )}
 
-            {quote && rightWidth > 140 && (
-              <div className="animate-in zoom-in-95" style={{ animationDelay: '0.1s' }}>
-                <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                  <div className="w-1 h-3 bg-emerald-500 rounded-full" />CPQ Quote
-                </div>
-                <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-5 rounded-2xl">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
-                      <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{quote.id}</div>
-                    </div>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm">
-                      <CheckCircle2 size={16} className="text-emerald-500" />
-                    </div>
+            {quotes.length > 0 && rightWidth > 140 && (
+              <div className="animate-in fade-in slide-in-from-right-8 mb-6 overflow-hidden">
+                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                  <div className="p-5 pb-2 flex items-center gap-3">
+                    <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+                    <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">CPQ Quotes</h3>
                   </div>
-                  <div className="border-t border-[var(--glass-border)] pt-4 flex items-center justify-between">
-                    <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{quote.status}</span>
-                    {quote.sfLink && (
-                      <a href={quote.sfLink} target="_blank" rel="noopener noreferrer"
-                        className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1">
-                        Open in SF <ExternalLink size={9} />
-                      </a>
-                    )}
+
+                  <div className="p-5 pt-3">
+                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
+                      {quotes.map((q, idx) => (
+                        <div key={idx} className="animate-in zoom-in-95" style={{ animationDelay: '0.1s' }}>
+                          <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-4 rounded-2xl transition-all hover:bg-emerald-500/5 group relative overflow-hidden">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex flex-col gap-1">
+                                <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
+                                <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{q.id}</div>
+                              </div>
+                              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110">
+                                <CheckCircle2 size={16} className="text-emerald-500" />
+                              </div>
+                            </div>
+                            <div className="border-t border-[var(--glass-border)] pt-3 flex items-center justify-between">
+                              <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{q.status}</span>
+                              {q.sfLink && (
+                                <a href={q.sfLink} target="_blank" rel="noopener noreferrer"
+                                  className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1 z-10 relative">
+                                  Open in SF <ExternalLink size={9} />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
