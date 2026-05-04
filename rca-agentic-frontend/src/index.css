@@ -25,7 +25,10 @@
   --text-muted: #64748b;
   --accent-primary: #4f46e5;
   --accent-secondary: #0ea5e9;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
   color-scheme: light;
+  transition: all 0.5s ease;
 }
 
 /* Explicit Dark Mode Overrides */

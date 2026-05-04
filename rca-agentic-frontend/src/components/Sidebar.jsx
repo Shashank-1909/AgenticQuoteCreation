@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   LogOut
 } from 'lucide-react';
+import { config } from '../config';
 
 const Sidebar = ({ activeTab, onTabChange }) => {
   const menuItems = [
@@ -25,7 +26,7 @@ const Sidebar = ({ activeTab, onTabChange }) => {
         <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
           <FileText className="text-white" size={20} />
         </div>
-        <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-main)]">Agentic CPQ</h2>
+        <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-main)]">{config.theme === 'Meta' ? 'Meta CPQ' : 'Agentic CPQ'}</h2>
       </div>
 
       <nav className="flex-1 px-4 space-y-2">

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import SelectionHub from './components/SelectionHub';
 import Dashboard from './components/Dashboard';
 import ThemeToggle from './components/ThemeToggle';
+import { config } from './config';
+import './MetaTheme.css';
 import {
   Send, CheckCircle2, Loader2, Zap, Settings,
   TrendingUp, ExternalLink, ArrowRight, Database,
@@ -124,7 +126,13 @@ const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 const SelectionPanel = ({ panel, confirmedAccount, onSelect, scrollRef }) => {
   if (!panel) return null;
   const isOpp = panel.type === 'opportunity';
-  const accentColor = isOpp ? '#fbbf24' : '#818cf8';
+  const metaColors = {
+    account: '#0064E0',
+    opportunity: '#31A24C'
+  };
+  const accentColor = config.theme === 'Meta' 
+    ? (isOpp ? metaColors.opportunity : metaColors.account)
+    : (isOpp ? '#fbbf24' : '#818cf8');
   return (
     <div className="overflow-hidden p-4" style={{ animation: 'panel-in 0.28s ease' }}>
       {/* Confirmed account badge (shows above opportunity list) */}
@@ -394,8 +402,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             x1={GW / 2} y1={DM_ACTIVE_BOT}
             x2={scoutCx} y2={SC_TOP}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#22d3ee" />
+            <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
+            <stop offset="100%" stopColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} />
           </linearGradient>
 
           {/* Gradient: DM indigo → Arch amber */}
@@ -403,8 +411,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             x1={GW / 2} y1={DM_ACTIVE_BOT}
             x2={archCx} y2={AC_TOP}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#fbbf24" />
+            <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
+            <stop offset="100%" stopColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} />
           </linearGradient>
         </defs>
 
@@ -432,7 +440,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                 )}
                 {/* L3: Leading dot — handoff only */}
                 {scoutHandoffActive && (
-                  <circle r={dr} fill="#22d3ee">
+                  <circle r={dr} fill={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'}>
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
                       <mpath href="#pcs" />
                     </animateMotion>
@@ -463,7 +471,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                 )}
                 {/* L3: Leading dot — handoff only */}
                 {archHandoffActive && (
-                  <circle r={dr} fill="#fbbf24">
+                  <circle r={dr} fill={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'}>
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
                       <mpath href="#pca" />
                     </animateMotion>
@@ -556,7 +564,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         <NodeCard
           label="Deal Manager" subLabel={cActive ? 'Routing…' : cDone ? 'Dispatched' : 'Coordinator'}
           icon={Network} w={DM_W} h={DM_H} borderRadius={16}
-          accentColor="#818cf8" glowColor="rgba(99,102,241,0.5)"
+          accentColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} 
+          glowColor={config.theme === 'Meta' ? 'rgba(0,100,224,0.5)' : 'rgba(99,102,241,0.5)'}
           isIdle={!cActive && !cDone} isActive={cActive} isDone={cDone}
         />
       </div>
@@ -573,7 +582,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             label="Catalog Scout"
             subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={Search} w={SC.w} h={SC.h} borderRadius={16}
-            accentColor="#22d3ee" glowColor="rgba(6,182,212,0.5)"
+            accentColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} 
+            glowColor={config.theme === 'Meta' ? 'rgba(0,129,251,0.5)' : 'rgba(6,182,212,0.5)'}
             isIdle={false} isActive={sActive} isDone={sDone}
           />
           <div style={{
@@ -596,7 +606,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             label="Quote Architect"
             subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={FileText} w={AC.w} h={AC.h} borderRadius={16}
-            accentColor="#fbbf24" glowColor="rgba(245,158,11,0.5)"
+            accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} 
+            glowColor={config.theme === 'Meta' ? 'rgba(49,162,76,0.5)' : 'rgba(245,158,11,0.5)'}
             isIdle={false} isActive={aActive} isDone={aDone}
           />
           <div style={{
@@ -1083,7 +1094,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         <div className="mesh-circle-2" />
       </div>
 
-      <div className={`h-screen w-full bg-[var(--site-bg)] text-[var(--text-main)] font-sans flex overflow-hidden selection:bg-indigo-500/30 transition-colors duration-500 ${isResizingLeft || isResizingRight ? 'cursor-col-resize select-none' : ''}`}>
+      <div className={`h-screen w-full bg-[var(--site-bg)] text-[var(--text-main)] font-sans flex overflow-hidden selection:bg-indigo-500/30 transition-colors duration-500 ${config.theme === 'Meta' ? 'meta-theme' : ''} ${isResizingLeft || isResizingRight ? 'cursor-col-resize select-none' : ''}`}>
 
         {/* ═══════════════════════════════════════════════════
             LEFT — COMMAND PANEL
@@ -1096,12 +1107,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(79,70,229,0.4)] flex-shrink-0 relative overflow-hidden group">
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                <span className="text-white font-black text-[11px] tracking-tight relative z-10">AG</span>
+                <span className="text-white font-black text-[11px] tracking-tight relative z-10">{config.theme === 'Meta' ? 'M' : 'AG'}</span>
               </div>
               {leftWidth > 140 && (
                 <div className="flex flex-col">
-                  <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white whitespace-nowrap">Agivant</h1>
-                  <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Control Center</span>
+                  <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white whitespace-nowrap">{config.theme === 'Meta' ? 'Meta' : 'Agivant'}</h1>
+                  <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">{config.theme === 'Meta' ? 'Connect' : 'Control Center'}</span>
                 </div>
               )}
             </div>
@@ -1114,7 +1125,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 <div className="flex items-center gap-2 mb-2.5">
                   <div className={`w-1 h-2.5 rounded-full ${msg.role === 'user' ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
                   <div className={`text-[8.5px] uppercase font-black tracking-[0.2em] ${msg.role === 'user' ? 'text-indigo-500' : 'text-slate-500 italic'}`}>
-                    {msg.role === 'user' ? 'Commander' : 'Agivant AI'}
+                    {msg.role === 'user' ? 'Commander' : config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI'}
                   </div>
                 </div>
                 <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${msg.role === 'user'
