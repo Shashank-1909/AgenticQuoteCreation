@@ -704,6 +704,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [selectionPanel, setSelectionPanel] = useState(null); // { type, options }
   const [confirmedAccount, setConfirmedAccount] = useState(null); // string name (for badge)
   const [confirmedSelections, setConfirmedSelections] = useState([]); // history for right panel [{type, id, name, detail}]
+  const [vaultHistory, setVaultHistory] = useState([]); // chronological feed [{type: 'products'|'selection'|'confirmed'|'quote', data, id}]
 
   const handleSuggestionClick = (text) => {
     setInputValue(text);
@@ -720,8 +721,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [graphActive, setGraphActive] = useState(false); // triggers DM slide-up
   const [graphReady, setGraphReady] = useState(false); // shows paths+agents after slide
 
-  const [leftWidth, setLeftWidth] = useState(260);
-  const [rightWidth, setRightWidth] = useState(380);
+  const [leftWidth, setLeftWidth] = useState(300);
+  const [rightWidth, setRightWidth] = useState(465);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
@@ -742,8 +743,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const startResizingRight = useCallback(() => setIsResizingRight(true), []);
   const stopResizing = useCallback(() => { setIsResizingLeft(false); setIsResizingRight(false); }, []);
   const resize = useCallback((e) => {
-    if (isResizingLeft) setLeftWidth(Math.max(80, Math.min(e.clientX, window.innerWidth * 0.25)));
-    if (isResizingRight) setRightWidth(Math.max(80, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.4)));
+    if (isResizingLeft) setLeftWidth(Math.max(160, Math.min(e.clientX, window.innerWidth * 0.35)));
+    if (isResizingRight) setRightWidth(Math.max(280, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.5)));
   }, [isResizingLeft, isResizingRight]);
 
   useEffect(() => {
@@ -760,7 +761,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   // ── Right-panel auto-scroll (selection panel + results + history) ───
   useEffect(() => {
     rightPanelEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectionPanel, results, confirmedSelections]);
+  }, [vaultHistory, selectionPanel, results, confirmedSelections]);
 
   // ── Internal auto-scroll for long lists ──
   useEffect(() => {
@@ -941,7 +942,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 };
                 
                 // Append to list of quotes
+                const quoteItem = { type: 'quote', data: newQuote, id: Date.now() };
                 setQuotes(prev => [...prev, newQuote]);
+                setVaultHistory(prev => [...prev, quoteItem]);
               }
             } catch (_) { }
             break;
@@ -949,12 +952,16 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           case 'FINAL_REPLY':
             // Flush buffered product results — they appear at the same time as text
             if (pendingResultsRef.current) {
-              setResults(pendingResultsRef.current);
+              const newResults = pendingResultsRef.current;
+              setResults(newResults);
+              setVaultHistory(prev => [...prev, { type: 'products', data: newResults, id: Date.now() }]);
               pendingResultsRef.current = null;
             }
             // Flush buffered selection panel — appears at the same time as agent text
             if (pendingSelectionRef.current) {
-              setSelectionPanel(pendingSelectionRef.current);
+              const newPanel = pendingSelectionRef.current;
+              setSelectionPanel(newPanel);
+              setVaultHistory(prev => [...prev, { type: 'selection', data: newPanel, id: Date.now() }]);
               pendingSelectionRef.current = null;
             }
             setComposingReply(false);  // hide typing indicator
@@ -1010,6 +1017,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setSelectionPanel(null);
     setConfirmedAccount(null);
     setConfirmedSelections([]);
+    setVaultHistory([]);
     pendingResultsRef.current = null;
     pendingSelectionRef.current = null;
     setComposingReply(false);
@@ -1021,7 +1029,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     if (selectionType === 'account') {
       setConfirmedAccount(option.name);
     }
+    const confirmedItem = { type: 'confirmed', data: { ...option, selectionType }, id: Date.now() };
     setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
+    setVaultHistory(prev => [...prev, confirmedItem]);
     setSelectionPanel(null);
     const text = `${option.name} (ID: ${option.id})`;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
@@ -1043,7 +1053,13 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   const handleCreateQuoteFromSelection = () => {
     if (selectedProducts.size === 0 || isBusy) return;
-    const selected = results.filter(p => selectedProducts.has(p.id));
+    
+    // Find selected products across all historical product lists
+    const allProductsInHistory = vaultHistory
+      .filter(item => item.type === 'products')
+      .flatMap(item => item.data);
+      
+    const selected = allProductsInHistory.filter(p => selectedProducts.has(p.id));
     const list = selected.map(p => `${p.name} (${p.sku})`).join(', ');
     const text = selected.length === 1
       ? `Create a quote for ${list}`
@@ -1169,8 +1185,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
         {/* LEFT RESIZER */}
         <div onMouseDown={startResizingLeft}
-          className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
-          <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingLeft ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
+          className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
+          <div className={`w-1 h-24 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/40 ${isResizingLeft ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-40' : ''}`} />
         </div>
 
         {/* ═══════════════════════════════════════════════════
@@ -1209,18 +1225,6 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'
                     }`} />
                 </button>
-              </div>
-              <div className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-all duration-500 ${isBusy ? 'bg-emerald-500/10 border-emerald-500/20' :
-                  workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-500/5 dark:bg-slate-800/10 border-slate-500/10'
-                }`}>
-                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${isBusy ? 'bg-emerald-500 animate-pulse' :
-                    workflowState === 'completed' ? 'bg-indigo-500' : 'bg-slate-400 dark:bg-slate-600'
-                  }`} />
-                <span className={`text-[8.5px] font-black uppercase tracking-widest ${isBusy ? 'text-emerald-600 dark:text-emerald-400' :
-                    workflowState === 'completed' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'
-                  }`}>
-                  {workflowState === 'idle' ? 'Standby' : workflowState === 'completed' ? 'Done' : 'Live'}
-                </span>
               </div>
             </div>
           </div>
@@ -1298,8 +1302,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
         {/* RIGHT RESIZER */}
         <div onMouseDown={startResizingRight}
-          className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
-          <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
+          className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
+          <div className={`w-1 h-24 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/40 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-40' : ''}`} />
         </div>
 
         {/* ═══════════════════════════════════════════════════
@@ -1337,162 +1341,158 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
           <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar scroll-smooth">
 
-            {workflowState === 'idle' && !selectionPanel && (
-              <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
+            {vaultHistory.length === 0 && !isBusy && (
+              <div className="h-full flex flex-col items-center justify-center text-center opacity-10 py-20">
                 <Database size={38} strokeWidth={1} className="mb-5" />
                 {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking_widest">Awaiting Streams</p>}
               </div>
             )}
 
-
-
-            {results.length > 0 && rightWidth > 110 && (
-              <div className="animate-in fade-in slide-in-from-right-6 mb-6 overflow-hidden">
-                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
-                  <div className="p-5 pb-2 flex items-center gap-3">
-                    <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                    {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
-                  </div>
-
-                  <div className="p-5 pt-3">
-                    <div ref={resultsScrollRef} className="space-y-2 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 10 }}>
-                      {results.map(prod => {
-                        const isSel = selectedProducts.has(prod.id);
-                        return (
-                          <div key={prod.id}
-                            onClick={() => toggleProduct(prod.id)}
-                            title={prod.name}
-                            className={`flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all select-none relative overflow-hidden group ${isSel ? 'bg-indigo-500/15 ring-1 ring-indigo-500/50 shadow-lg shadow-indigo-500/20' : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/5'}`}
-                          >
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div style={{
-                                width: 14, height: 14, borderRadius: 5, flexShrink: 0,
-                                border: `1.5px solid ${isSel ? '#6366f1' : 'rgba(99,102,241,0.2)'}`,
-                                background: isSel ? '#6366f1' : 'transparent',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.2s',
-                              }}>
-                                {isSel && <CheckCircle2 size={10} color="white" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors uppercase tracking-tight leading-tight mb-1 whitespace-normal">{prod.name}</div>
-                                <div className="flex items-center gap-3">
-                                  <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">{prod.sku}</div>
-                                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                  <div className="text-[8px] font-black text-indigo-400/80 uppercase tracking-widest whitespace-nowrap">Global Std.</div>
+            {vaultHistory.map((item, itemIdx) => {
+              if (item.type === 'products') {
+                return (
+                  <div key={item.id} className="animate-in fade-in slide-in-from-right-6 mb-4 overflow-hidden">
+                    <div className="glass-card rounded-[1.25rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                      <div className="p-4 pb-1.5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                          {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
+                        </div>
+                        <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-500">{item.data.length}</div>
+                      </div>
+                      <div className="p-4 pt-2">
+                        <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 6 }}>
+                          {item.data.map(prod => {
+                            const isSel = selectedProducts.has(prod.id);
+                            return (
+                              <div key={prod.id}
+                                onClick={() => toggleProduct(prod.id)}
+                                title={prod.name}
+                                className={`flex items-center justify-between p-2.5 min-h-[46px] rounded-xl cursor-pointer transition-all select-none relative group border ${isSel
+                                    ? 'bg-gradient-to-br from-indigo-500/[0.08] to-indigo-500/[0.03] border-indigo-500/40 shadow-[0_2px_12px_rgba(99,102,241,0.08)]'
+                                    : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/10'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <div style={{
+                                    width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                                    border: `1.5px solid ${isSel ? '#6366f1' : 'var(--text-muted)'}`,
+                                    background: isSel ? '#6366f1' : 'transparent',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    opacity: isSel ? 1 : 0.25,
+                                    boxShadow: isSel ? '0 0 10px rgba(99,102,241,0.3)' : 'none',
+                                  }}>
+                                    {isSel && <CheckCircle2 size={10} color="white" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-[11px] font-bold transition-colors uppercase tracking-tight leading-tight whitespace-normal ${isSel ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--text-main)] group-hover:text-indigo-500'}`}>{prod.name}</div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                );
+              }
 
-            {/* ── Persistent Selections (Confirmed) — Now comes AFTER results ── */}
-            {confirmedSelections.length > 0 && (
-              <div className="animate-in fade-in slide-in-from-right-4 mb-6 overflow-hidden">
-                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-5">
-                  <div className="space-y-4">
-                    {confirmedSelections.map((sel, idx) => {
-                      const isOpp = sel.type === 'opportunity';
-                      const accentColor = isOpp ? '#fbbf24' : '#818cf8';
-                      return (
-                        <div key={`${sel.id}-${idx}`}>
-                          <div className="flex items-center gap-3 mb-3">
-                            <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, opacity: 0.5 }} />
-                            <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">
-                              Confirmed {isOpp ? 'Opportunity' : 'Account'}
-                            </div>
+              if (item.type === 'confirmed') {
+                const sel = item.data;
+                const isOpp = sel.selectionType === 'opportunity';
+                const accentColor = isOpp ? '#fbbf24' : '#818cf8';
+                return (
+                  <div key={item.id} className="animate-in fade-in slide-in-from-right-4 mb-4 overflow-hidden">
+                    <div className="glass-card rounded-[1.25rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-4">
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, opacity: 0.5 }} />
+                        <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">
+                          Confirmed {isOpp ? 'Opportunity' : 'Account'}
+                        </div>
+                      </div>
+                      <div className="px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl transition-all">
+                        <div className="flex items-center gap-2.5">
+                          <div style={{
+                            width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+                            border: `1.5px solid ${accentColor}33`,
+                            background: `${accentColor}11`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <CheckCircle2 size={9} style={{ color: accentColor }} />
                           </div>
-                          <div className="px-5 py-4 bg-white/[0.03] border border-white/5 rounded-2xl transition-all">
-                            <div className="flex items-center gap-2.5">
-                              <div style={{
-                                width: 14, height: 14, borderRadius: 4, flexShrink: 0,
-                                border: `1.5px solid ${accentColor}33`,
-                                background: `${accentColor}11`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              }}>
-                                <CheckCircle2 size={9} style={{ color: accentColor }} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <div className="text-[11px] font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{sel.name}</div>
-                                  <div className="px-1.5 py-0.5 rounded-md bg-indigo-500/5 border border-indigo-500/10 text-[7px] font-black text-indigo-500 uppercase tracking-widest">Saved</div>
-                                </div>
-                                {sel.detail && sel.detail !== '—' && (
-                                  <div className="text-[8.5px] font-black uppercase tracking-[0.12em] opacity-60"
-                                    style={{ color: accentColor }}
-                                  >{sel.detail}</div>
-                                )}
-                              </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="text-[11px] font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{sel.name}</div>
+                              <div className="px-1.5 py-0.5 rounded-md bg-indigo-500/5 border border-indigo-500/10 text-[7px] font-black text-indigo-500 uppercase tracking-widest">Saved</div>
                             </div>
+                            {sel.detail && sel.detail !== '—' && (
+                              <div className="text-[8.5px] font-black uppercase tracking-[0.12em] opacity-60"
+                                style={{ color: accentColor }}
+                              >{sel.detail}</div>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Selection Panel — slides in when agent needs a pick ── */}
-            {selectionPanel && rightWidth > 110 && (
-              <div className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-6">
-                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
-                  <SelectionPanel
-                    panel={selectionPanel}
-                    confirmedAccount={confirmedAccount}
-                    onSelect={handleCardSelect}
-                    rightWidth={rightWidth}
-                    scrollRef={selectionScrollRef}
-                  />
-                </div>
-              </div>
-            )}
-
-            {quotes.length > 0 && rightWidth > 140 && (
-              <div className="animate-in fade-in slide-in-from-right-8 mb-6 overflow-hidden">
-                <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
-                  <div className="p-5 pb-2 flex items-center gap-3">
-                    <div className="w-1 h-3 bg-emerald-500 rounded-full" />
-                    <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">CPQ Quotes</h3>
-                  </div>
-
-                  <div className="p-5 pt-3">
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
-                      {quotes.map((q, idx) => (
-                        <div key={idx} className="animate-in zoom-in-95" style={{ animationDelay: '0.1s' }}>
-                          <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-4 rounded-2xl transition-all hover:bg-emerald-500/5 group relative overflow-hidden">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex flex-col gap-1">
-                                <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
-                                <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{q.id}</div>
-                              </div>
-                              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110">
-                                <CheckCircle2 size={16} className="text-emerald-500" />
-                              </div>
-                            </div>
-                            <div className="border-t border-[var(--glass-border)] pt-3 flex items-center justify-between">
-                              <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{q.status}</span>
-                              {q.sfLink && (
-                                <a href={q.sfLink} target="_blank" rel="noopener noreferrer"
-                                  className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1 z-10 relative">
-                                  Open in SF <ExternalLink size={9} />
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                );
+              }
+
+              if (item.type === 'selection') {
+                return (
+                  <div key={item.id} className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-4">
+                    <div className="glass-card rounded-[1.25rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                      <SelectionPanel
+                        panel={item.data}
+                        confirmedAccount={confirmedAccount}
+                        onSelect={handleCardSelect}
+                        rightWidth={rightWidth}
+                        scrollRef={selectionScrollRef}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
+              if (item.type === 'quote') {
+                const q = item.data;
+                return (
+                  <div key={item.id} className="animate-in fade-in slide-in-from-right-8 mb-4 overflow-hidden">
+                    <div className="glass-card rounded-[1.25rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                      <div className="p-4 pb-1.5 flex items-center gap-3">
+                        <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+                        <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">CPQ Quotes</h3>
+                      </div>
+                      <div className="p-4 pt-2">
+                        <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-4 rounded-2xl transition-all hover:bg-emerald-500/5 group relative overflow-hidden">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
+                              <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{q.id}</div>
+                            </div>
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110">
+                              <CheckCircle2 size={16} className="text-emerald-500" />
+                            </div>
+                          </div>
+                          <div className="border-t border-[var(--glass-border)] pt-3 flex items-center justify-between">
+                            <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{q.status}</span>
+                            {q.sfLink && (
+                              <a href={q.sfLink} target="_blank" rel="noopener noreferrer"
+                                className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1 z-10 relative">
+                                Open in SF <ExternalLink size={9} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })}
             {/* Scroll anchor — right panel scrolls here on new data */}
             <div ref={rightPanelEndRef} />
           </div>
