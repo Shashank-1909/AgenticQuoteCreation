@@ -1,5 +1,6 @@
 import React from 'react';
 import { Settings, CheckCircle2, Database, ArrowRight, Bot, Sparkles, ChevronRight } from 'lucide-react';
+import { config } from '../config';
 
 const modules = [
   {
@@ -7,27 +8,27 @@ const modules = [
     title: 'CPQ Orchestrator',
     desc: 'Precision pricing configuration with real-time logic verification and autonomous deal optimization.',
     icon: Settings,
-    accent: '#6366f1',
+    accent: config.theme === 'Meta' ? '#0064E0' : '#6366f1',
     badge: 'Advanced',
-    gradient: 'from-indigo-500/10 via-indigo-500/5 to-transparent',
+    gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent',
   },
   {
     id: 'rca',
     title: 'RCA Agentic Flow',
     desc: 'LLM-driven root cause analysis that automatically surfaces and resolves deal-blocking inconsistencies.',
     icon: CheckCircle2,
-    accent: '#10b981',
+    accent: config.theme === 'Meta' ? '#31A24C' : '#10b981',
     badge: 'Core',
-    gradient: 'from-emerald-500/10 via-emerald-500/5 to-transparent',
+    gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent',
   },
   {
     id: 'oracle',
     title: 'Oracle ERP Bridge',
     desc: 'Seamless bi-directional synchronization between Salesforce CPQ and Oracle Cloud ERP at enterprise scale.',
     icon: Database,
-    accent: '#f59e0b',
+    accent: config.theme === 'Meta' ? '#F7B928' : '#f59e0b',
     badge: 'Enterprise',
-    gradient: 'from-amber-500/10 via-amber-500/5 to-transparent',
+    gradient: config.theme === 'Meta' ? 'from-yellow-600/10 via-yellow-600/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent',
   },
 ];
 
@@ -38,7 +39,7 @@ const stats = [
 ];
 
 const SelectionHub = ({ onSelect }) => (
-  <div className="h-screen w-full overflow-hidden flex flex-col bg-[var(--site-bg)] text-[var(--text-main)] transition-colors duration-500 relative">
+  <div className={`h-screen w-full overflow-hidden flex flex-col bg-[var(--site-bg)] text-[var(--text-main)] transition-colors duration-500 relative ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
 
     {/* ─── Gradient mesh ─── */}
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
@@ -53,11 +54,11 @@ const SelectionHub = ({ onSelect }) => (
         {/* Brand */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <span className="text-white font-black text-xs tracking-tight">AG</span>
+            <span className="text-white font-black text-xs tracking-tight">{config.theme === 'Meta' ? 'M' : 'AG'}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-black text-[var(--text-main)] leading-none tracking-tight">Agivant</span>
-            <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] mt-0.5">Agentic AI Platform</span>
+            <span className="text-sm font-black text-[var(--text-main)] leading-none tracking-tight">{config.theme === 'Meta' ? 'Meta' : 'Agivant'}</span>
+            <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] mt-0.5">{config.theme === 'Meta' ? 'Meta AI Platform' : 'Agentic AI Platform'}</span>
           </div>
         </div>
 
@@ -96,7 +97,7 @@ const SelectionHub = ({ onSelect }) => (
               <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">build today?</span>
             </h1>
             <p className="text-[var(--text-muted)] text-sm lg:text-base max-w-xl leading-relaxed">
-              Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention.
+              {config.theme === 'Meta' ? "Meta's AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention." : "Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention."}
             </p>
           </div>
           {/* Decorative agentic node graphic */}
@@ -168,11 +169,11 @@ const SelectionHub = ({ onSelect }) => (
       {/* ─── Footer ─── */}
       <footer className="mt-6 flex items-center justify-between">
         <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)] opacity-50">
-          © 2026 Agivant Technologies · All rights reserved
+          © 2026 {config.theme === 'Meta' ? 'Meta Technologies' : 'Agivant Technologies'} · All rights reserved
         </p>
-        <a href="https://www.agivant.com" target="_blank" rel="noopener noreferrer"
+        <a href={config.theme === 'Meta' ? "https://www.meta.com" : "https://www.agivant.com"} target="_blank" rel="noopener noreferrer"
           className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-indigo-500 transition-colors">
-          agivant.com ↗
+          {config.theme === 'Meta' ? 'meta.com' : 'agivant.com'} ↗
         </a>
       </footer>
     </div>
