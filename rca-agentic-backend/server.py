@@ -34,138 +34,32 @@ def get_salesforce_auth():
     return headers, auth_data['instance_url']
 
 @mcp.tool()
-def search_rca_products(search_term: str, page_size: int = 15) -> str:
-    """
-    Keyword/name-based product catalog search for Salesforce Revenue Cloud.
-
-    WHEN TO CALL: Only after the field classification tool (the one that must run first
-    for any search) confirms the strategy is 'name_search' OR the name_search_terms
-    field is non-empty. Do NOT call this tool if the strategy is 'attribute_search'.
-    Do NOT call this without running field classification first.
-
-    IDENTIFIES AS: The search tool that accepts a single keyword/name string.
-    Use this tool when the classification result says to use keyword-based search.
-
-    Args:
-        search_term: The keyword or product name string. Use the 'name_search_terms'
-                     value returned by the field classification tool exactly.
-                     Never invent this value.
-        page_size: Maximum results to return. Default is 15.
-
-    RETURNS (JSON):
-        status:      "success" or error message
-        searchTerm:  the term that was searched
-        count:       number of products found
-        results:     list of product objects, each containing:
-                       id   — 18-character Product2 ID (starts with '01t')
-                              CRITICAL: this is required for pricing and quote creation
-                       name — product display name
-                       code — product SKU / product code
-                       category — product family/category
-    """
-    headers, instance_url = get_salesforce_auth()
-    
-    # Using the exact endpoint referenced in the Angular application
-    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?include=/products"
-    
-    # Building the payload matching rca-api.service.ts expectations
-    payload = {
-        "searchTerm": search_term,
-        "pageSize": page_size,
-        "offset": 0,
-        "filter": {
-            "criteria": [
-                {"property": "isActive", "operator": "eq", "value": True}
-            ]
-        }
-    }
-    
-    try:
-        response = requests.post(endpoint, headers=headers, json=payload)
-    except Exception as e:
-        return f"Request Error: {str(e)}"
-    
-    if response.status_code not in [200, 201]:
-        return f"Error: Salesforce API returned status code {response.status_code}\n{response.text}"
-        
-    data = response.json()
-    
-    # We parse the complex JSON response into a simple readable string for the LLM
-    results = []
-    
-    # The RCA PCM endpoint usually returns products directly in a list or within a 'products' wrapper
-    products = data.get("products", [])
-    if not products and isinstance(data, list):
-        products = data
-    if not products and "result" in data:
-        products = data.get("result", [])
-    if not products and "items" in data:
-        products = data.get("items", [])
-    
-    if not products:
-        return f"No products found for search term: '{search_term}'\nRaw response snippet: {str(data)[:200]}"
-    
-    for item in products:
-        # Handle properties depending on the exact PCM format
-        name = item.get("name") or item.get("Name") or item.get("fields", {}).get("Name", "Unknown Name")
-        prod_id = item.get("id") or item.get("Id") or item.get("productId", "Unknown ID")
-        code = item.get("productCode") or item.get("ProductCode") or "No Code"
-        
-        # safely get category name
-        categories = item.get("categories", [])
-        category_name = categories[0].get("name") if categories else (item.get("Family") or "General")
-            
-        results.append({
-            "name": name,
-            "id": prod_id,
-            "code": code,
-            "category": category_name
-        })
-        
-    import json
-    return json.dumps({
-        "status": "success",
-        "searchTerm": search_term,
-        "count": len(results),
-        "results": results
-    }, indent=2)
-
-@mcp.tool()
-def search_products_by_filter(
-        classification_id: str = "11BNS00000w2WSI2A2",
+def search_catalog(
+        search_term: str = None,
         filters: dict = None,
         page_size: int = 100
 ) -> str:
     """
-    Attribute/filter-based product catalog search for Salesforce Revenue Cloud.
+    Unified product catalog search for Salesforce Revenue Cloud (PCM).
+    Accepts both keyword searches and attribute filters, and can combine them.
 
-    WHEN TO CALL: Only after the field classification tool confirms the strategy is
-    'attribute_search' and provides 'matched_filters'. Do NOT guess filter field names
-    or values — use only what the classification tool returned in matched_filters.
-
-    IDENTIFIES AS: The search tool that accepts a field-attribute filters dictionary.
-    Use this tool when the classification result says to use attribute-based search.
-    The classification_id is pre-configured — pass it through as-is, do not change it.
+    WHEN TO CALL: Call this tool to perform ANY product search. If you are refining
+    a previous search, you MUST pass both the new criteria AND the previous criteria
+    (search_term or filters) so that the search combines them.
 
     Args:
-        classification_id: Pass the 'classification_id' value from the field
-                           classification tool result exactly. Do not modify.
-        filters: Pass the 'matched_filters' dict from the field classification tool.
-                 e.g. {"Region__c": "North", "Storage__c": "128GB"}.
+        search_term: The keyword or product name string (if any).
+        filters: The 'matched_filters' dict from the field classification tool (if any).
         page_size: Maximum results. Default 100.
 
     RETURNS (JSON):
         status:   "success" or "empty"
         count:    number of products found
-        results:  list of product objects, each containing:
-                    id   — 18-character Product2 ID (starts with '01t')
-                           CRITICAL: required for pricing and quote creation
-                    name — product display name
-                    code — product SKU / product code
+        results:  list of product objects
     """
     headers, instance_url = get_salesforce_auth()
     
-    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?productClassificationId={classification_id}&include=/products"
+    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?include=/products"
     
     criteria = []
     if filters:
@@ -185,6 +79,9 @@ def search_products_by_filter(
         "pageSize": page_size
     }
     
+    if search_term:
+        payload["searchTerm"] = search_term
+        
     try:
         response = requests.post(endpoint, headers=headers, json=payload)
     except Exception as e:
@@ -206,22 +103,28 @@ def search_products_by_filter(
     
     if not products:
         import json
-        return json.dumps({"status": "empty", "message": "No products matched your filters."})
+        return json.dumps({"status": "empty", "message": "No products matched your search."})
     
     for item in products:
         name = item.get("name") or item.get("Name") or item.get("fields", {}).get("Name", "Unknown")
         prod_id = item.get("id") or item.get("Id") or item.get("productId", "Unknown ID")
         code = item.get("productCode") or item.get("ProductCode") or "No Code"
         
+        # safely get category name
+        categories = item.get("categories", [])
+        category_name = categories[0].get("name") if categories else (item.get("Family") or "General")
+        
         results.append({
             "name": name,
             "id": prod_id,
-            "code": code
+            "code": code,
+            "category": category_name
         })
         
     import json
     return json.dumps({
         "status": "success",
+        "searchTerm": search_term or "filtered",
         "count": len(results),
         "results": results
     }, indent=2)
@@ -323,7 +226,7 @@ def check_field_values(candidates: list[str]) -> str:
     """
     FIELD CLASSIFICATION TOOL — must be the FIRST tool called for any product search,
     without exception. Classifies search tokens against live Salesforce product field
-    picklist values to determine the correct search strategy.
+    picklist values to determine the correct search parameters.
 
     HOW TO USE:
       Extract meaningful words from the user's query. Remove stopwords (e.g. search,
@@ -332,10 +235,9 @@ def check_field_values(candidates: list[str]) -> str:
 
     WHAT IT DOES:
       - Matches each token against all known Salesforce field picklist values
-      - Matched tokens become attribute filters for filter-based product search
-      - Unmatched tokens become the keyword for name-based product search
-      - Returns an 'instruction' field that tells you which search capability to
-        use next, described by capability — not by tool name
+      - Matched tokens become attribute filters
+      - Unmatched tokens become the keyword search term
+      - Returns an 'instruction' field that tells you how to call the search tool.
 
     Always follow the 'instruction' field in the response exactly. Do not deviate.
 
@@ -413,23 +315,13 @@ def check_field_values(candidates: list[str]) -> str:
     import re
     name_terms = re.sub(r'\s+', ' ', query_string).strip()
     
-    strategy = "attribute_search" if matched_filters else "name_search"
-    
     return json.dumps({
         "matched_filters": matched_filters,
         "name_search_terms": name_terms,
-        "search_strategy": strategy,
-        "classification_id": "11BNS00000w2WSI2A2",
         "instruction": (
-            "Attribute values matched Salesforce field picklists. "
-            "Use the attribute/filter-based product search tool "
-            "(the one whose description says it accepts a field-attribute 'filters' dict). "
-            "Pass matched_filters as the filters parameter and classification_id as-is."
-            if strategy == "attribute_search" else
-            "No picklist attribute matches found. "
-            "Use the keyword/name-based product search tool "
-            "(the one whose description says it accepts a single 'search_term' string). "
-            "Pass name_search_terms as the search_term value."
+            "Call the unified search_catalog tool. "
+            "Pass matched_filters as the 'filters' parameter (if not empty), "
+            "and pass name_search_terms as the 'search_term' parameter (if not empty)."
         )
     }, indent=2)
 
@@ -719,8 +611,4 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         "opportunity_id": clean_opp_id or "not linked",
         "salesforce_response": response.json()
     }, indent=2)
-
-if __name__ == "__main__":
-    # Start the standard MCP stdio server
-    mcp.run()
 

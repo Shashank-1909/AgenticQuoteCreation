@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
 
-const ThemeToggle = ({ isDark, setIsDark }) => {
+const ThemeToggle = ({ isDark, setIsDark, className }) => {
   return (
     <button
       onClick={() => setIsDark(!isDark)}
-      className="fixed top-6 right-6 z-[100] p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl text-slate-400 hover:text-white transition-all shadow-lg active:scale-95 group"
+      className={className || "fixed top-6 right-6 z-[100] p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl text-slate-400 hover:text-white transition-all shadow-lg active:scale-95 group"}
       title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
     >
       {isDark ? (

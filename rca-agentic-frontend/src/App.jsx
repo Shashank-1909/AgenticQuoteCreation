@@ -36,6 +36,31 @@ const STYLES = `
     from { opacity: 0; transform: translateY(30px) scale(0.96); }
     to   { opacity: 1; transform: translateY(0)    scale(1);    }
   }
+  .glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05);
+  }
+  .glass-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.12);
+    transform: translateY(-1px);
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.25);
+  }
 `;
 
 // ─────────────────────────────────────────────────────────────
@@ -46,35 +71,39 @@ const GH = 560;   // graph canvas height
 
 // Deal Manager card (active / top position)
 const DM_W = 160, DM_H = 76;
-const DM_ACTIVE_TOP  = 30;                            // top when active
-const DM_IDLE_TOP    = GH / 2 - DM_H / 2 - 20;       // vertically centered when idle
-const DM_LEFT        = GW / 2 - DM_W / 2;            // always horizontally centered
-const DM_ACTIVE_CY   = DM_ACTIVE_TOP + DM_H / 2;     // = 68
-const DM_ACTIVE_BOT  = DM_ACTIVE_TOP + DM_H;         // = 106
+const DM_ACTIVE_TOP = 30;                            // top when active
+const DM_IDLE_TOP = GH / 2 - DM_H / 2 - 20;       // vertically centered when idle
+const DM_LEFT = GW / 2 - DM_W / 2;            // always horizontally centered
+const DM_ACTIVE_CY = DM_ACTIVE_TOP + DM_H / 2;     // = 68
+const DM_ACTIVE_BOT = DM_ACTIVE_TOP + DM_H;         // = 106
 
 // Agent cards (Catalog Scout = left, Quote Architect = right)
 const SC = { cx: 118, cy: 255, w: 140, h: 70 };  // Scout center
 const AC = { cx: 362, cy: 255, w: 140, h: 70 };  // Arch  center
-const SC_TOP  = SC.cy - SC.h / 2;  // 220
-const AC_TOP  = AC.cy - AC.h / 2;  // 220
-const SC_BOT  = SC.cy + SC.h / 2;  // 290
-const AC_BOT  = AC.cy + AC.h / 2;  // 290
-const MID_Y   = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
+const SC_TOP = SC.cy - SC.h / 2;  // 220
+const AC_TOP = AC.cy - AC.h / 2;  // 220
+const SC_BOT = SC.cy + SC.h / 2;  // 290
+const AC_BOT = AC.cy + AC.h / 2;  // 290
+const MID_Y = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
 
 // SVG bezier paths: DM-bottom → agent-top
-const PATH_CS = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${MID_Y} ${SC.cx} ${MID_Y} ${SC.cx} ${SC_TOP}`;
-const PATH_CA = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${MID_Y} ${AC.cx} ${MID_Y} ${AC.cx} ${AC_TOP}`;
+const PATH_CS = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${SC.cx} ${MID_Y} ${SC.cx} ${SC_TOP}`;
+const PATH_CA = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${AC.cx} ${MID_Y} ${AC.cx} ${AC_TOP}`;
 
 // Tool circle radius
 const TOOL_R = 22;
 const TOOL_CURVE_MID_Y = 368;
 
-// Dynamic tool positions — 4 circles spread symmetrically around the agent's cx
+// Dynamic tool positions — up to 8 circles spread symmetrically around the agent's cx
 const getToolPositions = (agentCx) => [
   { x: agentCx - 80, y: 435 },
-  { x: agentCx - 26, y: 450 },
-  { x: agentCx + 26, y: 450 },
+  { x: agentCx - 38, y: 450 },
+  { x: agentCx + 38, y: 450 },
   { x: agentCx + 80, y: 435 },
+  { x: agentCx - 110, y: 420 },
+  { x: agentCx + 110, y: 420 },
+  { x: agentCx - 140, y: 405 },
+  { x: agentCx + 140, y: 405 },
 ];
 
 // Curved bezier from agent-bottom to tool-top (same style as coordinator→agent paths)
@@ -83,90 +112,92 @@ const makeToolPath = (agentCx, agentBot, tp) =>
 
 // Short display names for tools
 const TOOL_LABELS = {
-  check_field_values:             'Field Check',
-  search_rca_products:            'Prod. Search',
-  search_products_by_filter:      'Filter Search',
-  resolve_pricebook_entries:      'Pricebook',
-  evaluate_quote_graph:           'CPQ Quote',
-  get_my_accounts:                'Accounts',
-  get_opportunities_for_account:  'Opportunities',
-  transfer_to_agent:              'Route',
+  check_field_values: 'Field Check',
+  search_catalog: 'Product Search',
+  resolve_pricebook_entries: 'Pricebook',
+  evaluate_quote_graph: 'Quote',
+  get_my_accounts: 'Accounts',
+  get_opportunities_for_account: 'Opportunity',
+  transfer_to_agent: 'Route',
 };
-const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
+
+const shortLabel = (t) => {
+  const name = typeof t === 'string' ? t : t.name;
+  const action = typeof t === 'object' ? t.action : null;
+  
+  if (name === 'quote_action_tool') {
+     switch(action) {
+       case 'apply_discount': return 'Discount';
+       case 'add_products': return 'Add Product';
+       case 'delete_line_items': return 'Delete';
+       case 'update_line_items': return 'Update Qty';
+       case 'rename_quote': return 'Rename';
+       default: return 'Quote Action';
+     }
+  }
+  if (name === 'quote_query_tool') return 'Details';
+  return TOOL_LABELS[name] || name.replace(/_/g, ' ').slice(0, 12);
+};
 
 // ─────────────────────────────────────────────────────────────
 // SELECTION PANEL — account / opportunity picklist
 // ─────────────────────────────────────────────────────────────
-const SelectionPanel = ({ panel, confirmedAccount, onSelect }) => {
+const SelectionPanel = ({ panel, confirmedAccount, onSelect, scrollRef }) => {
   if (!panel) return null;
   const isOpp = panel.type === 'opportunity';
+  const accentColor = isOpp ? '#fbbf24' : '#818cf8';
   return (
-    <div style={{ animation: 'panel-in 0.28s ease' }} className="mx-5 mb-2">
-
+    <div className="overflow-hidden p-4" style={{ animation: 'panel-in 0.28s ease' }}>
       {/* Confirmed account badge (shows above opportunity list) */}
       {isOpp && confirmedAccount && (
-        <div className="flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-full w-fit"
-          style={{
-            background: 'rgba(16,185,129,0.08)',
-            border: '1px solid rgba(16,185,129,0.22)',
-          }}
-        >
-          <CheckCircle2 size={9} className="text-emerald-400 shrink-0" />
-          <span className="text-[9px] font-bold tracking-wide"
-            style={{ color: '#34d399' }}
-          >
+        <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-2xl w-fit bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.1)]">
+          <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
+          <span className="text-[9px] font-black tracking-widest text-emerald-600 uppercase">
             {confirmedAccount}
           </span>
         </div>
       )}
 
-      {/* Section label */}
-      <div className="text-[8.5px] uppercase tracking-[0.22em] font-black mb-2.5"
-        style={{ color: isOpp ? '#fbbf2480' : '#818cf880' }}
-      >
-        {isOpp ? '↳ Select Opportunity' : 'Select Account'}
+      {/* Section header — matches "Products Found" style */}
+      <div className="flex items-center gap-3 mb-3">
+        <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, flexShrink: 0 }} />
+        <div className="text-[8.5px] font-black uppercase tracking-[0.3em]"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {isOpp ? 'Select Opportunity' : 'Select Account'}
+        </div>
       </div>
 
-      {/* Cards */}
-      <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5 scrollbar-hide">
+      {/* Cards — Single Column for full names */}
+      <div ref={scrollRef} className="space-y-2 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
         {panel.options.length === 0 && (
-          <div className="text-[10px] text-slate-600 px-1">No records found.</div>
+          <div className="text-[10px] text-slate-600 px-1 py-4 text-center opacity-50 font-black uppercase tracking-widest">No records found</div>
         )}
         {panel.options.map(opt => (
-          <button
+          <div
             key={opt.id}
             onClick={() => onSelect(opt, panel.type)}
-            className="selection-card w-full text-left rounded-xl cursor-pointer"
-            style={{
-              padding: '10px 12px',
-              background: 'var(--card-bg)',
-              border: '1px solid var(--glass-border)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
+            title={opt.name}
+            className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-2xl cursor-pointer transition-all select-none hover:bg-white/[0.08] active:scale-[0.99] group relative overflow-hidden"
           >
-            {/* Left accent strip */}
-            <div style={{
-              width: 3, borderRadius: 99, alignSelf: 'stretch', flexShrink: 0,
-              background: isOpp
-                ? 'linear-gradient(180deg,#fbbf24,#f59e0b)'
-                : 'linear-gradient(180deg,#818cf8,#6366f1)',
-              opacity: 0.5,
-            }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="text-[11px] font-semibold truncate"
-                style={{ color: 'var(--text-main)' }}
-              >{opt.name}</div>
-              {opt.detail && opt.detail !== '—' && (
-                <div className="text-[9px] mt-0.5 truncate"
-                  style={{ color: isOpp ? '#fbbf2470' : '#818cf870' }}
-                >{opt.detail}</div>
-              )}
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]"
+                style={{ background: accentColor, color: accentColor }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-bold text-[var(--text-main)] leading-tight uppercase tracking-tight group-hover:text-indigo-500 transition-colors whitespace-normal">{opt.name}</div>
+                {opt.detail && opt.detail !== '—' && (
+                  <div className="mt-1.5 inline-block px-1.5 py-0.5 rounded-md bg-white/5 border border-white/5 text-[7px] font-black uppercase tracking-widest opacity-60"
+                    style={{ color: accentColor }}
+                  >{opt.detail}</div>
+                )}
+              </div>
             </div>
-            {/* Chevron */}
-            <ArrowRight size={11} style={{ color: isOpp ? '#fbbf2440' : '#6366f140', flexShrink: 0 }} />
-          </button>
+            <div className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 ml-4">
+              <ArrowRight size={14} style={{ color: accentColor }} />
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -200,16 +231,15 @@ const NodeCard = ({
       width: w, height: h, borderRadius,
       background: 'var(--card-bg)',
       backgroundImage: isActive ? `linear-gradient(135deg, ${accentColor}11, transparent)` : 'none',
-      border: `2px solid ${
-        isActive ? accentColor
-        : isDone  ? accentColor + '55'
-        : 'var(--glass-border)'
-      }`,
+      border: `2px solid ${isActive ? accentColor
+        : isDone ? accentColor + '55'
+          : 'var(--glass-border)'
+        }`,
       boxShadow: isActive
         ? `0 10px 40px -10px ${accentColor}80`
         : isDone
-        ? `0 4px 15px rgba(0,0,0,0.05)`
-        : 'none',
+          ? `0 4px 15px rgba(0,0,0,0.05)`
+          : 'none',
       display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
       backdropFilter: 'blur(20px)',
       transition: 'all 0.85s cubic-bezier(0.4,0,0.2,1)',
@@ -229,8 +259,8 @@ const NodeCard = ({
         {isActive
           ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: '#fff' }} />
           : isDone
-          ? <CheckCircle2 size={18} color={accentColor} />
-          : <Icon size={18} />
+            ? <CheckCircle2 size={18} color={accentColor} />
+            : <Icon size={18} />
         }
       </div>
 
@@ -278,8 +308,8 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
       {done
         ? <CheckCircle2 size={13} color={color} />
         : active
-        ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: `0 0 6px #fff` }} />
-        : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.35 }} />
+          ? <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', boxShadow: `0 0 6px #fff` }} />
+          : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.35 }} />
       }
     </div>
     <div style={{
@@ -287,10 +317,12 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
       color: active
         ? (isDark ? `${color}cc` : color)
         : done
-        ? (isDark ? `${color}55` : `${color}cc`)
-        : (isDark ? `${color}66` : `${color}dd`),
+          ? (isDark ? `${color}55` : `${color}cc`)
+          : (isDark ? `${color}66` : `${color}dd`),
       marginTop: 5, textAlign: 'center',
-      whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis',
+      whiteSpace: 'normal', wordBreak: 'break-word',
+      maxWidth: 68, lineHeight: 1.25,
+      overflow: 'visible',
       transition: 'color 0.4s',
 
     }}>{label}</div>
@@ -302,47 +334,53 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
 // ─────────────────────────────────────────────────────────────
 const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) => {
   // Theme-aware SVG opacity + stroke helpers — light mode needs higher values to be visible
-  const ch   = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
-  const cq   = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
-  const ta   = isDark ? 0.30 : 0.75;   // tool channel active opacity
-  const td   = isDark ? 0.08 : 0.35;   // tool channel done opacity
-  const ti   = isDark ? 0.18 : 0.55;   // tool channel idle opacity
-  const csw  = isDark ? 1.5  : 2.5;    // coordinator channel stroke width
-  const dsw  = isDark ? 2.0  : 3.0;    // flowing dash stroke width
-  const tsw  = isDark ? 1.2  : 2.0;    // tool channel stroke width
-  const tdsw = isDark ? 1.5  : 2.5;    // tool dash stroke width
-  const dr   = isDark ? 4    : 5;      // leading dot radius
-  const tdr  = isDark ? 3    : 4;      // tool leading dot radius
+  const ch = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
+  const cq = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
+  const ta = isDark ? 0.30 : 0.75;   // tool channel active opacity
+  const td = isDark ? 0.08 : 0.35;   // tool channel done opacity
+  const ti = isDark ? 0.18 : 0.55;   // tool channel idle opacity
+  const csw = isDark ? 1.5 : 2.5;    // coordinator channel stroke width
+  const dsw = isDark ? 2.0 : 3.0;    // flowing dash stroke width
+  const tsw = isDark ? 1.2 : 2.0;    // tool channel stroke width
+  const tdsw = isDark ? 1.5 : 2.5;    // tool dash stroke width
+  const dr = isDark ? 4 : 5;      // leading dot radius
+  const tdr = isDark ? 3 : 4;      // tool leading dot radius
 
   const { coordinator, Catalog_Scout: scout, Quote_Architect: arch } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
   const sActive = scout.state === 'active', sDone = scout.state === 'done';
-  const aActive = arch.state  === 'active', aDone = arch.state  === 'done';
+  const aActive = arch.state === 'active', aDone = arch.state === 'done';
 
   // Agent is composing its reply: it's still active but no tool is currently running
   const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
-  const archComposing  = aActive && arch.tools.length  > 0 && !arch.tools.some(t  => t.state === 'active');
+  const archComposing = aActive && arch.tools.length > 0 && !arch.tools.some(t => t.state === 'active');
 
-  const showScout  = scout.state !== 'idle';
-  const showArch   = arch.state  !== 'idle';
+  // DM→Agent line flows ONLY during the brief handoff window:
+  //   - Agent just activated (no tools called yet), AND DM was the one who routed it.
+  // Once the first tool fires, or if DM was bypassed (Turn 2+ quote flow), the line dims.
+  const scoutHandoffActive = sActive && scout.tools.length === 0 && scout.routedByDm;
+  const archHandoffActive = aActive && arch.tools.length === 0 && arch.routedByDm;
+
+  const showScout = scout.state !== 'idle';
+  const showArch = arch.state !== 'idle';
   const bothAgents = showScout && showArch;
 
   // ── Dynamic agent positions ──────────────────────────────
   // Single agent → centered (GW/2). Both agents → original left/right split.
-  const scoutCx   = bothAgents ? SC.cx   : GW / 2;
-  const archCx    = bothAgents ? AC.cx   : GW / 2;
+  const scoutCx = bothAgents ? SC.cx : GW / 2;
+  const archCx = bothAgents ? AC.cx : GW / 2;
   const scoutLeft = scoutCx - SC.w / 2;
-  const archLeft  = archCx  - AC.w / 2;
+  const archLeft = archCx - AC.w / 2;
 
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
-  const midY        = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
-  const pathToScout = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${midY} ${scoutCx} ${midY} ${scoutCx} ${SC_TOP}`;
-  const pathToArch  = `M ${GW/2} ${DM_ACTIVE_BOT} C ${GW/2} ${midY} ${archCx}  ${midY} ${archCx}  ${AC_TOP}`;
+  const midY = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
+  const pathToScout = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${midY} ${scoutCx} ${midY} ${scoutCx} ${SC_TOP}`;
+  const pathToArch = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${midY} ${archCx}  ${midY} ${archCx}  ${AC_TOP}`;
 
   // ── Dynamic tool positions (relative to agent cx) ─────────
   const scoutToolPos = getToolPositions(scoutCx);
-  const archToolPos  = getToolPositions(archCx);
+  const archToolPos = getToolPositions(archCx);
 
   // DM vertical position
   const dmTop = graphActive ? DM_ACTIVE_TOP : DM_IDLE_TOP;
@@ -356,38 +394,38 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         overflow: 'visible', pointerEvents: 'none',
       }}>
         <defs>
-          {[['cyan','2.5'],['amber','2.5']].map(([n,s]) => (
+          {[['cyan', '2.5'], ['amber', '2.5']].map(([n, s]) => (
             <filter key={n} id={`glow-${n}`}>
-              <feGaussianBlur stdDeviation={s} result="b"/>
-              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              <feGaussianBlur stdDeviation={s} result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           ))}
           {/* Dedicated glow for coordinator connector lines */}
           <filter id="glow-conn" filterUnits="userSpaceOnUse"
             x="0" y="0" width={GW} height={GH}>
-            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
 
           {/* Gradient: DM indigo → Scout cyan  (follows the bezier direction) */}
           <linearGradient id="grad-scout"
-            x1={GW/2} y1={DM_ACTIVE_BOT}
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
             x2={scoutCx} y2={SC_TOP}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#818cf8"/>
-            <stop offset="100%" stopColor="#22d3ee"/>
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
 
           {/* Gradient: DM indigo → Arch amber */}
           <linearGradient id="grad-arch"
-            x1={GW/2} y1={DM_ACTIVE_BOT}
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
             x2={archCx} y2={AC_TOP}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#818cf8"/>
-            <stop offset="100%" stopColor="#fbbf24"/>
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#fbbf24" />
           </linearGradient>
         </defs>
 
@@ -402,8 +440,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
                 />
-                {/* L2: Flowing dashes — active only */}
-                {sActive && (
+                {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
+                {scoutHandoffActive && (
                   <path d={pathToScout}
                     stroke="url(#grad-scout)"
                     strokeWidth={dsw} fill="none"
@@ -413,11 +451,11 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     }}
                   />
                 )}
-                {/* L3: Leading dot — active only */}
-                {sActive && (
+                {/* L3: Leading dot — handoff only */}
+                {scoutHandoffActive && (
                   <circle r={dr} fill="#22d3ee">
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
-                      <mpath href="#pcs"/>
+                      <mpath href="#pcs" />
                     </animateMotion>
                   </circle>
                 )}
@@ -433,8 +471,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
                 />
-                {/* L2: Flowing dashes — active only */}
-                {aActive && (
+                {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
+                {archHandoffActive && (
                   <path d={pathToArch}
                     stroke="url(#grad-arch)"
                     strokeWidth={dsw} fill="none"
@@ -444,11 +482,11 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     }}
                   />
                 )}
-                {/* L3: Leading dot — active only */}
-                {aActive && (
+                {/* L3: Leading dot — handoff only */}
+                {archHandoffActive && (
                   <circle r={dr} fill="#fbbf24">
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
-                      <mpath href="#pca"/>
+                      <mpath href="#pca" />
                     </animateMotion>
                   </circle>
                 )}
@@ -461,7 +499,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               const pid = `ps${i}`;
               const d = makeToolPath(scoutCx, SC_BOT, tp);
               const toolActive = tool.state === 'active';
-              const toolDone   = tool.state === 'done';
+              const toolDone = tool.state === 'done';
               return (
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
@@ -481,7 +519,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   {toolActive && (
                     <circle r={tdr} fill="#22d3ee" filter="url(#glow-cyan)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
-                        <mpath href={`#${pid}`}/>
+                        <mpath href={`#${pid}`} />
                       </animateMotion>
                     </circle>
                   )}
@@ -490,12 +528,12 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             })}
 
             {/* Arch → tool curves — Circuit Trace style */}
-            {arch.tools.slice(0, 4).map((tool, i) => {
+            {arch.tools.slice(0, 8).map((tool, i) => {
               const tp = archToolPos[i];
               const pid = `pa${i}`;
               const d = makeToolPath(archCx, AC_BOT, tp);
               const toolActive = tool.state === 'active';
-              const toolDone   = tool.state === 'done';
+              const toolDone = tool.state === 'done';
               return (
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
@@ -515,7 +553,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   {toolActive && (
                     <circle r={tdr} fill="#fbbf24" filter="url(#glow-amber)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
-                        <mpath href={`#${pid}`}/>
+                        <mpath href={`#${pid}`} />
                       </animateMotion>
                     </circle>
                   )}
@@ -591,20 +629,20 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       )}
 
       {/* Tool circles — per-tool active/done state */}
-      {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
+      {graphReady && scout.tools.slice(0, 8).map((tool, i) => {
         const tp = scoutToolPos[i];
         return (
-          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#22d3ee"
+          <ToolNode key={`${tool.name}-${tool.action || i}`} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool)} color="#22d3ee"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} />
         );
       })}
 
-      {graphReady && arch.tools.slice(0, 4).map((tool, i) => {
+      {graphReady && arch.tools.slice(0, 8).map((tool, i) => {
         const tp = archToolPos[i];
         return (
-          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#fbbf24"
+          <ToolNode key={`${tool.name}-${tool.action || i}`} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool)} color="#fbbf24"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} />
         );
       })}
@@ -644,68 +682,115 @@ const TypingIndicator = () => (
 // ─────────────────────────────────────────────────────────────
 const INIT_ORCH = {
   coordinator: 'idle',
-  Catalog_Scout:   { state: 'idle', tools: [] },
-  Quote_Architect: { state: 'idle', tools: [] },
+  Catalog_Scout: { state: 'idle', tools: [], routedByDm: false },
+  Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────
+const SUGGESTIONS = [
+  {
+    label: 'QUOTE CREATION',
+    text: 'Quote for CloudTech Module 1 with manager rules.',
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
+  },
+  {
+    label: 'PRODUCT DISCOVERY',
+    text: "Find 'manager rule' products.",
+    color: '#10b981',
+    bg: 'rgba(16, 185, 129, 0.08)',
+    border: 'rgba(16, 185, 129, 0.3)'
+  },
+  {
+    label: 'DEAL HISTORY',
+    text: 'Show CloudTech deal history.',
+    color: '#f59e0b',
+    bg: 'rgba(245, 158, 11, 0.08)',
+    border: 'rgba(245, 158, 11, 0.3)'
+  }
+];
+
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
-const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
-  const [messages, setMessages]           = useState([
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
+  const [showWorkflow, setShowWorkflow] = useState(true);
+  const [messages, setMessages] = useState([
     { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
-  const [inputValue, setInputValue]       = useState('');
+  const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
-  const [results, setResults]             = useState([]);
-  const [quote, setQuote]                 = useState(null);
-  const [selectionPanel, setSelectionPanel]       = useState(null); // { type, options }
-  const [confirmedAccount, setConfirmedAccount]   = useState(null); // string name
+  const [results, setResults] = useState([]);
+  const [quotes, setQuotes] = useState([]);
+  const [selectionPanel, setSelectionPanel] = useState(null); // { type, options }
+  const [confirmedAccount, setConfirmedAccount] = useState(null); // string name (for badge)
+  const [confirmedSelections, setConfirmedSelections] = useState([]); // history for right panel [{type, id, name, detail}]
 
-  // Composing-reply bridge: buffer product results until FINAL_REPLY fires
-  // so they appear in sync with the agent's text (Option A sync).
+  const handleSuggestionClick = (text) => {
+    setInputValue(text);
+  };
+
+  // Composing-reply bridge: buffer product results AND selection panel until FINAL_REPLY fires
+  // so they appear in sync with the agent's text.
   const pendingResultsRef = useRef(null);              // buffered product array
+  const pendingSelectionRef = useRef(null);            // buffered selection panel {type, options}
   const [composingReply, setComposingReply] = useState(false); // drives typing indicator
   const [selectedProducts, setSelectedProducts] = useState(new Set()); // right-pane selections
 
   // Graph animation state
-  const [graphActive, setGraphActive]     = useState(false); // triggers DM slide-up
-  const [graphReady, setGraphReady]       = useState(false); // shows paths+agents after slide
+  const [graphActive, setGraphActive] = useState(false); // triggers DM slide-up
+  const [graphReady, setGraphReady] = useState(false); // shows paths+agents after slide
 
-  const [leftWidth,  setLeftWidth]        = useState(260);
-  const [rightWidth, setRightWidth]       = useState(300);
-  const [isResizingLeft,  setIsResizingLeft]  = useState(false);
+  const [leftWidth, setLeftWidth] = useState(260);
+  const [rightWidth, setRightWidth] = useState(380);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
   const chatEndRef = useRef(null);
-  const ws         = useRef(null);
-  const centerRef  = useRef(null);
+  const rightPanelEndRef = useRef(null);  // auto-scroll for right panel
+  const ws = useRef(null);
+  const centerRef = useRef(null);
+  const resultsScrollRef = useRef(null);
+  const selectionScrollRef = useRef(null);
   const [graphScale, setGraphScale] = useState(1);
-  const [userZoom, setUserZoom]     = useState(1);
-  const [showMinimap, setShowMinimap] = useState(true);
-  const [pan, setPan]               = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning]   = useState(false);
+  const [userZoom, setUserZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
 
   // ── Panel resizing ──────────────────────────────────────────
-  const startResizingLeft  = useCallback(() => setIsResizingLeft(true),  []);
+  const startResizingLeft = useCallback(() => setIsResizingLeft(true), []);
   const startResizingRight = useCallback(() => setIsResizingRight(true), []);
   const stopResizing = useCallback(() => { setIsResizingLeft(false); setIsResizingRight(false); }, []);
   const resize = useCallback((e) => {
-    if (isResizingLeft)  setLeftWidth(Math.max(80, Math.min(e.clientX, window.innerWidth * 0.25)));
-    if (isResizingRight) setRightWidth(Math.max(80, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.3)));
+    if (isResizingLeft) setLeftWidth(Math.max(80, Math.min(e.clientX, window.innerWidth * 0.25)));
+    if (isResizingRight) setRightWidth(Math.max(80, Math.min(window.innerWidth - e.clientX, window.innerWidth * 0.4)));
   }, [isResizingLeft, isResizingRight]);
 
   useEffect(() => {
     if (isResizingLeft || isResizingRight) {
       window.addEventListener('mousemove', resize);
-      window.addEventListener('mouseup',  stopResizing);
+      window.addEventListener('mouseup', stopResizing);
     }
     return () => { window.removeEventListener('mousemove', resize); window.removeEventListener('mouseup', stopResizing); };
   }, [isResizingLeft, isResizingRight, resize, stopResizing]);
 
   // ── Chat scroll ────────────────────────────────────────────
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // ── Right-panel auto-scroll (selection panel + results + history) ───
+  useEffect(() => {
+    rightPanelEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectionPanel, results, confirmedSelections]);
+
+  // ── Internal auto-scroll for long lists ──
+  useEffect(() => {
+    if (results.length > 0) resultsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [results]);
+
+  useEffect(() => {
+    if (selectionPanel) selectionScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectionPanel]);
 
   // ── Graph scale (responsive) ───────────────────────────────
   useEffect(() => {
@@ -729,7 +814,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   // ── Panning ────────────────────────────────────────────────
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  
+
   const handlePanStart = (e) => {
     if (e.target.closest('button') || e.target.closest('form')) return;
     setIsPanning(true);
@@ -778,7 +863,13 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             break;
 
           case 'USER_SELECTION_NEEDED':
-            setSelectionPanel({ type: data.selection_for, options: data.options || [] });
+            // Buffer the selection panel — show only when FINAL_REPLY fires.
+            // This ensures the agent's text ("I've loaded your accounts...") and
+            // the selection panel appear simultaneously, preventing the user from
+            // selecting before they've read the instruction, and preventing the
+            // stale "I've loaded accounts" message appearing after they've already selected.
+            pendingSelectionRef.current = { type: data.selection_for, options: data.options || [] };
+            setComposingReply(true); // show typing indicator while LLM generates reply
             break;
 
           case 'AGENT_START':
@@ -791,8 +882,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 for (const k of ['Catalog_Scout', 'Quote_Architect']) {
                   if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
                 }
+                // Was DM the one actively routing to this agent right now?
+                // If coordinator was 'active' just before this agent started,
+                // DM routed it. Otherwise (Turn 2+ quote flow), DM was bypassed.
+                const dmWasActive = n.coordinator === 'active';
                 if (n.coordinator === 'active') n.coordinator = 'done';
-                n[name] = { ...n[name], state: 'active' };
+                n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
               }
               return n;
             });
@@ -804,19 +899,28 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               for (const k of ['Catalog_Scout', 'Quote_Architect']) {
                 if (n[k].state === 'active') {
                   // Step 1: mark the currently-active tool as done (a new one is starting)
-                  const settled = n[k].tools.map(t =>
+                  let settled = n[k].tools.map(t =>
                     t.state === 'active' ? { ...t, state: 'done' } : t
                   );
+                  
+                  // Keep only core nodes + the new incoming node
+                  const CORE_TOOLS = ['get_my_accounts', 'get_opportunities_for_account', 'resolve_pricebook_entries', 'evaluate_quote_graph'];
+                  if (!CORE_TOOLS.includes(data.tool)) {
+                    settled = settled.filter(t => CORE_TOOLS.includes(t.name));
+                  }
+
                   // Step 2: upsert — add if new, re-activate if this tool was called before
-                  const idx = settled.findIndex(t => t.name === data.tool);
+                  const idx = settled.findIndex(t => t.name === data.tool && t.action === data.action);
                   if (idx < 0) {
                     // New tool — append it
-                    n[k] = { ...n[k], tools: [...settled, { name: data.tool, state: 'active' }] };
+                    n[k] = { ...n[k], tools: [...settled, { name: data.tool, action: data.action, state: 'active' }] };
                   } else {
                     // Re-called tool (e.g. search retried) — flip it back to active
-                    n[k] = { ...n[k], tools: settled.map((t, i) =>
-                      i === idx ? { ...t, state: 'active' } : t
-                    )};
+                    n[k] = {
+                      ...n[k], tools: settled.map((t, i) =>
+                        i === idx ? { ...t, state: 'active' } : t
+                      )
+                    };
                   }
                   break;
                 }
@@ -831,9 +935,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               const n = { ...prev };
               for (const k of ['Catalog_Scout', 'Quote_Architect']) {
                 if (n[k].tools.some(t => t.name === data.tool)) {
-                  n[k] = { ...n[k], tools: n[k].tools.map(t =>
-                    t.name === data.tool ? { ...t, state: 'done' } : t
-                  )};
+                  n[k] = {
+                    ...n[k], tools: n[k].tools.map(t =>
+                      t.name === data.tool ? { ...t, state: 'done' } : t
+                    )
+                  };
                   break;
                 }
               }
@@ -842,7 +948,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             // 2. Parse results for right-pane cards
             try {
               const parsed = JSON.parse(data.data);
-              if ((data.tool === 'search_rca_products' || data.tool === 'search_products_by_filter') && parsed.results) {
+              if (data.tool === 'search_catalog' && parsed.results) {
                 // ── Buffer products — release them only when FINAL_REPLY arrives ──
                 // This way products and agent text appear together (Option A sync).
                 pendingResultsRef.current = parsed.results.map((r, i) => ({
@@ -850,16 +956,22 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 }));
                 setComposingReply(true);  // show typing indicator
               }
-              if (data.tool === 'evaluate_quote_graph' && parsed.salesforce_response) {
-                // Quote card is NOT buffered — show immediately
-                const resp  = parsed.salesforce_response;
-                const graph = resp?.graphs?.[0];
-                const qRec  = graph?.graphNodes?.find(n => n.referenceId === 'refQuote');
-                const qId   = qRec?.record?.id || resp?.id || 'Generated';
-                const inst  = parsed.instance_url || 'https://login.salesforce.com';
-                setQuote({ id: qId, status: 'Draft', sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null });
+              if (data.tool === 'evaluate_quote_graph') {
+                // Regex scan the raw data string for the Quote ID (100% reliable)
+                const qIdMatch = data.data.match(/0Q0[a-zA-Z0-9]{12,15}/);
+                const qId = qIdMatch ? qIdMatch[0] : 'Generated';
+
+                const inst = parsed.instance_url || 'https://login.salesforce.com';
+                const newQuote = {
+                  id: qId,
+                  status: 'Draft',
+                  sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null
+                };
+
+                // Append to list of quotes
+                setQuotes(prev => [...prev, newQuote]);
               }
-            } catch (_) {}
+            } catch (_) { }
             break;
 
           case 'FINAL_REPLY':
@@ -867,6 +979,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             if (pendingResultsRef.current) {
               setResults(pendingResultsRef.current);
               pendingResultsRef.current = null;
+            }
+            // Flush buffered selection panel — appears at the same time as agent text
+            if (pendingSelectionRef.current) {
+              setSelectionPanel(pendingSelectionRef.current);
+              pendingSelectionRef.current = null;
             }
             setComposingReply(false);  // hide typing indicator
             if (data.data?.trim()) {
@@ -901,7 +1018,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
     // Reset orchestration only on a fresh session (idle state)
     if (workflowState === 'idle') {
-      setResults([]); setQuote(null); setOrchestration(INIT_ORCH);
+      setResults([]); setQuotes([]); setOrchestration(INIT_ORCH);
       pendingResultsRef.current = null; setComposingReply(false);
     }
 
@@ -917,10 +1034,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setOrchestration(INIT_ORCH);
     setGraphActive(false);
     setResults([]);
-    setQuote(null);
+    setQuotes([]);
     setSelectionPanel(null);
     setConfirmedAccount(null);
+    setConfirmedSelections([]);
     pendingResultsRef.current = null;
+    pendingSelectionRef.current = null;
     setComposingReply(false);
     setSelectedProducts(new Set());
   };
@@ -930,6 +1049,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     if (selectionType === 'account') {
       setConfirmedAccount(option.name);
     }
+    setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
     setSelectionPanel(null);
     const text = `${option.name} (ID: ${option.id})`;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
@@ -975,338 +1095,436 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         <div className="mesh-circle-2" />
       </div>
 
-      <div className={`h-screen w-full bg-[var(--site-bg)] text-[var(--text-main)] font-sans flex overflow-hidden selection:bg-indigo-500/30 transition-colors duration-500 ${isResizingLeft || isResizingRight ? 'cursor-col-resize select-none' : ''}`}>
-
-        {/* ═══════════════════════════════════════════════════
-            LEFT — COMMAND PANEL
-        ═══════════════════════════════════════════════════ */}
-        <section
-          className="h-full border-r border-[var(--glass-border)] bg-[var(--card-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
-          style={{ width: leftWidth }}
-        >
-          <div className="p-7 pb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.4)] shrink-0">
-                <Zap size={16} fill="white" className="text-white" />
-              </div>
-              {leftWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Command</h1>}
-            </div>
-            {leftWidth > 140 && <Settings size={14} className="text-slate-400 hover:text-indigo-600 cursor-pointer transition-colors shrink-0" />}
+      <div className="h-screen w-full flex flex-col bg-[var(--site-bg)] text-[var(--text-main)] font-sans transition-colors duration-500">
+        <header className="h-14 shrink-0 flex items-center justify-between px-6 border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02] z-50">
+          {/* Branding */}
+          <div className="flex items-center gap-3">
+            <img src="/AV-logo.png" alt="Agivant Logo" className="h-8 w-auto" />
+            <div className="h-4 w-[1px] bg-slate-300 dark:bg-slate-700 mx-2" />
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Neural Orchestrator</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-6 scrollbar-hide">
-            {leftWidth > 110 && messages.map(msg => (
-              <div key={msg.id} className="animate-in fade-in">
-                <div className={`text-[9px] uppercase font-black tracking-[0.2em] mb-2 ${msg.role === 'user' ? 'text-indigo-400' : 'text-slate-700'}`}>
-                  {msg.role === 'user' ? 'Commander' : 'Nexus AI'}
-                </div>
-                <div className={`p-5 rounded-2xl text-[11px] leading-relaxed shadow-sm transition-all ${
-                  msg.role === 'user'
-                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20'
-                    : 'bg-[var(--card-bg)] border border-[var(--glass-border)] text-[var(--text-main)]'}`}>
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {/* Typing indicator — visible while agent is composing reply after tool results */}
-            {composingReply && (
-              <div style={{ paddingLeft: 2, paddingBottom: 2 }}>
-                <TypingIndicator />
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* ── Selection Panel — slides in above input when agent needs a pick ── */}
-          {leftWidth > 110 && (
-            <SelectionPanel
-              panel={selectionPanel}
-              confirmedAccount={confirmedAccount}
-              onSelect={handleCardSelect}
-            />
-          )}
-
-          {/* Thin separator when panel is active */}
-          {selectionPanel && leftWidth > 110 && (
-            <div className="mx-5 mb-2" style={{ height: 1, background: 'rgba(255,255,255,0.04)' }} />
-          )}
-
-
-
-          <div className="p-5">
-            <form onSubmit={handleSend} className="relative">
-              <input
-                type="text" value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
-                disabled={isBusy}
-                className="w-full bg-[var(--site-bg)] border border-[var(--glass-border)] rounded-2xl py-4 pl-4 pr-10 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all"
-              />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-600">
-                <Send size={15} />
+          {/* Control Cluster */}
+          <div className="flex items-center gap-6">
+            {/* Workflow Toggle Logic */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800/50 p-1 rounded-full border border-slate-200 dark:border-white/5">
+              <button
+                onClick={() => setShowWorkflow(true)}
+                className={`px-4 py-1 rounded-full text-[10px] font-black transition-all ${showWorkflow ? 'bg-white dark:bg-indigo-500/20 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
+              >
+                FLOW ON
               </button>
-            </form>
+              <button
+                onClick={() => setShowWorkflow(false)}
+                className={`px-4 py-1 rounded-full text-[10px] font-black transition-all ${!showWorkflow ? 'bg-white dark:bg-indigo-500/20 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
+              >
+                FLOW OFF
+              </button>
+            </div>
+
+            {/* Utilities */}
+            <div className="flex items-center gap-2 border-l border-slate-200 dark:border-white/10 pl-6">
+              <ThemeToggle isDark={isDark} setIsDark={setIsDark} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group" />
+              <Settings size={18} className="text-slate-400 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors ml-2" />
+            </div>
           </div>
-        </section>
+        </header>
 
-        {/* LEFT RESIZER */}
-        <div onMouseDown={startResizingLeft}
-          className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
-          <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingLeft ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
-        </div>
+        <div className={`flex-1 w-full flex overflow-hidden selection:bg-indigo-500/30 ${isResizingLeft || isResizingRight ? 'cursor-col-resize select-none' : ''}`}>
 
-        {/* ═══════════════════════════════════════════════════
+          {/* ═══════════════════════════════════════════════════
+              LEFT — COMMAND PANEL
+          ═══════════════════════════════════════════════════ */}
+          <section
+            className={`h-full border-r border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-all duration-300 ease-in-out`}
+            style={{ width: leftWidth }}
+          >
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-hide custom-scrollbar">
+              {leftWidth > 110 && messages.map(msg => (
+                <div key={msg.id} className="animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className={`w-1 h-2.5 rounded-full ${msg.role === 'user' ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                    <div className={`text-[8.5px] uppercase font-black tracking-[0.2em] ${msg.role === 'user' ? 'text-indigo-500' : 'text-slate-500 italic'}`}>
+                      {msg.role === 'user' ? 'Commander' : 'Agivant AI'}
+                    </div>
+                  </div>
+                  <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${msg.role === 'user'
+                    ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)]'
+                    : 'glass-card text-[var(--text-main)] shadow-xl shadow-black/[0.02] border-slate-200/60 dark:border-white/5'}`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {/* Typing indicator — visible while agent is composing reply after tool results */}
+              {composingReply && (
+                <div style={{ paddingLeft: 2, paddingBottom: 2 }}>
+                  <TypingIndicator />
+                </div>
+              )}
+              {leftWidth > 110 && messages.length === 1 && (
+                <div className="pt-2 pb-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-4 px-1">
+                    <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                    <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">Suggestions</span>
+                  </div>
+                  {SUGGESTIONS.map((s, i) => (
+                    <div
+                      key={i}
+                      onClick={() => handleSuggestionClick(s.text)}
+                      className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                      style={{
+                        background: isDark ? 'rgba(255,255,255,0.02)' : s.bg,
+                        borderColor: isDark ? 'rgba(255,255,255,0.05)' : s.border,
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
+                        <span className="text-[8.5px] font-black uppercase tracking-widest" style={{ color: s.color }}>{s.label}</span>
+                      </div>
+                      <div className="text-[10px] leading-relaxed text-[var(--text-main)] opacity-70 group-hover:opacity-100 transition-opacity">
+                        {s.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+
+
+
+
+            <div className="p-6 bg-slate-500/[0.03] dark:bg-white/[0.02] border-t border-[var(--glass-border)]">
+              <form onSubmit={handleSend} className="group">
+                <div className="relative flex items-center">
+                  <div className="absolute inset-0 bg-indigo-500/5 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+                  <input
+                    type="text" value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
+                    disabled={isBusy}
+                    className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-6 pr-14 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all z-10 shadow-inner"
+                  />
+                  <button type="submit" className="absolute right-3.5 p-2.5 text-indigo-600 hover:scale-110 transition-transform z-20 flex items-center justify-center">
+                    <Send size={16} />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          {/* LEFT RESIZER */}
+          <div onMouseDown={startResizingLeft}
+            className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
+            <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingLeft ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
+          </div>
+
+          {/* ═══════════════════════════════════════════════════
             CENTER — ORCHESTRATION GRAPH
         ═══════════════════════════════════════════════════ */}
-        <section
-          ref={centerRef}
-          className="flex-1 h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-colors duration-500"
-        >
-          {/* Title bar */}
-            <div className="w-full flex items-center justify-between px-8 pt-7 pb-2 shrink-0">
+          <section
+            ref={centerRef}
+            className={`h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-all duration-300 ease-in-out ${showWorkflow ? 'flex-1 opacity-100' : 'w-0 opacity-0 border-r-0'}`}
+          >
+            {/* Title bar */}
+            <div className="w-full flex items-center justify-between px-8 pt-5 pb-2 shrink-0">
               <div className="flex items-center gap-4">
                 {onBack && (
-                  <button 
+                  <button
                     onClick={onBack}
-                    className="p-2 -ml-2 rounded-full hover:bg-white/5 text-slate-500 hover:text-white transition-all"
+                    className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all"
                   >
                     <ArrowLeft size={16} />
                   </button>
                 )}
-                <span className="text-[9px] font-black tracking-[0.75em] text-slate-400 dark:text-white/15 uppercase">
-                  Orchestration Flow
+                <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
+                  <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">
+                    Orchestration
+                  </span>
+                  <span className="text-slate-300 dark:text-white/20">Flow</span>
                 </span>
               </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <span className="text-[8px] font-black uppercase text-slate-500">Minimap</span>
-                <button 
-                  onClick={() => setShowMinimap(!showMinimap)}
-                  className={`w-8 h-4 rounded-full relative transition-colors ${showMinimap ? 'bg-indigo-500' : 'bg-slate-700'}`}
-                >
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${showMinimap ? 'left-4.5' : 'left-0.5'}`} />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${
-                  isBusy ? 'bg-emerald-400 animate-pulse' : workflowState === 'completed' ? 'bg-emerald-600' : 'bg-slate-800'
-                }`} />
-                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">
-                  {workflowState === 'idle' ? 'Idle' : workflowState === 'completed' ? 'Done' : 'Live'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Graph viewport */}
-          <div 
-            className={`flex-1 w-full overflow-hidden flex flex-col items-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
-            onMouseDown={handlePanStart}
-            onMouseMove={handlePanMove}
-            onMouseUp={handlePanEnd}
-            onMouseLeave={handlePanEnd}
-          >
-            <div style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${graphScale * userZoom})`,
-              transformOrigin: 'center center',
-              width: GW,
-              marginTop: 100,
-              flexShrink: 0,
-              transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-            }}>
-              <AgentGraph
-                orchestration={orchestration}
-                graphActive={graphActive}
-                graphReady={graphReady}
-                isDark={isDark}
-              />
-            </div>
-
-            {/* Floating Zoom Controls */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-2 rounded-2xl z-40 shadow-2xl transition-all duration-500">
-              <button onClick={() => adjustZoom(-0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">-</button>
-              <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
-              <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
-              <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
-              <button onClick={() => { setUserZoom(1); setPan({x:0, y:0}); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
-            </div>
-
-            {/* Minimap Widget */}
-            {showMinimap && (
-              <div className="absolute top-8 right-8 w-44 h-52 bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none group shadow-2xl">
-                {/* Background Representation */}
-                <div className="absolute inset-0 opacity-40 pointer-events-none p-4">
-                  <div className="scale-[0.28] origin-top-left transition-all">
-                    <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
-                  </div>
+              <div className="flex items-center gap-6">
+                <div className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-all duration-500 ${isBusy ? 'bg-emerald-500/10 border-emerald-500/20' :
+                  workflowState === 'completed' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-500/5 dark:bg-slate-800/10 border-slate-500/10'
+                  }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${isBusy ? 'bg-emerald-500 animate-pulse' :
+                    workflowState === 'completed' ? 'bg-indigo-500' : 'bg-slate-400 dark:bg-slate-600'
+                    }`} />
+                  <span className={`text-[8.5px] font-black uppercase tracking-widest ${isBusy ? 'text-emerald-600 dark:text-emerald-400' :
+                    workflowState === 'completed' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'
+                    }`}>
+                    {workflowState === 'idle' ? 'Standby' : workflowState === 'completed' ? 'Done' : 'Live'}
+                  </span>
                 </div>
-                
-                {/* Viewport Indicator — Energy Orange */}
-                <div 
-                  className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all duration-75"
-                  style={{
-                    left: 20 - (pan.x * 0.28) / (graphScale * userZoom),
-                    top: 20 - (pan.y * 0.28) / (graphScale * userZoom),
-                    width: 140 / userZoom,
-                    height: 160 / userZoom,
-                  }}
-                />
-                
-                <div className="absolute bottom-2 right-3 text-[7px] font-mono font-black text-amber-500 drop-shadow-lg">{(graphScale * userZoom).toFixed(2)}x</div>
               </div>
-            )}
+            </div>
 
-            {/* Reset button (Environment) */}
-            {workflowState === 'completed' && (
-              <button
-                onClick={reset}
-                className="absolute top-24 left-1/2 -translate-x-1/2 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 hover:border-indigo-500/40 transition-all group whitespace-nowrap z-30"
-                style={{ animation: 'float-up 0.5s ease-out both', animationDelay: '0.3s' }}
-              >
-                Reset Environment <ArrowRight size={12} className="inline ml-2 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
+            {/* Graph viewport */}
+            <div
+              className={`flex-1 w-full overflow-hidden flex flex-col items-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+              onMouseDown={handlePanStart}
+              onMouseMove={handlePanMove}
+              onMouseUp={handlePanEnd}
+              onMouseLeave={handlePanEnd}
+            >
+              <div style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${graphScale * userZoom})`,
+                transformOrigin: 'center center',
+                width: GW,
+                marginTop: 100,
+                flexShrink: 0,
+                transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+              }}>
+                <AgentGraph
+                  orchestration={orchestration}
+                  graphActive={graphActive}
+                  graphReady={graphReady}
+                  isDark={isDark}
+                />
+              </div>
+
+              {/* Floating Zoom Controls */}
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-2 rounded-2xl z-40 shadow-2xl transition-all duration-500">
+                <button onClick={() => adjustZoom(-0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">-</button>
+                <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
+                <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
+                <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
+                <button onClick={() => { setUserZoom(1); setPan({ x: 0, y: 0 }); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
+              </div>
+
+              {/* Minimap Widget (Removed per task) */}
+
+              {/* Reset button (Environment) */}
+              {workflowState === 'completed' && (
+                <button
+                  onClick={reset}
+                  className="absolute top-24 left-1/2 -translate-x-1/2 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 hover:border-indigo-500/40 transition-all group whitespace-nowrap z-30"
+                  style={{ animation: 'float-up 0.5s ease-out both', animationDelay: '0.3s' }}
+                >
+                  Reset Environment <ArrowRight size={12} className="inline ml-2 group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
+            </div>
+          </section>
+
+          {/* RIGHT RESIZER */}
+          <div onMouseDown={startResizingRight}
+            className={`w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer ${!showWorkflow ? 'hidden' : ''}`}>
+            <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
           </div>
-        </section>
 
-        {/* RIGHT RESIZER */}
-        <div onMouseDown={startResizingRight}
-          className="w-2 hover:w-2 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/10 flex items-center justify-center relative z-40 group/resizer">
-          <div className={`w-1 h-20 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-32' : ''}`} />
-        </div>
-
-        {/* ═══════════════════════════════════════════════════
+          {/* ═══════════════════════════════════════════════════
             RIGHT — RESULTS VAULT
         ═══════════════════════════════════════════════════ */}
-        <section
-          className="h-full bg-[var(--card-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
-          style={{ width: rightWidth }}
-        >
-          <div className="p-7 flex items-center justify-between border-b border-white/[0.04]">
-            <div className="flex items-center gap-3">
-              <TrendingUp size={17} className="text-emerald-500 shrink-0" />
-              {rightWidth > 140 && <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white whitespace-nowrap">Results</h1>}
-            </div>
-            <div className="flex items-center gap-3">
-              {results.length > 0 && rightWidth > 180 && (
-                <button onClick={toggleSelectAll}
-                  className="text-[7.5px] font-black uppercase tracking-widest text-slate-600 hover:text-indigo-400 transition-colors whitespace-nowrap">
-                  {selectedProducts.size === results.length ? 'Deselect All' : 'Select All'}
-                </button>
-              )}
-              {rightWidth > 180 && (
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full transition-all duration-700 ${workflowState === 'idle' ? 'bg-slate-800' : 'bg-emerald-500 animate-pulse'}`} />
-                  <span className="text-[8.5px] font-black text-slate-700 tracking-widest uppercase whitespace-nowrap">Live</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-
-            {workflowState === 'idle' && (
-              <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
-                <Database size={38} strokeWidth={1} className="mb-5" />
-                {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking-widest">Awaiting Streams</p>}
+          <section
+            className={`h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 overflow-hidden transition-all duration-300 ease-in-out ${showWorkflow ? 'shrink-0' : 'flex-1'}`}
+            style={showWorkflow ? { width: rightWidth } : {}}
+          >
+            <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
+                {rightWidth > 140 && (
+                  <div className="flex flex-col">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white leading-none">Insights</h2>
+                    <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5">Data Vault 01</span>
+                  </div>
+                )}
               </div>
-            )}
+              <div className="flex items-center gap-4">
+                {rightWidth > 200 && (
+                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/10 dark:bg-black/20 border border-white/5 shadow-sm">
+                    <div className={`w-1.5 h-1.5 rounded-full transition-all duration-700 ${workflowState === 'idle' ? 'bg-slate-700' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse'}`} />
+                    <span className="text-[8.5px] font-black text-slate-500 dark:text-slate-400 tracking-widest uppercase">Streaming</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
-            {results.length > 0 && rightWidth > 110 && (
-              <div className="animate-in fade-in slide-in-from-right-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                  {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found</h3>}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar scroll-smooth">
+
+              {workflowState === 'idle' && !selectionPanel && (
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
+                  <Database size={38} strokeWidth={1} className="mb-5" />
+                  {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking_widest">Awaiting Streams</p>}
                 </div>
-                <div className="space-y-2" style={{ paddingBottom: selectedProducts.size > 0 ? 72 : 0, transition: 'padding-bottom 0.3s' }}>
-                  {results.map(prod => {
-                    const isSel = selectedProducts.has(prod.id);
-                    return (
-                      <div key={prod.id}
-                        onClick={() => toggleProduct(prod.id)}
-                        className="px-4 py-3.5 border rounded-xl cursor-pointer transition-all select-none shadow-sm hover:shadow"
-                        style={{
-                          background: isSel ? 'rgba(99,102,241,0.08)' : 'var(--card-bg)',
-                          borderColor: isSel ? 'rgba(99,102,241,0.4)' : 'var(--glass-border)',
-                        }}>
-                        <div className="flex items-center gap-2.5">
-                          {/* Checkbox */}
-                          <div style={{
-                            width: 14, height: 14, borderRadius: 4, flexShrink: 0,
-                            border: `1.5px solid ${isSel ? '#6366f1' : 'var(--glass-border)'}`,
-                            background: isSel ? '#6366f1' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}>
-                            {isSel && <CheckCircle2 size={9} color="white" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[11px] font-bold text-[var(--text-main)] truncate">{prod.name}</div>
-                            <div className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{prod.sku}</div>
-                          </div>
-                        </div>
+              )}
+
+
+
+              {results.length > 0 && rightWidth > 110 && (
+                <div className="animate-in fade-in slide-in-from-right-6 mb-6 overflow-hidden">
+                  <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                    <div className="p-5 pb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                        {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">Products Found — {results.length}</h3>}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      {results.length > 0 && rightWidth > 180 && (
+                        <button onClick={toggleSelectAll}
+                          className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-colors p-1 px-2 rounded-lg hover:bg-indigo-500/5">
+                          {selectedProducts.size === results.length ? 'Reset' : 'Select All'}
+                        </button>
+                      )}
+                    </div>
 
-            {quote && rightWidth > 140 && (
-              <div className="animate-in zoom-in-95" style={{ animationDelay: '0.1s' }}>
-                <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                  <div className="w-1 h-3 bg-emerald-500 rounded-full" />CPQ Quote
-                </div>
-                <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-5 rounded-2xl">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1.5">Quote ID</div>
-                      <div className="text-[11px] font-bold text-[var(--text-main)] font-mono">{quote.id}</div>
-                    </div>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm">
-                      <CheckCircle2 size={16} className="text-emerald-500" />
+                    <div className="p-5 pt-3">
+                      <div ref={resultsScrollRef} className="space-y-0 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar" style={{ paddingBottom: 10 }}>
+                        {results.map((prod, index) => {
+                          const isSel = selectedProducts.has(prod.id);
+                          return (
+                            <React.Fragment key={prod.id}>
+                              <div
+                                onClick={() => toggleProduct(prod.id)}
+                                title={prod.name}
+                                className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all select-none relative overflow-hidden group ${isSel ? 'bg-indigo-500/10' : 'bg-transparent hover:bg-white/[0.04]'}`}
+                              >
+                                <div className="flex items-center gap-4 min-w-0">
+                                  <div className="flex-1 min-w-0 pl-1">
+                                    <div className="text-[11px] font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors uppercase tracking-tight leading-tight whitespace-normal">{prod.name}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              {index < results.length - 1 && (
+                                <div className="h-[1px] w-full bg-slate-200 dark:bg-white/5 my-1" />
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                  <div className="border-t border-[var(--glass-border)] pt-4 flex items-center justify-between">
-                    <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{quote.status}</span>
-                    {quote.sfLink && (
-                      <a href={quote.sfLink} target="_blank" rel="noopener noreferrer"
-                        className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1">
-                        Open in SF <ExternalLink size={9} />
-                      </a>
-                    )}
+                </div>
+              )}
+
+              {/* ── Persistent Selections (Confirmed) — Now comes AFTER results ── */}
+              {confirmedSelections.length > 0 && (
+                <div className="animate-in fade-in slide-in-from-right-4 mb-6 overflow-hidden">
+                  <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-5">
+                    <div className="space-y-4">
+                      {confirmedSelections.map((sel, idx) => {
+                        const isOpp = sel.type === 'opportunity';
+                        const accentColor = isOpp ? '#fbbf24' : '#818cf8';
+                        return (
+                          <div key={`${sel.id}-${idx}`}>
+                            <div className="flex items-center gap-3 mb-3">
+                              <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, opacity: 0.5 }} />
+                              <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">
+                                Confirmed {isOpp ? 'Opportunity' : 'Account'}
+                              </div>
+                            </div>
+                            <div className="px-5 py-4 bg-white/[0.03] border border-white/5 rounded-2xl transition-all">
+                              <div className="flex items-center gap-2.5">
+                                <div style={{
+                                  width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+                                  border: `1.5px solid ${accentColor}33`,
+                                  background: `${accentColor}11`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  <CheckCircle2 size={9} style={{ color: accentColor }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="text-[11px] font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{sel.name}</div>
+                                    <div className="px-1.5 py-0.5 rounded-md bg-indigo-500/5 border border-indigo-500/10 text-[7px] font-black text-indigo-500 uppercase tracking-widest">Saved</div>
+                                  </div>
+                                  {sel.detail && sel.detail !== '—' && (
+                                    <div className="text-[8.5px] font-black uppercase tracking-[0.12em] opacity-60"
+                                      style={{ color: accentColor }}
+                                    >{sel.detail}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {/* ── Selection Panel — slides in when agent needs a pick ── */}
+              {selectionPanel && rightWidth > 110 && (
+                <div className="animate-in fade-in slide-in-from-right-6 z-10 relative mb-6">
+                  <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                    <SelectionPanel
+                      panel={selectionPanel}
+                      confirmedAccount={confirmedAccount}
+                      onSelect={handleCardSelect}
+                      rightWidth={rightWidth}
+                      scrollRef={selectionScrollRef}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {quotes.length > 0 && rightWidth > 140 && (
+                <div className="animate-in fade-in slide-in-from-right-8 mb-6 overflow-hidden">
+                  <div className="glass-card rounded-[1.5rem] border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden">
+                    <div className="p-5 pb-2 flex items-center gap-3">
+                      <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+                      <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] whitespace-nowrap">CPQ Quotes</h3>
+                    </div>
+
+                    <div className="p-5 pt-3">
+                      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
+                        {quotes.map((q, idx) => (
+                          <div key={idx} className="animate-in zoom-in-95" style={{ animationDelay: '0.1s' }}>
+                            <div className="bg-gradient-to-br from-indigo-600/10 to-emerald-600/10 border border-emerald-500/20 p-4 rounded-2xl transition-all hover:bg-emerald-500/5 group relative overflow-hidden">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex flex-col gap-1">
+                                  <div className="text-[8.5px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1">Quote ID</div>
+                                  <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{q.id}</div>
+                                </div>
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110">
+                                  <CheckCircle2 size={16} className="text-emerald-500" />
+                                </div>
+                              </div>
+                              <div className="border-t border-[var(--glass-border)] pt-3 flex items-center justify-between">
+                                <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{q.status}</span>
+                                {q.sfLink && (
+                                  <a href={q.sfLink} target="_blank" rel="noopener noreferrer"
+                                    className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1 z-10 relative">
+                                    Open in SF <ExternalLink size={9} />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Scroll anchor — right panel scrolls here on new data */}
+              <div ref={rightPanelEndRef} />
+            </div>
+            {/* ── Floating action bar: slides up when products are selected ── */}
+            {selectedProducts.size > 0 && (
+              <div
+                className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-3xl z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] transition-all"
+                style={{
+                  animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
+                }}>
+                <button
+                  onClick={handleCreateQuoteFromSelection}
+                  disabled={isBusy}
+                  className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isBusy
+                    ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed'
+                    : 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
+                    }`}
+                >
+                  {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                  Create Quote — {selectedProducts.size} Product{selectedProducts.size > 1 ? 's' : ''}
+                </button>
               </div>
             )}
-          </div>
-          {/* ── Floating action bar: slides up when products are selected ── */}
-          {selectedProducts.size > 0 && (
-            <div 
-              className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-2xl z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] transition-colors"
-              style={{
-                animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both',
-            }}>
-              <button
-                onClick={handleCreateQuoteFromSelection}
-                disabled={isBusy}
-                style={{
-                  width: '100%', padding: '9px 14px',
-                  background: isBusy ? 'rgba(99,102,241,0.04)' : 'rgba(99,102,241,0.12)',
-                  border: `1px solid rgba(99,102,241,${isBusy ? 0.1 : 0.35})`,
-                  borderRadius: 10,
-                  color: isBusy ? 'var(--text-muted)' : '#6366f1',
-                  fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', cursor: isBusy ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
-              >
-                ⚡ Create Quote — {selectedProducts.size} Product{selectedProducts.size > 1 ? 's' : ''}
-              </button>
-            </div>
-          )}
-        </section>
+          </section>
+
+        </div>
 
       </div>
     </>
@@ -1337,16 +1555,17 @@ const App = () => {
 
   return (
     <div className={isDark ? 'dark' : ''}>
-      <ThemeToggle isDark={isDark} setIsDark={setIsDark} />
+      {view !== 'chat' && <ThemeToggle isDark={isDark} setIsDark={setIsDark} />}
       {view === 'selection' && <SelectionHub onSelect={handleSelect} />}
       {view === 'dashboard' && (
-        <Dashboard 
-          onLaunchChat={handleLaunchChat} 
-          onEditQuote={(id) => console.log('Edit quote', id)} 
+        <Dashboard
+          onLaunchChat={handleLaunchChat}
+          onBack={() => setView('selection')}
+          onEditQuote={(id) => console.log('Edit quote', id)}
         />
       )}
       {view === 'chat' && (
-        <OrchestratorView onBack={() => setView('dashboard')} selectedModule={selectedModule} isDark={isDark} />
+        <OrchestratorView onBack={() => setView('dashboard')} selectedModule={selectedModule} isDark={isDark} setIsDark={setIsDark} />
       )}
     </div>
   );
