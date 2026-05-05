@@ -1,19 +1,18 @@
 /* 
-   META PROFESSIONAL DESIGN SYSTEM - V2
-   Refined for maximum brand precision and "perfectness"
+   META PROFESSIONAL DESIGN SYSTEM - V3
+   Synchronized with about.meta.com brand assets
 */
 
 .meta-theme {
-  /* --- Professional Meta Brand Palette --- */
+  /* --- Official Meta Brand Palette --- */
   --meta-blue: #0064E0;          /* Official Meta Blue */
-  --meta-sky: #0081FB;           /* Professional Sky Blue */
-  --meta-teal: #00B2B2;          /* For Scout/Discovery agents */
-  --meta-green: #31A24C;         /* Professional Success Green */
-  --meta-gray-100: #F0F2F5;      /* Surface Light */
-  --meta-gray-200: #E4E6EB;      /* Divider Light */
-  --meta-gray-700: #3E4042;      /* Divider Dark */
-  --meta-gray-800: #242526;      /* Surface Dark */
-  --meta-gray-900: #18191A;      /* Base Dark */
+  --meta-sky: #0081FB;           /* Official Sky Blue */
+  --meta-green: #31A24C;         /* Official Success Green */
+  --meta-gray-100: #F0F2F5;      /* Meta Light Surface */
+  --meta-gray-200: #E4E6EB;      /* Meta Divider Light */
+  --meta-gray-700: #3E4042;      /* Meta Divider Dark */
+  --meta-gray-800: #242526;      /* Meta Dark Surface */
+  --meta-gray-900: #18191A;      /* Meta Base Dark */
 
   /* --- Mapped Variables --- */
   --accent-primary: var(--meta-blue);
@@ -31,12 +30,12 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* Apply Meta BG globally */
+/* Global Background */
 .meta-theme.h-screen {
   background: var(--site-bg) !important;
 }
 
-/* Explicit Dark Mode Overrides */
+/* Dark Mode Professional Overrides */
 html.dark .meta-theme {
   --site-bg: var(--meta-gray-900) !important;
   --card-bg: var(--meta-gray-800) !important;
@@ -51,97 +50,46 @@ html.dark .meta-theme {
   font-weight: 700 !important;
 }
 
-/* Buttons - Meta Professional Style */
+/* Meta-Style Buttons */
 .meta-theme button.bg-indigo-600 {
   background: var(--meta-blue) !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important; /* Meta uses slightly tighter rounding for professional tools */
   font-weight: 600 !important;
   font-size: 14px !important;
-  padding: 10px 20px !important;
-  box-shadow: none !important;
-  transition: filter 0.2s ease !important;
+  transition: all 0.2s cubic-bezier(0.12, 0, 0.39, 0) !important;
 }
 
 .meta-theme button.bg-indigo-600:hover {
-  filter: brightness(1.1) !important;
+  filter: brightness(0.95) !important;
 }
 
-/* Card Styling - Perfectness in Spacing and Shadows */
+/* Card Perfection */
 .meta-theme .glass-card {
   background: var(--card-bg) !important;
   border: 1px solid var(--glass-border) !important;
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-  transition: box-shadow 0.2s ease !important;
 }
 
 .meta-theme .glass-card:hover {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12), 0 8px 10px rgba(0, 0, 0, 0.08) !important;
-  border-color: var(--glass-border) !important;
-  transform: none !important; /* Meta doesn't usually tilt/lift cards drastically */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* Sidebar - Professional Density */
-.meta-theme aside {
-  background: white !important;
-  border-right: 1px solid var(--meta-gray-200) !important;
-  width: 280px !important;
+/* Graph Nodes & Paths */
+.meta-theme [stroke="#0064E0"] {
+  stroke-width: 2px !important;
 }
 
-html.dark .meta-theme aside {
-  background: var(--meta-gray-800) !important;
-  border-right: 1px solid var(--meta-gray-700) !important;
-}
-
-/* Orchestration Graph - Professional Glow */
-.meta-theme svg filter#glow-conn {
-  stdDeviation: 2 !important;
-}
-
-/* Leading Dots & Paths */
-.meta-theme circle[fill="#0668E1"], .meta-theme circle[fill="#0081FB"] {
-  filter: drop-shadow(0 0 4px var(--meta-blue)) !important;
-}
-
-/* Success Indicators */
-.meta-theme .text-emerald-500, .meta-theme .bg-emerald-500 {
-  color: var(--meta-green) !important;
-  background-color: var(--meta-green) !important;
-}
-
-/* Mesh Background - Subtle & Sophisticated */
+/* Mesh Background - Subtle Connection Mesh */
 .meta-theme .mesh-bg {
-  opacity: 0.15 !important;
-  filter: blur(140px) !important;
+  opacity: 0.12 !important;
 }
 
-/* Scrollbars - OS Style */
+/* Professional Scrollbars */
 .meta-theme .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #bcc0c4 !important;
-  border-radius: 10px !important;
 }
 
 html.dark .meta-theme .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #4b4c4f !important;
-}
-
-/* Input Fields - High Precision */
-.meta-theme input {
-  background: var(--meta-gray-100) !important;
-  border: 1px solid transparent !important;
-  transition: border-color 0.2s ease, background-color 0.2s ease !important;
-}
-
-.meta-theme input:focus {
-  background: white !important;
-  border-color: var(--meta-blue) !important;
-  box-shadow: 0 0 0 2px rgba(0, 100, 224, 0.1) !important;
-}
-
-html.dark .meta-theme input {
-  background: #3a3b3c !important;
-}
-
-html.dark .meta-theme input:focus {
-  background: #3a3b3c !important;
 }

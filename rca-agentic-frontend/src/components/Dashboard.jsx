@@ -76,21 +76,34 @@ const Dashboard = ({ onBack, onLaunchChat }) => {
                 <ArrowLeft size={20} />
               </button>
             )}
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 font-black text-white tracking-tight">
-              {config.theme === 'Meta' ? 'M' : 'AG'}
-            </div>
-            <div>
-              <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
-                {config.theme === 'Meta' ? 'Meta Intelligence' : 'Deal Intelligence'}
-              </h1>
-              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-                Salesforce Instance: 
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Production-01
-                </span>
-              </div>
-            </div>
+            {config.theme === 'Meta' ? (
+              <>
+                <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
+                <div className="h-8 w-[1px] bg-slate-200 mx-2" />
+                <div>
+                  <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
+                    Meta Intelligence
+                  </h1>
+                </div>
+              </>
+            ) : (
+              <>
+                <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-10 object-contain" />
+                <div className="h-8 w-[1px] bg-slate-200 mx-2" />
+                <div>
+                  <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
+                    Deal Intelligence
+                  </h1>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
+            Salesforce Instance: 
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Production-01
+            </span>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import './MetaTheme.css';
 import {
   Send, CheckCircle2, Loader2, Zap, Settings,
   TrendingUp, ExternalLink, ArrowRight, Database,
-  Search, FileText, Network, ArrowLeft
+  Search, FileText, Network, ArrowLeft, Eye, EyeOff, Layers
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -746,6 +746,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [graphScale, setGraphScale] = useState(1);
   const [userZoom, setUserZoom] = useState(1);
   const [showMinimap, setShowMinimap] = useState(false);
+  const [showOrchestration, setShowOrchestration] = useState(true);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
 
@@ -787,11 +788,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   useEffect(() => {
     if (!centerRef.current) return;
     const obs = new ResizeObserver(([e]) => {
-      setGraphScale(Math.min(1, (e.contentRect.width - 40) / GW));
+      setGraphScale(Math.max(0.1, Math.min(1, (e.contentRect.width - 40) / GW)));
     });
     obs.observe(centerRef.current);
     return () => obs.disconnect();
-  }, []);
+  }, [showOrchestration]);
 
   // ── graphReady delay (750ms after graph becomes active) ────
   useEffect(() => {
@@ -827,7 +828,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   // ── WebSocket ──────────────────────────────────────────────
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
-    ws.current.onopen = () => console.log('[WS] Connected to agent_v2.py');
+    ws.current.onopen = () => console.log('[WS] Connected to main.py');
 
     ws.current.onmessage = (ev) => {
       try {
@@ -1015,7 +1016,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(text);
     } else {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: 'Backend disconnected. Start agent_v2.py on port 8001.' }]);
+      setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: 'Backend disconnected. Start main.py on port 8001.' }]);
     }
   };
 
@@ -1105,18 +1106,31 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         >
           <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(79,70,229,0.4)] flex-shrink-0 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                <span className="text-white font-black text-[11px] tracking-tight relative z-10">{config.theme === 'Meta' ? 'M' : 'AG'}</span>
-              </div>
-              {leftWidth > 140 && (
-                <div className="flex flex-col">
-                  <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white whitespace-nowrap">{config.theme === 'Meta' ? 'Meta' : 'Agivant'}</h1>
-                  <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">{config.theme === 'Meta' ? 'Connect' : 'Control Center'}</span>
+              {config.theme === 'Meta' ? (
+                <div className="flex items-center gap-3">
+                   <img src={config.META_LOGO_URL} alt="Meta" className="h-6 object-contain" />
+                   {leftWidth > 160 && (
+                     <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+                   )}
+                   {leftWidth > 180 && (
+                     <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Connect</span>
+                   )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                   <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-8 object-contain" />
+                   {leftWidth > 160 && (
+                     <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+                   )}
+                   {leftWidth > 180 && (
+                     <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Control Center</span>
+                   )}
                 </div>
               )}
             </div>
-            {leftWidth > 140 && <Settings size={14} className="text-slate-400 hover:text-indigo-600 cursor-pointer transition-colors shrink-0" />}
+            <div className="flex items-center gap-3">
+              {leftWidth > 140 && <Settings size={14} className="text-slate-400 hover:text-indigo-600 cursor-pointer transition-colors shrink-0" />}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-hide custom-scrollbar">
@@ -1203,126 +1217,129 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         {/* ═══════════════════════════════════════════════════
             CENTER — ORCHESTRATION GRAPH
         ═══════════════════════════════════════════════════ */}
-        <section
-          ref={centerRef}
-          className="flex-1 h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-colors duration-500"
-        >
-          {/* Title bar */}
-          <div className="w-full flex items-center justify-between px-8 pt-5 pb-2 shrink-0">
-            <div className="flex items-center gap-4">
-              {onBack && (
-                <button
-                  onClick={onBack}
-                  className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-              )}
-              <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
-                <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">
-                  Orchestration
-                </span>
-                <span className="text-slate-300 dark:text-white/20">Flow</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 bg-white/[0.03] dark:bg-black/5 px-4 py-2 rounded-full border border-white/5 shadow-inner transition-all hover:bg-white/5">
-                <span className="text-[8.5px] font-bold uppercase text-slate-400 tracking-wider">Minimap</span>
-                <button
-                  onClick={() => setShowMinimap(!showMinimap)}
-                  className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700 ring-slate-400/20 dark:ring-slate-600/30'
-                    }`}
-                >
-                  <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'
-                    }`} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Graph viewport */}
-          <div
-            className={`flex-1 w-full overflow-hidden flex flex-col items-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
-            onMouseDown={handlePanStart}
-            onMouseMove={handlePanMove}
-            onMouseUp={handlePanEnd}
-            onMouseLeave={handlePanEnd}
-          >
-            <div style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${graphScale * userZoom})`,
-              transformOrigin: 'center center',
-              width: GW,
-              marginTop: 100,
-              flexShrink: 0,
-              transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-            }}>
-              <AgentGraph
-                orchestration={orchestration}
-                graphActive={graphActive}
-                graphReady={graphReady}
-                isDark={isDark}
-              />
-            </div>
-
-            {/* Floating Zoom Controls */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-2 rounded-2xl z-40 shadow-2xl transition-all duration-500">
-              <button onClick={() => adjustZoom(-0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">-</button>
-              <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
-              <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
-              <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
-              <button onClick={() => { setUserZoom(1); setPan({ x: 0, y: 0 }); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
-            </div>
-
-            {/* Minimap Widget */}
-            {showMinimap && (
-              <div className="absolute top-8 right-8 w-44 h-52 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-3xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none group shadow-2xl">
-                {/* Background Representation */}
-                <div className="absolute inset-0 opacity-40 pointer-events-none p-4">
-                  <div className="scale-[0.28] origin-top-left transition-all">
-                    <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+        {showOrchestration && (
+          <>
+            <section
+              ref={centerRef}
+              className="flex-1 h-full bg-[var(--site-bg)] flex flex-col items-center overflow-hidden border-r border-[var(--glass-border)] transition-colors duration-500 animate-in fade-in slide-in-from-left-4"
+            >
+              {/* Title bar */}
+              <div className="w-full flex items-center justify-between px-8 pt-5 pb-2 shrink-0">
+                <div className="flex items-center gap-4">
+                  {onBack && (
+                    <button
+                      onClick={onBack}
+                      className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all"
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+                  )}
+                  <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
+                    <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">
+                      Orchestration
+                    </span>
+                    <span className="text-slate-400 dark:text-white/40 font-bold">Flow</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3 bg-slate-500/5 dark:bg-black/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5 shadow-inner transition-all hover:bg-slate-500/10">
+                    <span className="text-[8.5px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Minimap</span>
+                    <button
+                      onClick={() => setShowMinimap(!showMinimap)}
+                      className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700 ring-slate-400/20 dark:ring-slate-600/30'
+                        }`}
+                    >
+                      <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'
+                        }`} />
+                    </button>
                   </div>
                 </div>
-
-                {/* Viewport Indicator — Energy Orange */}
-                <div
-                  className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all duration-75"
-                  style={{
-                    left: 20 - (pan.x * 0.28) / (graphScale * userZoom),
-                    top: 20 - (pan.y * 0.28) / (graphScale * userZoom),
-                    width: 140 / userZoom,
-                    height: 160 / userZoom,
-                  }}
-                />
-
-                <div className="absolute bottom-2 right-3 text-[7px] font-mono font-black text-amber-500 drop-shadow-lg">{(graphScale * userZoom).toFixed(2)}x</div>
               </div>
-            )}
 
-            {/* Reset button (Environment) */}
-            {workflowState === 'completed' && (
-              <button
-                onClick={reset}
-                className="absolute top-24 left-1/2 -translate-x-1/2 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 hover:border-indigo-500/40 transition-all group whitespace-nowrap z-30"
-                style={{ animation: 'float-up 0.5s ease-out both', animationDelay: '0.3s' }}
+              {/* Graph viewport */}
+              <div
+                className={`flex-1 w-full overflow-hidden flex flex-col items-center justify-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                onMouseDown={handlePanStart}
+                onMouseMove={handlePanMove}
+                onMouseUp={handlePanEnd}
+                onMouseLeave={handlePanEnd}
               >
-                Reset Environment <ArrowRight size={12} className="inline ml-2 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
-          </div>
-        </section>
+                <div style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${graphScale * userZoom})`,
+                  transformOrigin: 'center center',
+                  width: GW,
+                  flexShrink: 0,
+                  transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+                }}>
+                  <AgentGraph
+                    orchestration={orchestration}
+                    graphActive={graphActive}
+                    graphReady={graphReady}
+                    isDark={isDark}
+                  />
+                </div>
 
-        {/* RIGHT RESIZER */}
-        <div onMouseDown={startResizingRight}
-          className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
-          <div className={`w-1 h-24 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/40 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-40' : ''}`} />
-        </div>
+                {/* Floating Zoom Controls */}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-2 rounded-2xl z-40 shadow-2xl transition-all duration-500">
+                  <button onClick={() => adjustZoom(-0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">-</button>
+                  <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
+                  <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
+                  <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
+                  <button onClick={() => { setUserZoom(1); setPan({ x: 0, y: 0 }); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
+                </div>
+
+                {/* Minimap Widget */}
+                {showMinimap && (
+                  <div className="absolute top-8 right-8 w-44 h-52 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-3xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none group shadow-2xl">
+                    {/* Background Representation */}
+                    <div className="absolute inset-0 opacity-40 pointer-events-none p-4">
+                      <div className="scale-[0.28] origin-top-left transition-all">
+                        <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+                      </div>
+                    </div>
+
+                    {/* Viewport Indicator — Energy Orange */}
+                    <div
+                      className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all duration-75"
+                      style={{
+                        left: 20 - (pan.x * 0.28) / (graphScale * userZoom),
+                        top: 20 - (pan.y * 0.28) / (graphScale * userZoom),
+                        width: 140 / userZoom,
+                        height: 160 / userZoom,
+                      }}
+                    />
+
+                    <div className="absolute bottom-2 right-3 text-[7px] font-mono font-black text-amber-500 drop-shadow-lg">{(graphScale * userZoom).toFixed(2)}x</div>
+                  </div>
+                )}
+
+                {/* Reset button (Environment) */}
+                {workflowState === 'completed' && (
+                  <button
+                    onClick={reset}
+                    className="absolute top-24 left-1/2 -translate-x-1/2 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 hover:border-indigo-500/40 transition-all group whitespace-nowrap z-30"
+                    style={{ animation: 'float-up 0.5s ease-out both', animationDelay: '0.3s' }}
+                  >
+                    Reset Environment <ArrowRight size={12} className="inline ml-2 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+              </div>
+            </section>
+
+            {/* RIGHT RESIZER */}
+            <div onMouseDown={startResizingRight}
+              className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
+              <div className={`w-1 h-24 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/40 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-40' : ''}`} />
+            </div>
+          </>
+        )}
 
         {/* ═══════════════════════════════════════════════════
             RIGHT — RESULTS VAULT
         ═══════════════════════════════════════════════════ */}
         <section
-          className="h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500"
-          style={{ width: rightWidth }}
+          className={`h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-all duration-500 ${!showOrchestration ? 'flex-1' : ''}`}
+          style={{ width: !showOrchestration ? 'auto' : rightWidth }}
         >
           <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
             <div className="flex items-center gap-3">
@@ -1335,6 +1352,19 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               )}
             </div>
             <div className="flex items-center gap-4">
+              {rightWidth > 180 && (
+                <div className="flex items-center gap-3 bg-slate-500/5 dark:bg-black/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5 shadow-inner transition-all hover:bg-slate-500/10 mr-2">
+                  <span className="text-[8.5px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Flow</span>
+                  <button
+                    onClick={() => setShowOrchestration(!showOrchestration)}
+                    className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showOrchestration ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700 ring-slate-400/20 dark:ring-slate-600/30'
+                      }`}
+                  >
+                    <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-lg transition-all duration-300 ease-out ${showOrchestration ? 'translate-x-4.5' : 'translate-x-0.5'
+                      }`} />
+                  </button>
+                </div>
+              )}
               {results.length > 0 && rightWidth > 180 && (
                 <button onClick={toggleSelectAll}
                   className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-colors p-1 px-2 rounded-lg hover:bg-indigo-500/5">

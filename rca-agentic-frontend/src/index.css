@@ -18,15 +18,15 @@
 
 /* Base Theme Variables */
 :root {
-  --site-bg: #f8fafc;
-  --card-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(0, 0, 0, 0.09);
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --accent-primary: #4f46e5;
-  --accent-secondary: #0ea5e9;
-  --indigo-500: #6366f1;
-  --indigo-600: #4f46e5;
+  --site-bg: #FFFFFF;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 26, 114, 0.1);
+  --text-main: #001A72;
+  --text-muted: #666666;
+  --accent-primary: #2E3192;
+  --accent-secondary: #D4145A;
+  --indigo-500: #2100E0;
+  --indigo-600: #001A72;
   color-scheme: light;
   transition: all 0.5s ease;
 }

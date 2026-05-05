@@ -23,10 +23,19 @@ const Sidebar = ({ activeTab, onTabChange }) => {
   return (
     <aside className="w-72 h-screen sticky top-0 flex flex-col bg-[var(--card-bg)] border-r border-[var(--glass-border)] transition-all duration-500 z-50">
       <div className="p-8 pb-12 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <FileText className="text-white" size={20} />
-        </div>
-        <h2 className="text-sm font-black uppercase tracking-[0.3em] text-[var(--text-main)]">{config.theme === 'Meta' ? 'Meta CPQ' : 'Agentic CPQ'}</h2>
+        {config.theme === 'Meta' ? (
+          <>
+            <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
+            <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-main)]">CPQ</h2>
+          </>
+        ) : (
+          <>
+            <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-10 object-contain" />
+            <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-main)]">CPQ</h2>
+          </>
+        )}
       </div>
 
       <nav className="flex-1 px-4 space-y-2">

@@ -53,13 +53,23 @@ const SelectionHub = ({ onSelect }) => (
       <nav className="flex items-center justify-between mb-8">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <span className="text-white font-black text-xs tracking-tight">{config.theme === 'Meta' ? 'M' : 'AG'}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-black text-[var(--text-main)] leading-none tracking-tight">{config.theme === 'Meta' ? 'Meta' : 'Agivant'}</span>
-            <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] mt-0.5">{config.theme === 'Meta' ? 'Meta AI Platform' : 'Agentic AI Platform'}</span>
-          </div>
+          {config.theme === 'Meta' ? (
+            <>
+              <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
+              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-10 object-contain" />
+              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Agentic AI Platform</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Stats bar */}
@@ -97,7 +107,7 @@ const SelectionHub = ({ onSelect }) => (
               <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">build today?</span>
             </h1>
             <p className="text-[var(--text-muted)] text-sm lg:text-base max-w-xl leading-relaxed">
-              {config.theme === 'Meta' ? "Meta's AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention." : "Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention."}
+              {config.theme === 'Meta' ? config.META_TAGLINE : "Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention."}
             </p>
           </div>
           {/* Decorative agentic node graphic */}
