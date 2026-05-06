@@ -501,7 +501,7 @@ def get_opportunities_for_account(account_id: str) -> str:
 
 
 @mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
+def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01shg0000005XcrAAE") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -611,6 +611,80 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         "opportunity_id": clean_opp_id or "not linked",
         "salesforce_response": response.json()
     }, indent=2)
+
+@mcp.tool()
+def get_quote_preview(quote_id: str) -> str:
+    """
+    Fetches detailed preview data for a specific Salesforce Quote, 
+    including its Account, Opportunity, and Quote Line Items.
+
+    Args:
+        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0').
+    """
+    print(f"[DEBUG] get_quote_preview called for {quote_id}")
+    try:
+        headers, instance_url = get_salesforce_auth()
+        print(f"[DEBUG] Auth success. Instance: {instance_url}")
+    except Exception as e:
+        print(f"[DEBUG] Auth failed: {str(e)}")
+        return json.dumps({"status": "error", "message": f"Auth error: {str(e)}"})
+    
+    # 1. Quote Details Query
+    quote_query = f"""
+    SELECT Id, Name, QuoteNumber, Status, GrandTotal, StartDate, ExpirationDate, 
+           Pricebook2Id, Opportunity.Name, Account.Name, Account.Website 
+    FROM Quote 
+    WHERE Id='{quote_id}'
+    """
+    
+    # 2. Quote Line Items Query
+    lines_query = f"""
+    SELECT Id, QuoteId, Product2Id, PricebookEntryId, Product2.Name, 
+           Product2.ProductCode, Product2.Family, Product2.Type, 
+           Product2.Description, Quantity, UnitPrice, TotalPrice, 
+           ListPrice, StartDate, EndDate, Discount, 
+           NetUnitPrice, SortOrder 
+    FROM QuoteLineItem 
+    WHERE QuoteId = '{quote_id}' 
+    ORDER BY SortOrder ASC, CreatedDate ASC 
+    LIMIT 2000
+    """
+    
+    from urllib.parse import quote
+    quote_endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(quote_query)}"
+    lines_endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(lines_query)}"
+    
+    try:
+        print(f"[DEBUG] Fetching quote details...")
+        quote_resp = requests.get(quote_endpoint, headers=headers)
+        print(f"[DEBUG] Fetching line items...")
+        lines_resp = requests.get(lines_endpoint, headers=headers)
+        
+        if quote_resp.status_code != 200 or lines_resp.status_code != 200:
+            err_msg = quote_resp.text if quote_resp.status_code != 200 else lines_resp.text
+            print(f"[DEBUG] Query failed: {err_msg}")
+            return json.dumps({
+                "status": "error", 
+                "message": f"Error fetching quote data: {err_msg}"
+            })
+            
+        quote_data = quote_resp.json().get("records", [])
+        if not quote_data:
+            print(f"[DEBUG] Quote {quote_id} not found.")
+            return json.dumps({"status": "error", "message": "Quote not found."})
+            
+        quote_obj = quote_data[0]
+        quote_obj["QuoteLineItems"] = lines_resp.json().get("records", [])
+        print(f"[DEBUG] Successfully merged {len(quote_obj['QuoteLineItems'])} lines.")
+        
+        return json.dumps({
+            "status": "success",
+            "records": [quote_obj]
+        }, indent=2)
+        
+    except Exception as e:
+        print(f"[DEBUG] Unexpected error: {str(e)}")
+        return json.dumps({"status": "error", "message": str(e)})
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

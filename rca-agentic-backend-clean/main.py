@@ -49,5 +49,14 @@ app.add_middleware(
 
 app.add_api_websocket_route("/ws/orchestrate", websocket_endpoint)
 
+@app.get("/api/quote-preview/{quote_id}")
+async def quote_preview(quote_id: str):
+    print(f"[DEBUG] Fetching preview for Quote ID: {quote_id}")
+    from server import get_quote_preview
+    import json
+    result_str = get_quote_preview(quote_id)
+    print(f"[DEBUG] Result status: {json.loads(result_str).get('status')}")
+    return json.loads(result_str)
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT)

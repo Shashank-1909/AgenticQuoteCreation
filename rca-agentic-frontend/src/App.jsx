@@ -7,7 +7,7 @@ import './MetaTheme.css';
 import {
   Send, CheckCircle2, Loader2, Zap, Settings,
   TrendingUp, ExternalLink, ArrowRight, Database,
-  Search, FileText, Network, ArrowLeft, Eye, EyeOff, Layers
+  Search, FileText, Network, ArrowLeft, Eye, EyeOff, Layers, X, Calendar, DollarSign
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -62,6 +62,61 @@ const STYLES = `
   }
   .custom-scrollbar:hover::-webkit-scrollbar-thumb {
     background: rgba(99, 102, 241, 0.25);
+  }
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .preview-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .preview-table th {
+    background: #0064E0;
+    color: white;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px 12px;
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  .preview-table th:last-child {
+    border-right: none;
+  }
+  .preview-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--glass-border);
+    border-right: 1px solid var(--glass-border);
+    font-size: 11px;
+    color: var(--text-main);
+    background: var(--card-bg);
+  }
+  .preview-table tr:last-child td {
+    border-bottom: none;
+  }
+  .preview-table td:last-child {
+    border-right: none;
+  }
+  .preview-section-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    margin-top: 16px;
+    letter-spacing: -0.01em;
+  }
+  .meta-blue-header {
+    background: #0064E0 !important;
+  }
+  .meta-purple-header {
+    background: #4B49AC !important;
   }
 `;
 
@@ -701,6 +756,191 @@ const SUGGESTIONS = [
   }
 ];
 
+const QuotePreviewModal = ({ isOpen, onClose, data }) => {
+  if (!isOpen || !data) return null;
+
+  const quote = data.records?.[0] || {};
+  const lines = quote.QuoteLineItems || [];
+  
+  const isMeta = config.theme === 'Meta';
+  const logoUrl = isMeta ? config.META_LOGO_URL : config.AGIVANT_LOGO_URL;
+
+  // Theme-specific colors
+  const themeColors = isMeta ? {
+    primary: 'bg-[#0064E0]',
+    primaryHover: 'hover:bg-[#0051B8]',
+    text: 'text-[#0064E0]',
+    bgTint: 'bg-[#0064E0]/5',
+    border: 'border-[#0064E0]/20',
+    accent: 'from-[#0064E0] to-[#0081FB]',
+    glow: 'bg-[#0064E0]/20'
+  } : {
+    primary: 'bg-indigo-600',
+    primaryHover: 'hover:bg-indigo-500',
+    text: 'text-indigo-600',
+    bgTint: 'bg-indigo-600/5',
+    border: 'border-indigo-600/20',
+    accent: 'from-indigo-600 to-purple-600',
+    glow: 'bg-indigo-600/20'
+  };
+
+  return (
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/60 modal-overlay ${isMeta ? 'meta-theme' : ''}`}>
+      <div className="bg-[var(--site-bg)] w-full max-w-6xl max-h-[95vh] rounded-[2rem] shadow-[0_0_80px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border border-white/10 relative">
+        
+        {/* Dynamic Glows */}
+        <div className={`absolute -top-32 -right-32 w-64 h-64 ${themeColors.glow} blur-[120px] pointer-events-none opacity-60`} />
+        <div className={`absolute -bottom-32 -left-32 w-64 h-64 ${themeColors.glow} blur-[120px] pointer-events-none opacity-60`} />
+
+        {/* Header */}
+        <div className={`px-8 py-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r ${themeColors.accent} relative`}>
+          {/* Subtle pattern overlay */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '16px 16px' }} />
+          
+          <div className="flex items-center gap-5 relative z-10">
+            <div className="p-2.5 rounded-2xl bg-white shadow-xl shadow-black/10">
+              <img src={logoUrl} alt="Logo" className={isMeta ? "h-6" : "h-9"} />
+            </div>
+            <div className="w-[1px] h-8 bg-white/30 mx-1" />
+            <div className="flex flex-col">
+              <h2 className="text-sm font-black text-white tracking-[0.2em] uppercase">Quote Intelligence</h2>
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{isMeta ? 'META PLATFORMS CRM' : 'AGIVANT ARCHITECT'}</span>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2.5 bg-white/10 hover:bg-white/20 rounded-2xl transition-all text-white border border-white/20 hover:scale-110 active:scale-95"
+          >
+            <X size={20} strokeWidth={3} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
+          
+          {/* Quote Summary Section */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${themeColors.primary} text-white shadow-lg shadow-indigo-500/20`}>
+                <FileText size={18} />
+              </div>
+              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>General Information</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] group hover:border-indigo-500/40 transition-all`}>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-400 transition-colors">Identifier No.</div>
+                <div className="text-xl font-black text-[var(--text-main)] tracking-tight">{quote.QuoteNumber || '—'}</div>
+              </div>
+              <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] group hover:border-indigo-500/40 transition-all`}>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-400 transition-colors">Quote Specification</div>
+                <div className="text-xl font-black text-[var(--text-main)] tracking-tight">{quote.Name || '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Details Section */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${themeColors.primary} text-white shadow-lg shadow-indigo-500/20`}>
+                <Settings size={18} />
+              </div>
+              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Engagement Context</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-6">
+              <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} group hover:border-indigo-500/40 transition-all`}>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Account</div>
+                <div className="text-lg font-black text-[var(--text-main)] leading-tight">{quote.Account?.Name || '—'}</div>
+              </div>
+              <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} group hover:border-indigo-500/40 transition-all`}>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Opportunity</div>
+                <div className="text-lg font-black text-[var(--text-main)] leading-tight">{quote.Opportunity?.Name || '—'}</div>
+              </div>
+              <div className={`p-6 rounded-[1.5rem] bg-emerald-500/5 border border-emerald-500/20 group hover:border-emerald-500/40 transition-all`}>
+                <div className="text-[10px] font-black text-emerald-600/60 uppercase tracking-widest mb-2">Commencement Date</div>
+                <div className="text-lg font-black text-emerald-500 font-mono italic">
+                  {quote.StartDate || lines[0]?.StartDate || '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Products Section */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${themeColors.primary} text-white shadow-lg shadow-indigo-500/20`}>
+                <Layers size={18} />
+              </div>
+              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Inventory Allocation</h3>
+            </div>
+            <div className={`rounded-[2rem] border ${themeColors.border} overflow-hidden shadow-2xl bg-white/[0.01]`}>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className={`${themeColors.primary} text-white border-b border-white/10`}>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-left w-16">#</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-left">Product / SKU</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Period</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-right">Unit Value</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Units</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Incentive</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {lines.map((line, idx) => (
+                    <tr key={line.Id} className="hover:bg-white/[0.02] transition-all group">
+                      <td className="px-6 py-5 text-xs font-black text-slate-600">{idx + 1}</td>
+                      <td className="px-6 py-5">
+                        <div className={`text-sm font-black ${themeColors.text} group-hover:scale-[1.02] origin-left transition-transform`}>
+                          {line.Product2?.Name || '—'}
+                        </div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">
+                          {line.Product2?.ProductCode || 'SKU-00000'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 font-mono italic">
+                          <Calendar size={10} />
+                          {line.StartDate || '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="text-sm font-black text-[var(--text-main)]">${line.ListPrice?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="inline-block px-3 py-1 rounded-lg bg-slate-500/10 text-[12px] font-black text-[var(--text-main)]">
+                          {line.Quantity?.toFixed(0) || '1'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black ${line.Discount ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-500/5 text-slate-500 border border-white/5'}`}>
+                          {line.Discount ? <TrendingUp size={10} /> : null}
+                          {line.Discount ? `${line.Discount}% OFF` : 'STANDARD'}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-6 border-t border-white/10 flex justify-end bg-white/[0.02] backdrop-blur-2xl">
+          <button 
+            onClick={onClose} 
+            className={`group px-10 py-4 ${themeColors.primary} ${themeColors.primaryHover} text-white rounded-2xl text-xs font-black uppercase tracking-[0.25em] transition-all shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] hover:shadow-indigo-500/40 active:scale-95 flex items-center gap-3`}
+          >
+            <span>Finalize View</span>
+            <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform" />
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
 const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
@@ -716,6 +956,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [confirmedAccount, setConfirmedAccount] = useState(null); // string name (for badge)
   const [confirmedSelections, setConfirmedSelections] = useState([]); // history for right panel [{type, id, name, detail}]
   const [vaultHistory, setVaultHistory] = useState([]); // chronological feed [{type: 'products'|'selection'|'confirmed'|'quote', data, id}]
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const handleSuggestionClick = (text) => {
     setInputValue(text);
@@ -994,6 +1237,33 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
     return () => { if (ws.current) ws.current.close(); };
   }, []);
+
+  const handlePreview = async (quoteId) => {
+    console.log(`[PREVIEW] Triggered for ID: ${quoteId}`);
+    setLoadingPreview(true);
+    try {
+      const url = `${config.API_BASE_URL}/api/quote-preview/${quoteId}`;
+      console.log(`[PREVIEW] Fetching from: ${url}`);
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        throw new Error(`HTTP Error: ${resp.status}`);
+      }
+      const data = await resp.json();
+      console.log(`[PREVIEW] Received data:`, data);
+      if (data.status === 'success') {
+        setPreviewData(data);
+        setIsPreviewOpen(true);
+      } else {
+        console.error('Preview error:', data.message);
+        alert(`Salesforce Error: ${data.message}`);
+      }
+    } catch (err) {
+      console.error('Preview fetch error:', err);
+      alert(`Connection Error: ${err.message}. Make sure backend is running on ${config.API_BASE_URL}`);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
 
   // ── Send message ───────────────────────────────────────────
   const handleSend = (e) => {
@@ -1519,12 +1789,21 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                           </div>
                           <div className="border-t border-[var(--glass-border)] pt-3 flex items-center justify-between">
                             <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{q.status}</span>
-                            {q.sfLink && (
-                              <a href={q.sfLink} target="_blank" rel="noopener noreferrer"
-                                className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1 z-10 relative">
-                                Open in SF <ExternalLink size={9} />
-                              </a>
-                            )}
+                            <div className="flex items-center gap-4">
+                              <button 
+                                onClick={() => handlePreview(q.id)}
+                                disabled={loadingPreview}
+                                className="text-[8.5px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                              >
+                                {loadingPreview ? 'Loading...' : 'Preview'} <Eye size={11} />
+                              </button>
+                              {q.sfLink && (
+                                <a href={q.sfLink} target="_blank" rel="noopener noreferrer"
+                                  className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-colors flex items-center gap-1 z-10 relative">
+                                  Open in SF <ExternalLink size={10} />
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1560,6 +1839,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         </section>
 
       </div>
+      <QuotePreviewModal 
+        isOpen={isPreviewOpen} 
+        onClose={() => setIsPreviewOpen(false)} 
+        data={previewData} 
+      />
     </>
   );
 };
