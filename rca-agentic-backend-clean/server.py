@@ -691,7 +691,80 @@ def get_quote_preview(quote_id: str) -> str:
         print(f"[DEBUG] Unexpected error: {str(e)}")
         return json.dumps({"status": "error", "message": str(e)})
 
+
+@mcp.tool()
+def search_products(search_term: str, region: str = None, page_size: int = 15) -> str:
+    """
+    Searches Salesforce products by name or keyword using direct SOQL on the Product2 object.
+    Used internally by the parser tools (parse_transcript_to_requirements, parse_requirements_doc)
+    and as a reliable fallback when search_catalog returns empty results.
+
+    When to call: Use this whenever you need a simple keyword product lookup, or when
+    called internally from parser tools. If multiple products are returned, present them
+    to the user and ask which one to proceed with BEFORE creating a quote.
+
+    Args:
+        search_term: Product name or keyword to search for.
+        region: Optional region/entity name to filter by Family, ProductCode, or Name.
+        page_size: Maximum results to return. Default is 15.
+    """
+    headers, instance_url = get_salesforce_auth()
+
+    terms = search_term.replace('"', '').replace("'", '').split()
+    if not terms:
+        terms = [search_term]
+
+    conditions = [" AND ".join([f"Name LIKE '%{t}%'" for t in terms])]
+
+    if region:
+        conditions.append(
+            f"(Family = '{region}' OR ProductCode LIKE '%{region}%' OR Name LIKE '%{region}%')"
+        )
+
+    final_conditions = " AND ".join(f"({c})" for c in conditions)
+
+    query = f"""
+    SELECT Id, Name, ProductCode, Family, IsActive
+    FROM Product2
+    WHERE {final_conditions}
+    AND IsActive = true
+    LIMIT {page_size}
+    """
+
+    from urllib.parse import quote as url_quote
+    endpoint = f"{instance_url}/services/data/v65.0/query/?q={url_quote(query)}"
+
+    try:
+        response = requests.get(endpoint, headers=headers)
+    except Exception as e:
+        return f"Request Error: {str(e)}"
+
+    if response.status_code not in [200, 201]:
+        return f"Error: {response.status_code}\n{response.text}"
+
+    data = response.json()
+    results = []
+    for item in data.get("records", []):
+        results.append({
+            "name": item.get("Name", "Unknown Name"),
+            "id": item.get("Id", "Unknown ID"),
+            "code": item.get("ProductCode", "No Code"),
+            "category": item.get("Family", "General")
+        })
+
+    return json.dumps({
+        "status": "success",
+        "searchTerm": search_term,
+        "count": len(results),
+        "results": results,
+        "instruction": (
+            "If multiple products were found, present them to the user and ask which one "
+            "they want to select. If only one was found, ask for confirmation before "
+            "proceeding to pricing."
+        )
+    }, indent=2)
+
+
 if __name__ == "__main__":
     # Start the standard MCP stdio server
     mcp.run()
-

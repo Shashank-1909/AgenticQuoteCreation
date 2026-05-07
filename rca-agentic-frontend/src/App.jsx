@@ -166,7 +166,7 @@ const makeToolPath = (agentCx, agentBot, tp) =>
 // Short display names for tools
 const TOOL_LABELS = {
   check_field_values: 'Field Check',
-  search_catalog:     'Product Search',
+  search_catalog: 'Product Search',
   resolve_pricebook_entries: 'Pricebook',
   evaluate_quote_graph: 'CPQ Quote',
   get_my_accounts: 'Accounts',
@@ -185,7 +185,7 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect, scrollRef }) => {
     account: '#0064E0',
     opportunity: '#31A24C'
   };
-  const accentColor = config.theme === 'Meta' 
+  const accentColor = config.theme === 'Meta'
     ? (isOpp ? metaColors.opportunity : metaColors.account)
     : (isOpp ? '#fbbf24' : '#818cf8');
   return (
@@ -274,8 +274,8 @@ const NodeCard = ({
       background: 'var(--card-bg)',
       backgroundImage: isActive ? `linear-gradient(135deg, ${accentColor}11, transparent)` : 'none',
       border: `2px solid ${isActive ? accentColor
-          : isDone ? accentColor + '55'
-            : 'var(--glass-border)'
+        : isDone ? accentColor + '55'
+          : 'var(--glass-border)'
         }`,
       boxShadow: isActive
         ? `0 10px 40px -10px ${accentColor}80`
@@ -402,7 +402,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   //   - Agent just activated (no tools called yet), AND DM was the one who routed it.
   // Once the first tool fires, or if DM was bypassed (Turn 2+ quote flow), the line dims.
   const scoutHandoffActive = sActive && scout.tools.length === 0 && scout.routedByDm;
-  const archHandoffActive  = aActive && arch.tools.length  === 0 && arch.routedByDm;
+  const archHandoffActive = aActive && arch.tools.length === 0 && arch.routedByDm;
 
   const showScout = scout.state !== 'idle';
   const showArch = arch.state !== 'idle';
@@ -619,7 +619,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         <NodeCard
           label="Deal Manager" subLabel={cActive ? 'Routing…' : cDone ? 'Dispatched' : 'Coordinator'}
           icon={Network} w={DM_W} h={DM_H} borderRadius={16}
-          accentColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} 
+          accentColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'}
           glowColor={config.theme === 'Meta' ? 'rgba(0,100,224,0.5)' : 'rgba(99,102,241,0.5)'}
           isIdle={!cActive && !cDone} isActive={cActive} isDone={cDone}
         />
@@ -637,7 +637,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             label="Catalog Scout"
             subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={Search} w={SC.w} h={SC.h} borderRadius={16}
-            accentColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} 
+            accentColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'}
             glowColor={config.theme === 'Meta' ? 'rgba(0,129,251,0.5)' : 'rgba(6,182,212,0.5)'}
             isIdle={false} isActive={sActive} isDone={sDone}
           />
@@ -661,7 +661,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             label="Quote Architect"
             subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={FileText} w={AC.w} h={AC.h} borderRadius={16}
-            accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} 
+            accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'}
             glowColor={config.theme === 'Meta' ? 'rgba(49,162,76,0.5)' : 'rgba(245,158,11,0.5)'}
             isIdle={false} isActive={aActive} isDone={aDone}
           />
@@ -761,7 +761,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
 
   const quote = data.records?.[0] || {};
   const lines = quote.QuoteLineItems || [];
-  
+
   const isMeta = config.theme === 'Meta';
   const logoUrl = isMeta ? config.META_LOGO_URL : config.AGIVANT_LOGO_URL;
 
@@ -805,8 +805,13 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
 
   return (
     <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/60 modal-overlay ${isMeta ? 'meta-theme' : ''}`}>
+<<<<<<< Updated upstream
       <div className="bg-[var(--site-bg)] w-full max-w-[95vw] max-h-[95vh] rounded-[2rem] shadow-[0_0_80px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border border-white/10 relative">
         
+=======
+      <div className="bg-[var(--site-bg)] w-full max-w-6xl max-h-[95vh] rounded-[2rem] shadow-[0_0_80px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border border-white/10 relative">
+
+>>>>>>> Stashed changes
         {/* Dynamic Glows */}
         <div className={`absolute -top-32 -right-32 w-64 h-64 ${themeColors.glow} blur-[120px] pointer-events-none opacity-60`} />
         <div className={`absolute -bottom-32 -left-32 w-64 h-64 ${themeColors.glow} blur-[120px] pointer-events-none opacity-60`} />
@@ -815,7 +820,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
         <div className={`px-8 py-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r ${themeColors.accent} relative`}>
           {/* Subtle pattern overlay */}
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '16px 16px' }} />
-          
+
           <div className="flex items-center gap-5 relative z-10">
             <div className="p-2.5 rounded-2xl bg-white shadow-xl shadow-black/10">
               <img src={logoUrl} alt="Logo" className={isMeta ? "h-6" : "h-9"} />
@@ -826,8 +831,8 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
               <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{isMeta ? 'META PLATFORMS CRM' : 'AGIVANT ARCHITECT'}</span>
             </div>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-2.5 bg-white/10 hover:bg-white/20 rounded-2xl transition-all text-white border border-white/20 hover:scale-110 active:scale-95"
           >
             <X size={20} strokeWidth={3} />
@@ -836,7 +841,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
-          
+
           {/* Quote Summary Section */}
           <div className="space-y-5">
             <div className="flex items-center gap-3">
@@ -961,8 +966,8 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
 
         {/* Footer */}
         <div className="px-8 py-6 border-t border-white/10 flex justify-end bg-white/[0.02] backdrop-blur-2xl">
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className={`group px-10 py-4 ${themeColors.primary} ${themeColors.primaryHover} text-white rounded-2xl text-xs font-black uppercase tracking-[0.25em] transition-all shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] hover:shadow-indigo-500/40 active:scale-95 flex items-center gap-3`}
           >
             <span>Close</span>
@@ -993,6 +998,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  // ── File upload state ──────────────────────────────────────
+  const [uploadedFileText, setUploadedFileText] = useState(null);
+  const [uploadedFileName, setUploadedFileName] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleSuggestionClick = (text) => {
     setInputValue(text);
@@ -1222,14 +1232,14 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 // Regex scan the raw data string for the Quote ID (100% reliable)
                 const qIdMatch = data.data.match(/0Q0[a-zA-Z0-9]{12,15}/);
                 const qId = qIdMatch ? qIdMatch[0] : 'Generated';
-                
+
                 const inst = parsed.instance_url || 'https://login.salesforce.com';
-                const newQuote = { 
-                  id: qId, 
-                  status: 'Draft', 
-                  sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null 
+                const newQuote = {
+                  id: qId,
+                  status: 'Draft',
+                  sfLink: qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null
                 };
-                
+
                 // Append to list of quotes
                 const quoteItem = { type: 'quote', data: newQuote, id: Date.now() };
                 setQuotes(prev => [...prev, newQuote]);
@@ -1299,28 +1309,49 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     }
   };
 
+  // ── File upload handler ────────────────────────────────────
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setUploadedFileText(ev.target.result);
+      setUploadedFileName(file.name);
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset so same file can be re-uploaded
+  };
+
   // ── Send message ───────────────────────────────────────────
   const handleSend = (e) => {
     e.preventDefault();
     const text = inputValue.trim();
-    if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
+    if (!text && !uploadedFileText) return;
+    if (workflowState === 'orchestrating' || workflowState === 'executing') return;
 
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
+    // If a file was uploaded, send its content as the message
+    const messageText = uploadedFileText
+      ? `Parse this requirements document and create a quote:\n\n${uploadedFileText}`
+      : text;
+
+    setMessages(prev => [...prev, {
+      id: Date.now(), role: 'user',
+      content: uploadedFileName ? `📄 ${uploadedFileName}` : text
+    }]);
     setInputValue('');
+    setUploadedFileText(null);
+    setUploadedFileName(null);
 
-    // Trigger DM slide-up immediately on send
     if (!graphActive) setGraphActive(true);
-
-    // Reset orchestration only on a fresh session (idle state)
     if (workflowState === 'idle') {
       setResults([]); setQuotes([]); setOrchestration(INIT_ORCH);
       pendingResultsRef.current = null; setComposingReply(false);
     }
 
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(text);
+      ws.current.send(messageText);
     } else {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: 'Backend disconnected. Start main.py on port 8001.' }]);
+      setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: 'Backend disconnected.' }]);
     }
   };
 
@@ -1369,12 +1400,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   const handleCreateQuoteFromSelection = () => {
     if (selectedProducts.size === 0 || isBusy) return;
-    
+
     // Find selected products across all historical product lists
     const allProductsInHistory = vaultHistory
       .filter(item => item.type === 'products')
       .flatMap(item => item.data);
-      
+
     const selected = allProductsInHistory.filter(p => selectedProducts.has(p.id));
     const list = selected.map(p => `${p.name} (${p.sku})`).join(', ');
     const text = selected.length === 1
@@ -1412,23 +1443,23 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             <div className="flex items-center gap-3">
               {config.theme === 'Meta' ? (
                 <div className="flex items-center gap-3">
-                   <img src={config.META_LOGO_URL} alt="Meta" className="h-6 object-contain" />
-                   {leftWidth > 160 && (
-                     <div className="h-4 w-[1px] bg-slate-200 mx-1" />
-                   )}
-                   {leftWidth > 180 && (
-                     <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Connect</span>
-                   )}
+                  <img src={config.META_LOGO_URL} alt="Meta" className="h-6 object-contain" />
+                  {leftWidth > 160 && (
+                    <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+                  )}
+                  {leftWidth > 180 && (
+                    <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Connect</span>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                   <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-8 object-contain" />
-                   {leftWidth > 160 && (
-                     <div className="h-4 w-[1px] bg-slate-200 mx-1" />
-                   )}
-                   {leftWidth > 180 && (
-                     <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Control Center</span>
-                   )}
+                  <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-8 object-contain" />
+                  {leftWidth > 160 && (
+                    <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+                  )}
+                  {leftWidth > 180 && (
+                    <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Control Center</span>
+                  )}
                 </div>
               )}
             </div>
@@ -1447,8 +1478,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   </div>
                 </div>
                 <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${msg.role === 'user'
-                    ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)]'
-                    : 'glass-card text-[var(--text-main)] shadow-xl shadow-black/[0.02] border-slate-200/60 dark:border-white/5'}`}>
+                  ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-[0_12px_30px_-8px_rgba(79,70,229,0.3)]'
+                  : 'glass-card text-[var(--text-main)] shadow-xl shadow-black/[0.02] border-slate-200/60 dark:border-white/5'}`}>
                   {msg.content}
                 </div>
               </div>
@@ -1494,13 +1525,43 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
 
           <div className="p-6 bg-slate-500/[0.03] dark:bg-white/[0.02] border-t border-[var(--glass-border)]">
+            {/* File badge — shown when a file is loaded, cleared on send */}
+            {uploadedFileName && (
+              <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-500 uppercase tracking-widest">
+                <FileText size={10} />
+                <span className="truncate max-w-[160px]">{uploadedFileName}</span>
+                <button onClick={() => { setUploadedFileText(null); setUploadedFileName(null); }}
+                  className="ml-auto opacity-60 hover:opacity-100 transition-opacity">
+                  <X size={10} />
+                </button>
+              </div>
+            )}
             <form onSubmit={handleSend} className="group">
-              <div className="relative flex items-center">
+              <div className="relative flex items-center gap-2">
                 <div className="absolute inset-0 bg-indigo-500/5 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+
+                {/* ── File upload button ── */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.pdf,.doc,.docx,.md"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isBusy}
+                  title="Upload requirements document"
+                  className="shrink-0 p-2.5 rounded-xl border border-slate-200 dark:border-white/5 bg-[var(--site-bg)] text-slate-400 hover:text-indigo-500 hover:border-indigo-500/40 transition-all disabled:opacity-40 z-10"
+                >
+                  <FileText size={15} />
+                </button>
+
                 <input
                   type="text" value={inputValue}
                   onChange={e => setInputValue(e.target.value)}
-                  placeholder={leftWidth > 150 ? 'Send instruction…' : '…'}
+                  placeholder={uploadedFileName ? 'File ready — press send…' : (leftWidth > 150 ? 'Send instruction…' : '…')}
                   disabled={isBusy}
                   className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-6 pr-14 text-[11px] font-medium focus:border-indigo-500/50 outline-none text-[var(--text-main)] placeholder-slate-400 dark:placeholder-slate-800 transition-all z-10 shadow-inner"
                 />
@@ -1714,8 +1775,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                                 onClick={() => toggleProduct(prod.id)}
                                 title={prod.name}
                                 className={`flex items-center justify-between p-2.5 min-h-[46px] rounded-xl cursor-pointer transition-all select-none relative group border ${isSel
-                                    ? 'bg-gradient-to-br from-indigo-500/[0.08] to-indigo-500/[0.03] border-indigo-500/40 shadow-[0_2px_12px_rgba(99,102,241,0.08)]'
-                                    : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/10'
+                                  ? 'bg-gradient-to-br from-indigo-500/[0.08] to-indigo-500/[0.03] border-indigo-500/40 shadow-[0_2px_12px_rgba(99,102,241,0.08)]'
+                                  : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/10'
                                   }`}
                               >
                                 <div className="flex items-center gap-3.5 min-w-0">
@@ -1824,7 +1885,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                           <div className="border-t border-[var(--glass-border)] pt-3 flex items-center justify-between">
                             <span className="text-[8.5px] font-black text-[var(--text-muted)] uppercase tracking-widest tracking-[0.2em]">{q.status}</span>
                             <div className="flex items-center gap-4">
-                              <button 
+                              <button
                                 onClick={() => handlePreview(q.id)}
                                 disabled={loadingPreview}
                                 className="text-[8.5px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center gap-1.5 disabled:opacity-50"
@@ -1861,8 +1922,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 onClick={handleCreateQuoteFromSelection}
                 disabled={isBusy}
                 className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isBusy
-                    ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed'
-                    : 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
+                  ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'
                   }`}
               >
                 {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
@@ -1873,10 +1934,10 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         </section>
 
       </div>
-      <QuotePreviewModal 
-        isOpen={isPreviewOpen} 
-        onClose={() => setIsPreviewOpen(false)} 
-        data={previewData} 
+      <QuotePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        data={previewData}
       />
     </>
   );
