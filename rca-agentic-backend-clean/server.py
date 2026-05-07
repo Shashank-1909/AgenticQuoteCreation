@@ -59,7 +59,7 @@ def search_catalog(
     """
     headers, instance_url = get_salesforce_auth()
     
-    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?include=/products"
+    endpoint = f"{instance_url}/services/data/v66.0/connect/pcm/products?include=/products"
     
     criteria = []
     if filters:
@@ -190,7 +190,7 @@ def get_picklist_values(field_api_name: str) -> str:
     headers, instance_url = get_salesforce_auth()
     
     # Use Master record type '012000000000000AAA'
-    endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA/{field_api_name}"
+    endpoint = f"{instance_url}/services/data/v66.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA/{field_api_name}"
     
     try:
         response = requests.get(endpoint, headers=headers)
@@ -278,7 +278,7 @@ def check_field_values(candidates: list[str]) -> str:
                         valid_fields.add(name)
             
             # Step 2: Query the UI API strictly for all Picklist values on Product2
-            ui_endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA"
+            ui_endpoint = f"{instance_url}/services/data/v66.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA"
             ui_resp = requests.get(ui_endpoint, headers=headers)
             if ui_resp.status_code == 200:
                 picklist_field_values = ui_resp.json().get("picklistFieldValues", {})
@@ -355,7 +355,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
     query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
     
     from urllib.parse import quote
-    endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
+    endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
     
     try:
         response = requests.get(endpoint, headers=headers)
@@ -599,7 +599,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         }
     }
 
-    endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
+    endpoint = f"{instance_url}/services/data/v66.0/connect/rev/sales-transaction/actions/place"
 
     import json
     try:
