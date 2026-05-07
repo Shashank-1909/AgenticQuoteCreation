@@ -340,8 +340,10 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         product_ids: List of Product2 IDs obtained from product search results.
                      Do not fabricate IDs — use only what the search tools returned.
 
-    After calling: Use the returned PricebookEntryId and UnitPrice values to construct
-                   the line items for the quote graph submission tool.
+    After calling: 
+        1. Extract the top-level 'pricebook_id' and pass it to evaluate_quote_graph.
+        2. Use the returned PricebookEntryId and UnitPrice values to construct
+           the line items for the quote graph submission tool.
     """
     headers, instance_url = get_salesforce_auth()
     
@@ -350,7 +352,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
     
     from urllib.parse import quote
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
@@ -375,9 +377,12 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
             "UnitPrice": r.get("UnitPrice")
         })
         
+    standard_pricebook_id = results[0]["Pricebook2Id"] if results else ""
+
     import json
     return json.dumps({
         "status": "success",
+        "pricebook_id": standard_pricebook_id,
         "resolved_entries": results
     }, indent=2)
 
@@ -501,7 +506,7 @@ def get_opportunities_for_account(account_id: str) -> str:
 
 
 @mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01shg0000005XcrAAE") -> str:
+def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -511,11 +516,11 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
     reject the request. If you get a validation error, read it carefully and fix the payload.
 
     Args:
+        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
+                      MUST be provided. You receive this from resolve_pricebook_entries.
         opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
                         Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
                         If not provided, the quote will be created without an Opportunity link.
-        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
-                      Defaults to the standard pricebook if not specified.
         line_items: One dict per product, each containing:
                     - Product2Id (from search results)
                     - PricebookEntryId (from pricebook resolution tool)
