@@ -765,15 +765,34 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
   const isMeta = config.theme === 'Meta';
   const logoUrl = isMeta ? config.META_LOGO_URL : config.AGIVANT_LOGO_URL;
 
+  // Calculate totals
+  const totalCommitmentValue = quote.GrandTotal || 0;
+  const totalListPrice = lines.reduce((acc, line) => acc + (line.ListPrice * line.Quantity), 0);
+  const totalIncentives = totalListPrice - totalCommitmentValue;
+  
+  // Calculate commitment period (approximate in months)
+  let commitmentPeriod = '—';
+  if (quote.StartDate && quote.ExpirationDate) {
+    const start = new Date(quote.StartDate);
+    const end = new Date(quote.ExpirationDate);
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    commitmentPeriod = months > 0 ? months : 12; // Fallback to 12 if calculation is weird
+  } else if (lines.length > 0 && lines[0].StartDate && lines[0].EndDate) {
+    const start = new Date(lines[0].StartDate);
+    const end = new Date(lines[0].EndDate);
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    commitmentPeriod = months > 0 ? months : 12;
+  }
+
   // Theme-specific colors
   const themeColors = isMeta ? {
-    primary: 'bg-[#0064E0]',
-    primaryHover: 'hover:bg-[#0051B8]',
-    text: 'text-[#0064E0]',
-    bgTint: 'bg-[#0064E0]/5',
-    border: 'border-[#0064E0]/20',
-    accent: 'from-[#0064E0] to-[#0081FB]',
-    glow: 'bg-[#0064E0]/20'
+    primary: 'bg-[#0084FF]',
+    primaryHover: 'hover:bg-[#0073E6]',
+    text: 'text-[#0084FF]',
+    bgTint: 'bg-[#0084FF]/5',
+    border: 'border-[#0084FF]/20',
+    accent: 'from-[#0084FF] to-[#00C6FF]',
+    glow: 'bg-[#0084FF]/20'
   } : {
     primary: 'bg-indigo-600',
     primaryHover: 'hover:bg-indigo-500',
@@ -786,7 +805,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
 
   return (
     <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/60 modal-overlay ${isMeta ? 'meta-theme' : ''}`}>
-      <div className="bg-[var(--site-bg)] w-full max-w-6xl max-h-[95vh] rounded-[2rem] shadow-[0_0_80px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border border-white/10 relative">
+      <div className="bg-[var(--site-bg)] w-full max-w-[95vw] max-h-[95vh] rounded-[2rem] shadow-[0_0_80px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col border border-white/10 relative">
         
         {/* Dynamic Glows */}
         <div className={`absolute -top-32 -right-32 w-64 h-64 ${themeColors.glow} blur-[120px] pointer-events-none opacity-60`} />
@@ -824,15 +843,15 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
               <div className={`p-2 rounded-xl ${themeColors.primary} text-white shadow-lg shadow-indigo-500/20`}>
                 <FileText size={18} />
               </div>
-              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>General Information</h3>
+              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Quote Summary</h3>
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] group hover:border-indigo-500/40 transition-all`}>
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-400 transition-colors">Identifier No.</div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-400 transition-colors">Quote Number</div>
                 <div className="text-xl font-black text-[var(--text-main)] tracking-tight">{quote.QuoteNumber || '—'}</div>
               </div>
               <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] group hover:border-indigo-500/40 transition-all`}>
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-400 transition-colors">Quote Specification</div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-400 transition-colors">Quote Name</div>
                 <div className="text-xl font-black text-[var(--text-main)] tracking-tight">{quote.Name || '—'}</div>
               </div>
             </div>
@@ -844,23 +863,32 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
               <div className={`p-2 rounded-xl ${themeColors.primary} text-white shadow-lg shadow-indigo-500/20`}>
                 <Settings size={18} />
               </div>
-              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Engagement Context</h3>
+              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Details</h3>
             </div>
-            <div className="grid grid-cols-3 gap-6">
-              <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} group hover:border-indigo-500/40 transition-all`}>
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Account</div>
-                <div className="text-lg font-black text-[var(--text-main)] leading-tight">{quote.Account?.Name || '—'}</div>
+            <div className="grid grid-cols-5 gap-4">
+              <div className={`p-4 rounded-xl ${themeColors.bgTint} border ${themeColors.border} group transition-all`}>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Customer Name</div>
+                <div className="text-xs font-black text-[var(--text-main)] leading-tight">{quote.Account?.Name || '—'}</div>
               </div>
-              <div className={`p-6 rounded-[1.5rem] ${themeColors.bgTint} border ${themeColors.border} group hover:border-indigo-500/40 transition-all`}>
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Opportunity</div>
-                <div className="text-lg font-black text-[var(--text-main)] leading-tight">{quote.Opportunity?.Name || '—'}</div>
+              <div className={`p-4 rounded-xl ${themeColors.bgTint} border ${themeColors.border} group transition-all`}>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Opportunity Name</div>
+                <div className="text-xs font-black text-[var(--text-main)] leading-tight">{quote.Opportunity?.Name || '—'}</div>
               </div>
-              <div className={`p-6 rounded-[1.5rem] bg-emerald-500/5 border border-emerald-500/20 group hover:border-emerald-500/40 transition-all`}>
-                <div className="text-[10px] font-black text-emerald-600/60 uppercase tracking-widest mb-2">Commencement Date</div>
-                <div className="text-lg font-black text-emerald-500 font-mono italic">
+              <div className={`p-4 rounded-xl ${themeColors.bgTint} border ${themeColors.border} group transition-all`}>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Quote Start Date</div>
+                <div className="text-xs font-black text-[var(--text-main)] leading-tight">
                   {quote.StartDate || lines[0]?.StartDate || '—'}
                 </div>
               </div>
+              <div className={`p-4 rounded-xl ${themeColors.bgTint} border ${themeColors.border} group transition-all`}>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Total Contract Period (M)</div>
+                <div className="text-sm font-black text-[var(--text-main)] text-center">-</div>
+              </div>
+              <div className={`p-4 rounded-xl ${themeColors.bgTint} border ${themeColors.border} group transition-all`}>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-right">Total Commitment Value</div>
+                <div className="text-sm font-black text-[var(--text-main)] text-right">-</div>
+              </div>
+             
             </div>
           </div>
 
@@ -870,18 +898,20 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
               <div className={`p-2 rounded-xl ${themeColors.primary} text-white shadow-lg shadow-indigo-500/20`}>
                 <Layers size={18} />
               </div>
-              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Inventory Allocation</h3>
+              <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${themeColors.text}`}>Product Configuration</h3>
             </div>
             <div className={`rounded-[2rem] border ${themeColors.border} overflow-hidden shadow-2xl bg-white/[0.01]`}>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className={`${themeColors.primary} text-white border-b border-white/10`}>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-left w-16">#</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-left">Product / SKU</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Period</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-right">Unit Value</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Units</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Incentive</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-left">Product Name</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Start Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">End Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">List Price</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Quantity</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Discount (%)</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/80 text-center">Discounted Price</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -892,18 +922,20 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                         <div className={`text-sm font-black ${themeColors.text} group-hover:scale-[1.02] origin-left transition-transform`}>
                           {line.Product2?.Name || '—'}
                         </div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">
-                          {line.Product2?.ProductCode || 'SKU-00000'}
-                        </div>
+                      
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 font-mono italic">
-                          <Calendar size={10} />
+                        <div className="text-[10px] font-bold text-slate-400 font-mono italic whitespace-nowrap">
                           {line.StartDate || '—'}
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-right">
-                        <div className="text-sm font-black text-[var(--text-main)]">${line.ListPrice?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                      <td className="px-6 py-5 text-center">
+                        <div className="text-[10px] font-bold text-slate-400 font-mono italic whitespace-nowrap">
+                          {line.EndDate || '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="text-sm font-black text-[var(--text-main)]">${(line.ListPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                       </td>
                       <td className="px-6 py-5 text-center">
                         <div className="inline-block px-3 py-1 rounded-lg bg-slate-500/10 text-[12px] font-black text-[var(--text-main)]">
@@ -912,9 +944,11 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                       </td>
                       <td className="px-6 py-5 text-center">
                         <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black ${line.Discount ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-500/5 text-slate-500 border border-white/5'}`}>
-                          {line.Discount ? <TrendingUp size={10} /> : null}
-                          {line.Discount ? `${line.Discount}% OFF` : 'STANDARD'}
+                          {line.Discount ? `${line.Discount}%` : '0%'}
                         </div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="text-sm font-black text-indigo-400">0%</div>
                       </td>
                     </tr>
                   ))}
@@ -931,7 +965,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
             onClick={onClose} 
             className={`group px-10 py-4 ${themeColors.primary} ${themeColors.primaryHover} text-white rounded-2xl text-xs font-black uppercase tracking-[0.25em] transition-all shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] hover:shadow-indigo-500/40 active:scale-95 flex items-center gap-3`}
           >
-            <span>Finalize View</span>
+            <span>Close</span>
             <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform" />
           </button>
         </div>

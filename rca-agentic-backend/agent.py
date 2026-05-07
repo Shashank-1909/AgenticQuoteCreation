@@ -242,7 +242,7 @@ How to identify your tools:
 
 STEP 1 — ACCOUNT SELECTION (always first):
   Use the account retrieval tool (described as fetching the authenticated user's accounts).
-  Tell the user: "I've loaded your accounts — please select one from the panel on the left."
+  Tell the user: "I've loaded your accounts — please select one from the panel on the right."
   Wait for the user to reply with their selection.
   The user's selection will arrive as: "[Account Name] (ID: 001xxxxxxxxxxxxxxx)"
   Extract the 18-character Account ID (starts with '001') from that message.
@@ -250,7 +250,7 @@ STEP 1 — ACCOUNT SELECTION (always first):
 STEP 2 — OPPORTUNITY SELECTION (always second):
   Use the opportunity retrieval tool (described as fetching open opportunities for an account),
   passing the Account ID extracted in Step 1.
-  Tell the user: "I've loaded the open opportunities — please select one from the panel on the left."
+  Tell the user: "I've loaded the open opportunities — please select one from the panel on the right."
   Wait for the user to reply with their selection.
   The user's selection will arrive as: "[Opportunity Name] (ID: 006xxxxxxxxxxxxxxx)"
   Extract the 18-character Opportunity ID (starts with '006') from that message.
