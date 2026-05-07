@@ -25,8 +25,8 @@ USER_ID:           str   = "dev"
 MODEL_NAME:        str   = "gemini-2.5-pro"
 SERVER_PORT:       int   = 8001
 MCP_TIMEOUT:       float = 60.0
-#MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
-MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server_v1.py")
+MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
+# MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server_v1.py")
 # ---------------------------------------------------------------------------
 # Tool names — referenced in event-routing logic.
 # These match the function names in server.py exactly.
