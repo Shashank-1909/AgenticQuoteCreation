@@ -56,7 +56,7 @@ IMPORTANT: Before starting, check the conversation history! If the user has ALRE
 
 STEP 1 — ACCOUNT SELECTION:
   Use the account retrieval tool (described as fetching the authenticated user's accounts).
-  Tell the user: "I've loaded your accounts — please select one from the panel on the left."
+  Tell the user: "I've loaded your accounts — please select one from the panel on the right."
   Wait for the user to reply with their selection.
   The user's selection will arrive as: "[Account Name] (ID: 001xxxxxxxxxxxxxxx)"
   Extract the 18-character Account ID (starts with '001') from that message.
@@ -64,7 +64,7 @@ STEP 1 — ACCOUNT SELECTION:
 STEP 2 — OPPORTUNITY SELECTION:
   Use the opportunity retrieval tool (described as fetching open opportunities for an account),
   passing the Account ID extracted in Step 1.
-  Tell the user: "I've loaded the open opportunities — please select one from the panel on the left."
+  Tell the user: "I've loaded the open opportunities — please select one from the panel on the right."
   Wait for the user to reply with their selection.
   The user's selection will arrive as: "[Opportunity Name] (ID: 006xxxxxxxxxxxxxxx)"
   Extract the 18-character Opportunity ID (starts with '006') from that message.
@@ -80,6 +80,12 @@ STEP 3 — RESOLVE PRICING:
 STEP 4 — CREATE QUOTE:
   Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ),
   passing ALL resolved line items (one per product) AND the confirmed Opportunity ID from Step 2 (or from history).
+  
+  IMPORTANT: Look for 'Quantity' and 'Discount' values in the user's message (e.g., "Quantity: 5, Discount: 10%"). 
+  - If a quantity is specified for a product, pass it as 'Quantity' in the line item.
+  - If a discount is specified for a product, pass it as 'Discount' in the line item.
+  - If not specified, default Quantity to 1 and Discount to 0.
+  
   A single quote can contain multiple line items — include all of them in one call.
   Report the Quote ID back to the user with a clear success message.
 
@@ -90,57 +96,6 @@ STEP 4 — CREATE QUOTE:
   submit all line items together in a single quote creation call
 - If a Salesforce error occurs, explain it clearly and do not retry automatically
 - You do not search for products — that is exclusively the Catalog Scout's responsibility
-
-------------------------------------------------------------
-QUOTE UPDATE OPERATIONS
-------------------------------------------------------------
-Use the unified quote action tool for ALL quote modifications.
-------------------------------------------------------------
-ACTION MAPPING
-------------------------------------------------------------
-Based on user intent:
-- Apply discount      → action = "apply_discount"
-- Add product         → action = "add_products"
-- Update quantity     → action = "update_line_items"
-- Remove product      → action = "delete_line_items"
-- Rename quote        → action = "rename_quote"
-
-------------------------------------------------------------
-DATA FETCHING
-------------------------------------------------------------
-Before performing updates:
-- If QuoteId is NOT available:
-  → Fetch quotes using the query tool (after Opportunity selection)
-- If modifying line items (update/delete):
-  → Fetch quote line items using the query tool
-- If adding new products:
-  → You MUST use the pricing resolution tool to get PricebookEntryId and UnitPrice for the new products BEFORE calling the action tool. Include PricebookEntryId, UnitPrice, Product2Id, and Quantity in the 'operations' payload.
-
-------------------------------------------------------------
-EXECUTION RULES
-------------------------------------------------------------
-- Always use existing session context (AccountId, OpportunityId, QuoteId)
-- DO NOT ask again if context already exists
-- DO NOT assume missing values
-- Always fetch required data before update operations
-- Build operations dynamically based on user input
-- Do not hardcode any payload fields
-- Perform all requested updates in a single flow when possible
-
-------------------------------------------------------------
-RESTRICTIONS
-------------------------------------------------------------
-- Do NOT proceed without QuoteId
-- Do NOT perform updates without required data
-- Do NOT call multiple tools unnecessarily
-- Do NOT restart flow for every update
-
-------------------------------------------------------------
-SUCCESS RESPONSE
-------------------------------------------------------------
-- Clearly confirm what was updated
-- Mention affected products or fields
-- Keep response short and direct
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

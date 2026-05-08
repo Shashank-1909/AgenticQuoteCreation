@@ -613,105 +613,255 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
     }, indent=2)
 
 @mcp.tool()
-def quote_query_tool(opportunity_id: str = None, quote_id: str = None) -> str:
-    """
-    Fetch quotes OR quote details.
-
-    - If opportunity_id → returns quotes
-    - If quote_id → returns line items
-    """
-
-    import requests, json, re
+def update_quote_discount(quote_id: str, discount: float) -> str:
+    import requests as _requests
+    import json as _json
+    import time as _time
+    from urllib.parse import quote as _url_quote
 
     headers, instance_url = get_salesforce_auth()
 
-    if opportunity_id:
-        opp = re.search(r'(006[A-Za-z0-9]{15})', opportunity_id)
-        opp_id = opp.group(1) if opp else opportunity_id
+    if not quote_id or not quote_id.strip():
+        return _json.dumps({"status": "error", "message": "quote_id is required."}, indent=2)
 
-        query = f"""
-        SELECT Id, Name, Status, GrandTotal
-        FROM Quote
-        WHERE OpportunityId = '{opp_id}'
-        ORDER BY LastModifiedDate DESC
-        """
+    if discount is None:
+        return _json.dumps({"status": "error", "message": "discount is required."}, indent=2)
 
-        res = requests.get(
-            f"{instance_url}/services/data/v59.0/query",
-            headers=headers,
-            params={"q": query}
-        )
+    try:
+        discount_value = float(discount)
+    except (TypeError, ValueError):
+        return _json.dumps({"status": "error", "message": "discount must be a number."}, indent=2)
 
-        return json.dumps(res.json())
+    if discount_value < 0 or discount_value > 100:
+        return _json.dumps({"status": "error", "message": "discount must be between 0 and 100."}, indent=2)
 
-    if quote_id:
-        q = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
-        q_id = q.group(1) if q else quote_id
+    query = f"SELECT Id FROM QuoteLineItem WHERE QuoteId = '{quote_id}'"
+    query_endpoint = f"{instance_url}/services/data/v65.0/query/?q={_url_quote(query)}"
 
-        query = f"""
-        SELECT Id, Product2Id, Quantity, UnitPrice, Discount
-        FROM QuoteLineItem
-        WHERE QuoteId = '{q_id}'
-        """
+    line_item_ids = []
+    last_query_error = None
+    for _ in range(4):
+        try:
+            query_res = _requests.get(query_endpoint, headers=headers, timeout=30)
+        except Exception as exc:
+            last_query_error = str(exc)
+            _time.sleep(2)
+            continue
 
-        res = requests.get(
-            f"{instance_url}/services/data/v59.0/query",
-            headers=headers,
-            params={"q": query}
-        )
+        if query_res.status_code != 200:
+            last_query_error = f"Salesforce query failed ({query_res.status_code}): {query_res.text}"
+            _time.sleep(2)
+            continue
 
-        return json.dumps(res.json())
+        query_data = query_res.json()
+        line_item_ids = [row.get("Id") for row in query_data.get("records", []) if row.get("Id")]
+        if line_item_ids:
+            break
+        _time.sleep(2)
 
-    return json.dumps({"status": "error", "message": "Provide opportunity_id or quote_id"})
+    if not line_item_ids:
+        if last_query_error:
+            return _json.dumps({"status": "error", "message": last_query_error}, indent=2)
+        return _json.dumps({
+            "status": "error",
+            "message": f"No QuoteLineItem records found for quote_id '{quote_id}'."
+        }, indent=2)
+
+    graph_records = [
+        {
+            "referenceId": "refQuote",
+            "record": {
+                "attributes": {
+                    "method": "PATCH",
+                    "type": "Quote",
+                    "id": quote_id
+                }
+            }
+        }
+    ]
+
+    for idx, line_item_id in enumerate(line_item_ids, start=1):
+        graph_records.append({
+            "referenceId": f"updateLine{idx}",
+            "record": {
+                "attributes": {
+                    "method": "PATCH",
+                    "type": "QuoteLineItem",
+                    "id": line_item_id
+                },
+                "Discount": discount_value
+            }
+        })
+
+    payload = {
+        "pricingPref": "System",
+        "catalogRatesPref": "Skip",
+        "configurationPref": {
+            "configurationMethod": "Skip"
+        },
+        "taxPref": "Skip",
+        "graph": {
+            "graphId": "updateDiscountOnly",
+            "records": graph_records
+        }
+    }
+
+    endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
+    try:
+        update_res = _requests.post(endpoint, headers=headers, json=payload, timeout=60)
+    except Exception as exc:
+        return _json.dumps({
+            "status": "error",
+            "message": "Failed to call Salesforce Graph API.",
+            "details": str(exc)
+        }, indent=2)
+
+    if update_res.status_code not in [200, 201]:
+        return _json.dumps({
+            "status": "error",
+            "message": f"Salesforce Graph API error ({update_res.status_code}).",
+            "details": update_res.text
+        }, indent=2)
+
+    try:
+        response_body = update_res.json()
+    except Exception:
+        response_body = {"raw_response": update_res.text}
+
+    return _json.dumps({
+        "status": "success",
+        "quote_id": quote_id,
+        "discount_applied": discount_value,
+        "line_items_updated": len(line_item_ids),
+        "salesforce_response": response_body
+    }, indent=2)
 
 @mcp.tool()
-def quote_action_tool(
-    quote_id: str,
-    action: str,
-    operations: list[dict] = None,
-    discount: float = None,
-    new_name: str = None
-) -> str:
+def get_quotes_for_opportunity(opportunity_id: str) -> str:
     """
-    Unified tool for all quote modification operations.
-
-    Supported actions:
-    - "add_products"
-    - "update_line_items"
-    - "delete_line_items"
-    - "apply_discount"
-    - "rename_quote"
-
-    Rules:
-    - Uses Graph API for line item operations
-    - Uses REST PATCH for rename
+    Fetches Salesforce quotes associated with a specific Opportunity ID.
+    Call this tool after an opportunity has been selected to show available quotes.
     """
+    import re
+    match = re.search(r'(006[A-Za-z0-9]{15})', opportunity_id)
+    clean_id = match.group(1) if match else opportunity_id.strip()
 
-    import re, requests, json
+    headers, instance_url = get_salesforce_auth()
+    import requests, json
 
+    query = (
+        f"SELECT Id, Name, Status, GrandTotal FROM Quote "
+        f"WHERE OpportunityId = '{clean_id}' "
+        f"ORDER BY LastModifiedDate DESC LIMIT 20"
+    )
+    resp = requests.get(
+        f"{instance_url}/services/data/v59.0/query",
+        headers=headers,
+        params={"q": query}
+    )
+    if resp.status_code != 200:
+        return json.dumps({"error": resp.text, "quotes": []})
+
+    quotes = []
+    for rec in resp.json().get("records", []):
+        total = rec.get("GrandTotal")
+        total_str = f"${total:,.2f}" if total is not None else "—"
+        quotes.append({
+            "id": rec["Id"],
+            "name": rec["Name"],
+            "status": rec.get("Status", ""),
+            "total": total_str,
+            "detail": f"{rec.get('Status', '')} | {total_str}"
+        })
+
+    return json.dumps({
+        "action": "QUOTE_SELECTION",
+        "quotes": quotes,
+        "count": len(quotes),
+        "message": f"Found {len(quotes)} quotes. Waiting for user selection."
+    })
+
+@mcp.tool()
+def get_quote_details(quote_id: str) -> str:
+    """
+    Fetches the quote line items for a specific quote.
+    Call this after a user has selected a quote to modify.
+    """
+    import re
     match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
     clean_id = match.group(1) if match else quote_id.strip()
 
     headers, instance_url = get_salesforce_auth()
+    import requests, json
 
-    # ---------------------------
-    # RENAME QUOTE (REST PATCH)
-    # ---------------------------
-    if action == "rename_quote":
-        if not new_name:
-            return json.dumps({"status": "error", "message": "new_name required"})
+    query = (
+        f"SELECT Id, Product2.Name, Product2Id, Quantity, UnitPrice, Discount, TotalPrice "
+        f"FROM QuoteLineItem WHERE QuoteId = '{clean_id}'"
+    )
+    resp = requests.get(
+        f"{instance_url}/services/data/v59.0/query",
+        headers=headers,
+        params={"q": query}
+    )
+    if resp.status_code != 200:
+        return json.dumps({"error": resp.text, "line_items": []})
 
-        endpoint = f"{instance_url}/services/data/v59.0/sobjects/Quote/{clean_id}"
-        resp = requests.patch(endpoint, headers=headers, json={"Name": new_name})
+    items = []
+    for rec in resp.json().get("records", []):
+        items.append({
+            "Id": rec["Id"],
+            "Product2Id": rec.get("Product2Id"),
+            "ProductName": rec.get("Product2") and rec["Product2"].get("Name"),
+            "Quantity": rec.get("Quantity"),
+            "UnitPrice": rec.get("UnitPrice"),
+            "Discount": rec.get("Discount"),
+            "TotalPrice": rec.get("TotalPrice")
+        })
 
-        if resp.status_code in [200, 204]:
-            return json.dumps({"status": "success", "message": "Quote renamed"})
-        else:
-            return json.dumps({"status": "error", "error": resp.text})
+    return json.dumps({
+        "status": "success",
+        "quote_id": clean_id,
+        "line_items": items,
+        "count": len(items)
+    }, indent=2)
 
-    # ---------------------------
-    # GRAPH OPERATIONS
-    # ---------------------------
+@mcp.tool()
+def rename_quote(quote_id: str, new_name: str) -> str:
+    """
+    Renames a quote using REST PATCH.
+    """
+    import re
+    match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
+    clean_id = match.group(1) if match else quote_id.strip()
+
+    headers, instance_url = get_salesforce_auth()
+    import requests, json
+    endpoint = f"{instance_url}/services/data/v59.0/sobjects/Quote/{clean_id}"
+    payload = {"Name": new_name}
+    
+    resp = requests.patch(endpoint, headers=headers, json=payload)
+    if resp.status_code in [200, 204]:
+        return json.dumps({"status": "success", "message": f"Quote renamed to '{new_name}'"})
+    else:
+        return json.dumps({"status": "error", "error": resp.text})
+
+@mcp.tool()
+def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
+    """
+    Use Graph API for: add / update / delete line items.
+    operations should be a list of dicts.
+    Each dict must have 'method' (POST, PATCH, DELETE).
+    If PATCH or DELETE, must have 'id' (QuoteLineItem Id).
+    If POST, must have 'Product2Id', 'PricebookEntryId', 'Quantity', 'UnitPrice'.
+    Optional properties like 'Discount' can be added for POST/PATCH.
+    """
+    import re
+    match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
+    clean_id = match.group(1) if match else quote_id.strip()
+
+    headers, instance_url = get_salesforce_auth()
+    import requests, json
+
     graph_records = [
         {
             "referenceId": "refQuote",
@@ -725,76 +875,29 @@ def quote_action_tool(
         }
     ]
 
-    # APPLY DISCOUNT (ALL LINE ITEMS)
-    if action == "apply_discount":
-        if discount is None:
-            return json.dumps({"status": "error", "message": "discount required"})
-
-        query = f"SELECT Id FROM QuoteLineItem WHERE QuoteId = '{clean_id}'"
-        from urllib.parse import quote as url_quote
-
-        query_endpoint = f"{instance_url}/services/data/v65.0/query/?q={url_quote(query)}"
-        res = requests.get(query_endpoint, headers=headers)
-
-        if res.status_code != 200:
-            return json.dumps({"status": "error", "error": res.text})
-
-        line_items = res.json().get("records", [])
-
-        for i, li in enumerate(line_items):
-            graph_records.append({
-                "referenceId": f"disc{i}",
-                "record": {
-                    "attributes": {
-                        "method": "PATCH",
-                        "type": "QuoteLineItem",
-                        "id": li["Id"]
-                    },
-                    "Discount": float(discount)
-                }
-            })
-
-    # ADD / UPDATE / DELETE LINE ITEMS
-    elif action in ["add_products", "update_line_items", "delete_line_items"]:
-        if not operations:
-            return json.dumps({"status": "error", "message": "operations required"})
-
-        for idx, op in enumerate(operations):
-            method = op.get("method", "PATCH").upper()
-
-            record = {
-                "attributes": {
-                    "method": method,
-                    "type": "QuoteLineItem"
-                }
-            }
-
-            if method in ["PATCH", "DELETE"]:
-                if not op.get("id"):
-                    return json.dumps({"status": "error", "message": "id required"})
-                record["attributes"]["id"] = op["id"]
-
-            if method == "POST":
-                record["QuoteId"] = clean_id
-                record.setdefault("PeriodBoundary", "Anniversary")
-                record.setdefault("BillingFrequency", "Annual")
-                record.setdefault("StartDate", "2025-01-01")
-                record.setdefault("EndDate", "2026-01-01")
-
-            for k, v in op.items():
-                if k.lower() not in ["method", "id"]:
-                    record[k] = v
-
-            if method == "POST" and ("Product2Id" not in record or "PricebookEntryId" not in record):
-                return json.dumps({"status": "error", "message": "CRITICAL: Adding products requires both Product2Id and PricebookEntryId. Did you resolve pricing first?"})
-
-            graph_records.append({
-                "referenceId": f"op{idx}",
-                "record": record
-            })
-
-    else:
-        return json.dumps({"status": "error", "message": "Invalid action"})
+    for idx, op in enumerate(operations):
+        method = op.get("method", "PATCH").upper()
+        record_attrs = {"method": method, "type": "QuoteLineItem"}
+        
+        if method in ["PATCH", "DELETE"]:
+            line_id = op.get("id") or op.get("Id")
+            if not line_id:
+                return json.dumps({"status": "error", "message": f"Missing 'id' for {method} operation."})
+            record_attrs["id"] = line_id
+            
+        record_item = {"attributes": record_attrs}
+        
+        if method == "POST":
+            record_item["QuoteId"] = clean_id
+            
+        for k, v in op.items():
+            if k.lower() not in ["method", "id", "type"]:
+                record_item[k] = v
+                
+        graph_records.append({
+            "referenceId": f"opLine{idx}",
+            "record": record_item
+        })
 
     payload = {
         "pricingPref": "System",
@@ -802,23 +905,23 @@ def quote_action_tool(
         "configurationPref": {"configurationMethod": "Skip"},
         "taxPref": "Skip",
         "graph": {
-            "graphId": "quoteActions",
+            "graphId": "manageLineItems",
             "records": graph_records
         }
     }
 
     endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
     resp = requests.post(endpoint, headers=headers, json=payload)
-
+    
     if resp.status_code not in [200, 201]:
         return json.dumps({"status": "error", "error": resp.text})
-
+        
     return json.dumps({
         "status": "success",
-        "action": action,
-        "message": "Operation completed",
-        "response": resp.json()
+        "message": "Operations executed successfully",
+        "salesforce_response": resp.json()
     }, indent=2)
+
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

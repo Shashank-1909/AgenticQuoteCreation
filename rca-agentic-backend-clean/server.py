@@ -340,8 +340,10 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         product_ids: List of Product2 IDs obtained from product search results.
                      Do not fabricate IDs — use only what the search tools returned.
 
-    After calling: Use the returned PricebookEntryId and UnitPrice values to construct
-                   the line items for the quote graph submission tool.
+    After calling: 
+        1. Extract the top-level 'pricebook_id' and pass it to evaluate_quote_graph.
+        2. Use the returned PricebookEntryId and UnitPrice values to construct
+           the line items for the quote graph submission tool.
     """
     headers, instance_url = get_salesforce_auth()
     
@@ -350,7 +352,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
     
     from urllib.parse import quote
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
@@ -375,9 +377,12 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
             "UnitPrice": r.get("UnitPrice")
         })
         
+    standard_pricebook_id = results[0]["Pricebook2Id"] if results else ""
+
     import json
     return json.dumps({
         "status": "success",
+        "pricebook_id": standard_pricebook_id,
         "resolved_entries": results
     }, indent=2)
 
@@ -501,7 +506,7 @@ def get_opportunities_for_account(account_id: str) -> str:
 
 
 @mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
+def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -511,11 +516,11 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
     reject the request. If you get a validation error, read it carefully and fix the payload.
 
     Args:
+        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
+                      MUST be provided. You receive this from resolve_pricebook_entries.
         opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
                         Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
                         If not provided, the quote will be created without an Opportunity link.
-        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
-                      Defaults to the standard pricebook if not specified.
         line_items: One dict per product, each containing:
                     - Product2Id (from search results)
                     - PricebookEntryId (from pricebook resolution tool)
@@ -565,12 +570,13 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
             "BillingFrequency": "Annual",
             "Quantity": item.get("Quantity", 1),
             "UnitPrice": item.get("UnitPrice", 100),
+            "Discount": item.get("Discount", 0),
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
 
         for k, v in item.items():
-            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "StartDate", "EndDate"]:
+            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", "StartDate", "EndDate"]:
                 record_item[k] = v
 
         records.append({"referenceId": f"refQuoteLine{i}", "record": record_item})
@@ -611,6 +617,80 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         "opportunity_id": clean_opp_id or "not linked",
         "salesforce_response": response.json()
     }, indent=2)
+
+@mcp.tool()
+def get_quote_preview(quote_id: str) -> str:
+    """
+    Fetches detailed preview data for a specific Salesforce Quote, 
+    including its Account, Opportunity, and Quote Line Items.
+
+    Args:
+        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0').
+    """
+    print(f"[DEBUG] get_quote_preview called for {quote_id}")
+    try:
+        headers, instance_url = get_salesforce_auth()
+        print(f"[DEBUG] Auth success. Instance: {instance_url}")
+    except Exception as e:
+        print(f"[DEBUG] Auth failed: {str(e)}")
+        return json.dumps({"status": "error", "message": f"Auth error: {str(e)}"})
+    
+    # 1. Quote Details Query
+    quote_query = f"""
+    SELECT Id, Name, QuoteNumber, Status, GrandTotal, StartDate, ExpirationDate, 
+           Pricebook2Id, Opportunity.Name, Account.Name, Account.Website 
+    FROM Quote 
+    WHERE Id='{quote_id}'
+    """
+    
+    # 2. Quote Line Items Query
+    lines_query = f"""
+    SELECT Id, QuoteId, Product2Id, PricebookEntryId, Product2.Name, 
+           Product2.ProductCode, Product2.Family, Product2.Type, 
+           Product2.Description, Quantity, UnitPrice, TotalPrice, 
+           ListPrice, StartDate, EndDate, Discount, 
+           NetUnitPrice, SortOrder 
+    FROM QuoteLineItem 
+    WHERE QuoteId = '{quote_id}' 
+    ORDER BY SortOrder ASC, CreatedDate ASC 
+    LIMIT 2000
+    """
+    
+    from urllib.parse import quote
+    quote_endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(quote_query)}"
+    lines_endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(lines_query)}"
+    
+    try:
+        print(f"[DEBUG] Fetching quote details...")
+        quote_resp = requests.get(quote_endpoint, headers=headers)
+        print(f"[DEBUG] Fetching line items...")
+        lines_resp = requests.get(lines_endpoint, headers=headers)
+        
+        if quote_resp.status_code != 200 or lines_resp.status_code != 200:
+            err_msg = quote_resp.text if quote_resp.status_code != 200 else lines_resp.text
+            print(f"[DEBUG] Query failed: {err_msg}")
+            return json.dumps({
+                "status": "error", 
+                "message": f"Error fetching quote data: {err_msg}"
+            })
+            
+        quote_data = quote_resp.json().get("records", [])
+        if not quote_data:
+            print(f"[DEBUG] Quote {quote_id} not found.")
+            return json.dumps({"status": "error", "message": "Quote not found."})
+            
+        quote_obj = quote_data[0]
+        quote_obj["QuoteLineItems"] = lines_resp.json().get("records", [])
+        print(f"[DEBUG] Successfully merged {len(quote_obj['QuoteLineItems'])} lines.")
+        
+        return json.dumps({
+            "status": "success",
+            "records": [quote_obj]
+        }, indent=2)
+        
+    except Exception as e:
+        print(f"[DEBUG] Unexpected error: {str(e)}")
+        return json.dumps({"status": "error", "message": str(e)})
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

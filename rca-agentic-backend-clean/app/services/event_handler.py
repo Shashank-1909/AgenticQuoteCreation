@@ -145,14 +145,8 @@ async def process_events(
         # ── Tool call (LLM → Tool) ────────────────────────────────────────
         for fn_call in (event.get_function_calls() or []):
             tool_name: str = getattr(fn_call, "name", "unknown")
-            args = getattr(fn_call, "args", {})
-            action = None
-            if hasattr(args, "get"):
-                action = args.get("action")
-            elif hasattr(args, "action"):
-                action = args.action
-            logger.info("[TOOL CALL] → %s (action: %s)", tool_name, action)
-            await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name, "action": action})
+            logger.info("[TOOL CALL] → %s", tool_name)
+            await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
 
         # ── Tool response (Tool → LLM) ────────────────────────────────────
         for fn_resp in (event.get_function_responses() or []):
