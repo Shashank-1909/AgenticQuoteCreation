@@ -684,55 +684,47 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               }
               if (item.type === 'configured_products') {
                 return (
-                  <div key={item.id} className="animate-in fade-in slide-in-from-right-4 mb-6">
-                    <div className="glass-card rounded-[2rem] border-white/10 p-6 shadow-2xl relative overflow-hidden bg-indigo-500/[0.03]">
+                  <div key={item.id} className="animate-in fade-in slide-in-from-right-4 mb-4">
+                    <div className="glass-card rounded-[1.5rem] border-white/10 p-4 shadow-xl relative overflow-hidden bg-indigo-500/[0.03]">
                       {/* Decorative elements */}
-                      <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-[60px]" />
+                      <div className="absolute -top-16 -right-16 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px]" />
                       
-                      <div className="pb-4 flex items-center justify-between relative z-10 border-b border-white/5 mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-1.5 h-5 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.6)] animate-pulse" />
-                          <div className="flex flex-col">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500">Ready for Quote Generation</h3>
-
-                          </div>
+                      <div className="pb-3 flex items-center justify-between relative z-10 border-b border-white/5 mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.6)] animate-pulse" />
+                          <h3 className="text-[9.5px] font-black uppercase tracking-[0.3em] text-indigo-500">Selected products for this quote</h3>
                         </div>
-                        <Sparkles size={16} className="text-indigo-400" />
+                        <Sparkles size={14} className="text-indigo-400 opacity-60" />
                       </div>
 
-                      <div className="space-y-3 relative z-10">
-                        <div className="flex items-center gap-2 mb-2 px-1">
-                          <ClipboardList size={12} className="text-slate-500" />
-                          <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Selected products for this quote</span>
-                        </div>
+                      <div className="space-y-1.5 relative z-10">
                         {item.data.map((prod, pIdx) => (
-                          <div key={pIdx} className="bg-white/[0.03] border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:bg-white/[0.06] transition-all">
+                          <div key={pIdx} className="bg-white/[0.02] border border-white/5 p-2.5 rounded-xl flex items-center justify-between group hover:bg-white/[0.05] transition-all">
                             <div className="flex flex-col min-w-0 flex-1">
-                              <span className="text-[11px] font-bold text-[var(--text-main)] truncate pr-4">{prod.name}</span>
-                              <div className="flex items-center gap-3 mt-1.5">
-                                <div className="flex items-center gap-1.5 bg-slate-500/5 px-2 py-0.5 rounded-md border border-white/5">
-                                   <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">Qty</span>
-                                   <span className="text-[9px] font-black text-indigo-400">{prod.quantity}</span>
+                              <span className="text-[10px] font-bold text-[var(--text-main)] truncate pr-3">{prod.name}</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-1 bg-slate-500/5 px-1.5 py-0.5 rounded border border-white/5">
+                                   <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Qty</span>
+                                   <span className="text-[8.5px] font-black text-indigo-400">{prod.quantity}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 bg-slate-500/5 px-2 py-0.5 rounded-md border border-white/5">
-                                   <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">Disc</span>
-                                   <span className="text-[9px] font-black text-emerald-400">{prod.discount}%</span>
+                                <div className="flex items-center gap-1 bg-slate-500/5 px-1.5 py-0.5 rounded border border-white/5">
+                                   <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Disc</span>
+                                   <span className="text-[8.5px] font-black text-emerald-400">{prod.discount}%</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="shrink-0 flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shadow-sm group-hover:scale-110 transition-transform">
-                              <Zap size={12} fill="currentColor" />
+                            <div className="shrink-0 flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/15 shadow-sm group-hover:scale-105 transition-transform">
+                              <Zap size={10} fill="currentColor" />
                             </div>
                           </div>
                         ))}
                       </div>
 
-                      <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between relative z-10 opacity-60">
-                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">Pipeline Sequence 02</span>
-                         <div className="flex items-center gap-1.5">
-                           <div className="w-1 h-1 rounded-full bg-indigo-500" />
-                           <div className="w-1 h-1 rounded-full bg-indigo-500/30" />
-                           <div className="w-1 h-1 rounded-full bg-indigo-500/30" />
+                      <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10 opacity-40">
+                         <span className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-500">Pipeline Sequence 02</span>
+                         <div className="flex items-center gap-1">
+                           <div className="w-0.5 h-0.5 rounded-full bg-indigo-500" />
+                           <div className="w-0.5 h-0.5 rounded-full bg-indigo-500/30" />
                          </div>
                       </div>
                     </div>
