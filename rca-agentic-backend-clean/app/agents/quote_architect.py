@@ -80,6 +80,12 @@ STEP 3 — RESOLVE PRICING:
 STEP 4 — CREATE QUOTE:
   Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ),
   passing ALL resolved line items (one per product) AND the confirmed Opportunity ID from Step 2 (or from history).
+  
+  IMPORTANT: Look for 'Quantity' and 'Discount' values in the user's message (e.g., "Quantity: 5, Discount: 10%"). 
+  - If a quantity is specified for a product, pass it as 'Quantity' in the line item.
+  - If a discount is specified for a product, pass it as 'Discount' in the line item.
+  - If not specified, default Quantity to 1 and Discount to 0.
+  
   A single quote can contain multiple line items — include all of them in one call.
   Report the Quote ID back to the user with a clear success message.
 
