@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ExternalLink, FileText, Calendar, DollarSign, Package, ClipboardList } from 'lucide-react';
+import { X, ExternalLink, FileText, Package, ClipboardList } from 'lucide-react';
 import { config } from '../config';
 
 const QuotePreviewModal = ({ isOpen, onClose, data }) => {
@@ -12,7 +12,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
   const logoUrl = isMeta ? config.META_LOGO_URL : config.AGIVANT_LOGO_URL;
 
   // Calculate totals
-  const totalCommitmentValue = quote.GrandTotal || 0;
+  const totalContractValue = quote.GrandTotal || 0;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/50 modal-overlay">
@@ -82,7 +82,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                     <td className="px-6 py-5 text-sm font-bold text-slate-900">{quote.Account?.Name || '—'}</td>
                     <td className="px-6 py-5 text-sm font-bold text-slate-900">{quote.Opportunity?.Name || '—'}</td>
                     <td className="px-6 py-5 text-sm font-bold text-slate-900">{quote.StartDate || lines[0]?.StartDate || '—'}</td>
-                    <td className="px-6 py-5 text-sm font-black text-indigo-600 text-right">${totalCommitmentValue.toLocaleString()}</td>
+                    <td className="px-6 py-5 text-sm font-black text-indigo-600 text-right">₹{totalContractValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
@@ -100,24 +100,27 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                 <thead>
                   <tr className={`${isMeta ? 'bg-[#0084FF] text-white' : 'bg-indigo-600 text-white'}`}>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-left">Product</th>
-                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-center">Qty</th>
-                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-center">Start Date</th>
-                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-center">End Date</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-right">Sales Price</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-center">Quantity</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-right">Subtotal</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-center">Discount</th>
-                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-right">Net Total</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-right">Total Price</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {lines.map((line, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{line.Product2?.Name || '—'}</td>
-                      <td className="px-6 py-4 text-sm font-bold text-slate-900 text-center">{line.Quantity || 0}</td>
-                      <td className="px-6 py-4 text-[11px] font-bold text-slate-500 text-center">{line.StartDate || '—'}</td>
-                      <td className="px-6 py-4 text-[11px] font-bold text-slate-500 text-center">{line.EndDate || '—'}</td>
-                      <td className="px-6 py-4 text-sm font-bold text-indigo-600 text-center">{line.Discount ? `${line.Discount}%` : '0%'}</td>
-                      <td className="px-6 py-4 text-sm font-black text-slate-900 text-right">${(line.UnitPrice || 0).toLocaleString()}</td>
-                    </tr>
-                  ))}
+                  {lines.map((line, idx) => {
+                    const subtotal = (line.ListPrice || 0) * (line.Quantity || 0);
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium text-slate-900">{line.Product2?.Name || '—'}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-500 text-right">₹{(line.UnitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900 text-center">{(line.Quantity || 0).toFixed(2)}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-500 text-right">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm font-black text-indigo-600 text-center">{line.Discount ? `${line.Discount.toFixed(2)}%` : '0.00%'}</td>
+                        <td className="px-6 py-4 text-sm font-black text-slate-900 text-right">₹{(line.TotalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    );
+                  })}
                   {lines.length === 0 && (
                     <tr>
                       <td colSpan="6" className="px-6 py-12 text-center text-xs font-bold text-slate-400 uppercase tracking-widest italic">No products found in this configuration</td>
@@ -131,7 +134,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
 
         {/* Footer */}
         <div className="px-8 py-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">CPQ Engine Output • Agivant ADK</span>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic"></span>
           <div className="flex items-center gap-4">
             <button 
               onClick={onClose}
@@ -142,7 +145,8 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
             <button 
               onClick={() => {
                 const quoteId = quote.Id;
-                if (quoteId) window.open(`${config.instanceUrl}/${quoteId}`, '_blank');
+                const baseUrl = data.instance_url || 'https://agivant-8f-dev-ed.develop.lightning.force.com';
+                if (quoteId) window.open(`${baseUrl}/lightning/r/Quote/${quoteId}/view`, '_blank');
               }}
               className={`px-8 py-2.5 ${isMeta ? 'bg-[#0084FF]' : 'bg-indigo-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg flex items-center gap-2 hover:opacity-90 transition-all active:scale-95`}
             >

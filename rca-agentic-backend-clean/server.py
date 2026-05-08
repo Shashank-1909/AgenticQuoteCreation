@@ -526,6 +526,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
                     - PricebookEntryId (from pricebook resolution tool)
                     - Quantity (default 1)
                     - UnitPrice (from pricebook resolution tool)
+                    - Discount (numeric percentage, e.g., 10 for 10%)
                     - StartDate / EndDate (optional, defaults applied automatically)
 
     After calling: Return the Quote ID from the response to the user. If the response
@@ -558,6 +559,20 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             import json
             return json.dumps({"status": "error", "message": "CRITICAL: Every line item MUST include Product2Id and PricebookEntryId."})
 
+        # Sanitize Quantity and Discount (handle strings like "10%" or "5 units")
+        def sanitize_numeric(val, default=0):
+            if val is None: return default
+            if isinstance(val, (int, float)): return val
+            try:
+                # Remove non-numeric chars except decimal point
+                clean_val = re.sub(r'[^-0-9.]', '', str(val))
+                return float(clean_val) if clean_val else default
+            except:
+                return default
+
+        qty = sanitize_numeric(item.get("Quantity"), 1)
+        discount = sanitize_numeric(item.get("Discount"), 0)
+
         record_item = {
             "attributes": {
                 "type": "QuoteLineItem",
@@ -568,9 +583,9 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "PricebookEntryId": item["PricebookEntryId"],
             "PeriodBoundary": "Anniversary",
             "BillingFrequency": "Annual",
-            "Quantity": item.get("Quantity", 1),
+            "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
-            "Discount": item.get("Discount", 0),
+            "Discount": discount,
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
@@ -685,6 +700,7 @@ def get_quote_preview(quote_id: str) -> str:
         
         return json.dumps({
             "status": "success",
+            "instance_url": instance_url,
             "records": [quote_obj]
         }, indent=2)
         

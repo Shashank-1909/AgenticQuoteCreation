@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Send, Loader2, Zap, Settings,
   ExternalLink, ArrowRight, Database,
-  Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp
+  Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp,
+  Sparkles, ClipboardList
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -365,6 +366,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     if (isBusy) return;
     const list = configuredItems.map(p => `${p.name} (ID: ${p.id}, Quantity: ${p.quantity}, Discount: ${p.discount}%)`).join(', ');
     const text = configuredItems.length === 1 ? `Create a quote for ${list}` : `Create a quote for the following products: ${list}`;
+    
+    // Add record to Vault History
+    const configItem = { type: 'configured_products', data: configuredItems, id: Date.now() };
+    setVaultHistory(prev => [...prev, configItem]);
+    
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
     setIsConfigOpen(false);
@@ -410,19 +416,19 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           {/* Background Glow for Panel */}
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-indigo-500/[0.03] to-transparent pointer-events-none" />
           
-          <div className="p-7 pb-6 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02] relative z-10">
+          <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02] relative z-10">
             <div className="flex items-center gap-3">
               {config.theme === 'Meta' ? (
                 <div className="flex items-center gap-3">
-                   <img src={config.META_LOGO_URL} alt="Meta" className="h-6 object-contain" />
-                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200 mx-1" />}
-                   {leftWidth > 180 && <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Connect</span>}
+                   <img src={config.META_LOGO_URL} alt="Meta" className="h-5 object-contain" />
+                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
+                   {leftWidth > 180 && <span className="text-[7.5px] font-black text-indigo-500/60 dark:text-indigo-400/60 uppercase tracking-[0.3em]">Connect</span>}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                   <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-8 object-contain" />
-                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200 mx-1" />}
-                   {leftWidth > 180 && <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest">Control Center</span>}
+                   <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-6 object-contain" />
+                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
+                   {leftWidth > 180 && <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.3em]">Control Center</span>}
                 </div>
               )}
             </div>
@@ -525,9 +531,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <div className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)]" style={{ left: 20 - (pan.x * 0.28) / (graphScale * userZoom), top: 20 - (pan.y * 0.28) / (graphScale * userZoom), width: 140 / userZoom, height: 160 / userZoom }} />
                   </div>
                 )}
-                {workflowState === 'completed' && (
+                {/* {workflowState === 'completed' && (
                   <button onClick={reset} className="absolute top-24 left-1/2 -translate-x-1/2 px-8 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-[0.5em] text-white/35 hover:text-indigo-400 transition-all z-30 shadow-2xl hover:scale-105 active:scale-95">Reset Environment <ArrowRight size={12} className="inline ml-2" /></button>
-                )}
+                )} */}
               </div>
             </section>
             <div onMouseDown={startResizingRight} className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
@@ -581,7 +587,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-5 pb-28 space-y-6 custom-scrollbar scroll-smooth">
             {vaultHistory.length === 0 && !isBusy && (
               <div className="h-full flex flex-col items-center justify-center text-center opacity-10 py-20">
                 <Database size={38} strokeWidth={1} className="mb-5" />
@@ -596,16 +602,23 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   (p.sku && p.sku.toLowerCase().includes(vaultSearchQuery.toLowerCase()))
                 );
                 if (vaultSearchQuery && filteredProds.length === 0) return null;
+                const selectedInThisBatch = filteredProds.filter(p => selectedProducts.has(p.id)).length;
 
                 return (
                   <div key={item.id} className="animate-in fade-in slide-in-from-right-4 mb-4 overflow-hidden">
                     <div className="glass-card rounded-[1.25rem] border-white/5 p-4 shadow-xl">
                       <div className="pb-1.5 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-1 h-3 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                          {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">Products Found</h3>}
+                          <div className={`w-1 h-3 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)] ${selectedInThisBatch > 0 ? 'bg-indigo-500' : 'bg-slate-400 opacity-50'}`} />
+                          {rightWidth > 190 && (
+                            <h3 className={`text-[8.5px] font-black uppercase tracking-[0.3em] transition-colors ${selectedInThisBatch > 0 ? 'text-indigo-500' : 'text-[var(--text-muted)]'}`}>
+                              {selectedInThisBatch > 0 ? `${selectedInThisBatch} Products Selected` : 'Products Found'}
+                            </h3>
+                          )}
                         </div>
-                        <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-500">{filteredProds.length}</div>
+                        <div className={`px-2 py-0.5 rounded-full border text-[9px] font-black transition-all ${selectedInThisBatch > 0 ? 'bg-indigo-500 text-white border-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.3)]' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-500'}`}>
+                          {selectedInThisBatch > 0 ? selectedInThisBatch : filteredProds.length}
+                        </div>
                       </div>
                       <div className="pt-2">
                         <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
@@ -669,6 +682,63 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   </div>
                 );
               }
+              if (item.type === 'configured_products') {
+                return (
+                  <div key={item.id} className="animate-in fade-in slide-in-from-right-4 mb-6">
+                    <div className="glass-card rounded-[2rem] border-white/10 p-6 shadow-2xl relative overflow-hidden bg-indigo-500/[0.03]">
+                      {/* Decorative elements */}
+                      <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-[60px]" />
+                      
+                      <div className="pb-4 flex items-center justify-between relative z-10 border-b border-white/5 mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-1.5 h-5 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.6)] animate-pulse" />
+                          <div className="flex flex-col">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500">Ready for Quote Generation</h3>
+
+                          </div>
+                        </div>
+                        <Sparkles size={16} className="text-indigo-400" />
+                      </div>
+
+                      <div className="space-y-3 relative z-10">
+                        <div className="flex items-center gap-2 mb-2 px-1">
+                          <ClipboardList size={12} className="text-slate-500" />
+                          <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Selected products for this quote</span>
+                        </div>
+                        {item.data.map((prod, pIdx) => (
+                          <div key={pIdx} className="bg-white/[0.03] border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:bg-white/[0.06] transition-all">
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-[11px] font-bold text-[var(--text-main)] truncate pr-4">{prod.name}</span>
+                              <div className="flex items-center gap-3 mt-1.5">
+                                <div className="flex items-center gap-1.5 bg-slate-500/5 px-2 py-0.5 rounded-md border border-white/5">
+                                   <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">Qty</span>
+                                   <span className="text-[9px] font-black text-indigo-400">{prod.quantity}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-slate-500/5 px-2 py-0.5 rounded-md border border-white/5">
+                                   <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">Disc</span>
+                                   <span className="text-[9px] font-black text-emerald-400">{prod.discount}%</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="shrink-0 flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shadow-sm group-hover:scale-110 transition-transform">
+                              <Zap size={12} fill="currentColor" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between relative z-10 opacity-60">
+                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">Pipeline Sequence 02</span>
+                         <div className="flex items-center gap-1.5">
+                           <div className="w-1 h-1 rounded-full bg-indigo-500" />
+                           <div className="w-1 h-1 rounded-full bg-indigo-500/30" />
+                           <div className="w-1 h-1 rounded-full bg-indigo-500/30" />
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
               if (item.type === 'quote') {
                 const q = item.data;
                 if (vaultSearchQuery && !q.id.toLowerCase().includes(vaultSearchQuery.toLowerCase())) return null;
@@ -689,7 +759,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                           </div>
                           <div className="flex items-start justify-between mb-3 relative z-10">
                             <div className="flex flex-col gap-1">
-                              <div className="text-[8.5px] font-black uppercase text-indigo-400 tracking-widest mb-1">Salesforce Record</div>
+                              <div className="text-[8.5px] font-black uppercase text-indigo-400 tracking-widest mb-1">Quote ID</div>
                               <div className="text-[11px] font-bold text-[var(--text-main)] font-mono opacity-80">{q.id}</div>
                             </div>
                             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
@@ -719,7 +789,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             <div className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-3xl z-20 shadow-2xl transition-all" style={{ animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both' }}>
               <button onClick={handleOpenConfig} disabled={isBusy} className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isBusy ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'}`}>
                 {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} fill="currentColor" />}
-                Enter Configuration Studio — {selectedProducts.size} Items
+                Configure Selected Products — {selectedProducts.size} Items
               </button>
             </div>
           )}
