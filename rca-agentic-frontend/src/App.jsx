@@ -24,10 +24,18 @@ const App = () => {
     }
   }, [isDark]);
 
-  const handleSelect = (module) => {
-    setSelectedModule(module);
+  const handleSelect = (moduleId) => {
+    // Find full module object to ensure child components get titles/meta
+    const modules = [
+      { id: 'cpq', title: 'CPQ Orchestrator' },
+      { id: 'rca', title: 'RCA Agentic Flow' },
+      { id: 'oracle', title: 'Oracle ERP Bridge' }
+    ];
+    const moduleObj = modules.find(m => m.id === moduleId);
+    setSelectedModule(moduleObj || { id: moduleId, title: 'Salesforce RCA' });
     setView('dashboard');
   };
+
 
   const handleLaunchChat = () => {
     setView('chat');
@@ -41,7 +49,7 @@ const App = () => {
         <div className="mesh-circle-2" />
       </div>
 
-      <ThemeToggle isDark={isDark} setIsDark={setIsDark} />
+      {view !== 'chat' && <ThemeToggle isDark={isDark} setIsDark={setIsDark} />}
 
       {/* Main View Router */}
       <main className="relative z-10">
@@ -62,6 +70,7 @@ const App = () => {
             onBack={() => setView('dashboard')} 
             selectedModule={selectedModule} 
             isDark={isDark} 
+            setIsDark={setIsDark}
           />
         )}
       </main>

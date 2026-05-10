@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Send, Loader2, Zap, Settings,
+  Send, Loader2, Zap, Settings, Sun, Moon,
   ExternalLink, ArrowRight, Database,
   Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp
 } from 'lucide-react';
@@ -11,10 +11,11 @@ import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
 import {
-  GW, INIT_ORCH, SUGGESTIONS
+  GW, INIT_ORCH, SUGGESTIONS, ACTION_LABELS, UPDATE_TOOLS, shortLabel
 } from '../constants';
 
-const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
+
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
   const [messages, setMessages] = useState([
     { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
@@ -178,20 +179,65 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           case 'TOOL_TRIGGER':
             setOrchestration(prev => {
               const n = { ...prev };
-              for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+              // Derive a display-friendly tool name from action context
+              let displayName = shortLabel(data.tool);
+              if (data.tool === 'manage_quote_line_items' && data.args?.operations?.length > 0) {
+                const method = data.args.operations[0].method?.toUpperCase();
+                if (method === 'POST') displayName = 'Add Product';
+                else if (method === 'DELETE') displayName = 'Delete Product';
+                else if (method === 'PATCH') displayName = 'Update Qty';
+              } else if (data.tool === 'update_quote_discount') {
+                displayName = 'Discount';
+              } else if (data.tool === 'rename_quote') {
+                displayName = 'Rename';
+              } else if (data.tool === 'get_quote_details') {
+                displayName = 'Details';
+              } else if (data.tool === 'get_quotes_for_opportunity') {
+                displayName = 'Quote Query';
+              }
+
+              // Force tools to their correct agent regardless of which is currently active
+              const QUOTE_TOOLS = ['get_my_accounts', 'get_opportunities_for_account', 'resolve_pricebook_entries', 'evaluate_quote_graph', 'update_quote_discount', 'get_quotes_for_opportunity', 'get_quote_details', 'rename_quote', 'manage_quote_line_items'];
+              const isQuoteTool = QUOTE_TOOLS.includes(data.tool);
+              const targetAgent = isQuoteTool ? 'Quote_Architect' : null; // null = use whichever is active
+
+              // If a quote tool fires and Quote_Architect isn't active yet, activate it
+              if (isQuoteTool && n.Quote_Architect.state === 'idle') {
+                n.Quote_Architect = { ...n.Quote_Architect, state: 'active', routedByDm: false };
+              }
+
+              const agents = targetAgent
+                ? [targetAgent]
+                : ['Catalog_Scout', 'Quote_Architect'];
+
+              for (const k of agents) {
                 if (n[k].state === 'active') {
                   const settled = n[k].tools.map(t =>
                     t.state === 'active' ? { ...t, state: 'done' } : t
                   );
-                  const idx = settled.findIndex(t => t.name === data.tool);
-                  if (idx < 0) {
-                    n[k] = { ...n[k], tools: [...settled, { name: data.tool, state: 'active' }] };
-                  } else {
+
+                  const isUpdate = UPDATE_TOOLS.has(data.tool);
+                  const updateIdx = isUpdate ? settled.findIndex(t => UPDATE_TOOLS.has(t.rawTool)) : -1;
+
+                  if (isUpdate && updateIdx >= 0) {
+                    // REPLACE existing update node
                     n[k] = {
-                      ...n[k], tools: settled.map((t, i) =>
-                        i === idx ? { ...t, state: 'active' } : t
+                      ...n[k],
+                      tools: settled.map((t, i) =>
+                        i === updateIdx ? { name: displayName, state: 'active', rawTool: data.tool } : t
                       )
                     };
+                  } else {
+                    const idx = settled.findIndex(t => t.name === displayName);
+                    if (idx < 0) {
+                      n[k] = { ...n[k], tools: [...settled, { name: displayName, state: 'active', rawTool: data.tool }] };
+                    } else {
+                      n[k] = {
+                        ...n[k], tools: settled.map((t, i) =>
+                          i === idx ? { ...t, state: 'active' } : t
+                        )
+                      };
+                    }
                   }
                   break;
                 }
@@ -204,10 +250,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             setOrchestration(prev => {
               const n = { ...prev };
               for (const k of ['Catalog_Scout', 'Quote_Architect']) {
-                if (n[k].tools.some(t => t.name === data.tool)) {
+                // Match by raw tool name OR display name (for contextual nodes)
+                if (n[k].tools.some(t => t.name === data.tool || t.rawTool === data.tool)) {
                   n[k] = {
                     ...n[k], tools: n[k].tools.map(t =>
-                      t.name === data.tool ? { ...t, state: 'done' } : t
+                      (t.name === data.tool || t.rawTool === data.tool) && t.state === 'active'
+                        ? { ...t, state: 'done' } : t
                     )
                   };
                   break;
@@ -366,9 +414,14 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     const list = configuredItems.map(p => `${p.name} (ID: ${p.id}, Quantity: ${p.quantity}, Discount: ${p.discount}%)`).join(', ');
     const text = configuredItems.length === 1 ? `Create a quote for ${list}` : `Create a quote for the following products: ${list}`;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(text);
+    } else {
+      console.warn('[WS] Cannot send configuration, socket closed');
+    }
     setIsConfigOpen(false);
     setSelectedProducts(new Set());
+
   };
 
   const handleCardSelect = (option, selectionType) => {
@@ -379,7 +432,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setSelectionPanel(null);
     const text = `${option.name} (ID: ${option.id})`;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(text);
+    } else {
+      console.warn('[WS] Cannot send selection, socket closed');
+    }
+
   };
 
   const toggleProduct = (id) =>
@@ -537,7 +595,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         )}
 
         {/* RIGHT — RESULTS VAULT */}
-        <section className={`h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-all duration-500 ${!showOrchestration ? 'flex-1' : ''}`} style={{ width: !showOrchestration ? 'auto' : rightWidth }}>
+        <section className={`h-full border-l border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500 ${!showOrchestration ? 'flex-1' : ''}`} style={{ width: !showOrchestration ? 'auto' : rightWidth }}>
           <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02]">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
@@ -557,11 +615,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                   </button>
                 </div>
               )}
-              {vaultHistory.length > 0 && rightWidth > 180 && (
-                <button onClick={toggleSelectAll} className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 p-1 px-2 rounded-lg hover:bg-indigo-500/5 transition-all">
-                  {selectedProducts.size > 0 ? 'Reset' : 'Select All'}
-                </button>
-              )}
+              <button onClick={() => setIsDark && setIsDark(!isDark)} className="p-1.5 ml-1 text-slate-400 hover:text-indigo-500 transition-colors" title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+                {isDark ? <Sun size={15} className="text-amber-500" /> : <Moon size={15} className="text-indigo-500" />}
+              </button>
             </div>
           </div>
 
@@ -605,7 +661,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                           <div className="w-1 h-3 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
                           {rightWidth > 190 && <h3 className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">Products Found</h3>}
                         </div>
-                        <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-500">{filteredProds.length}</div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={toggleSelectAll} className="text-[7.5px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 p-1 px-2 rounded-lg hover:bg-indigo-500/5 transition-colors">
+                            {selectedProducts.size > 0 ? 'Reset' : 'Select All'}
+                          </button>
+                          <div className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-500">{filteredProds.length}</div>
+                        </div>
                       </div>
                       <div className="pt-2">
                         <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1.5 custom-scrollbar">
