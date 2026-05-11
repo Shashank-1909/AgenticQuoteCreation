@@ -35,6 +35,14 @@ TOOL_ACCOUNTS:      str = "get_my_accounts"
 TOOL_OPPORTUNITIES: str = "get_opportunities_for_account"
 TOOL_QUOTE:         str = "evaluate_quote_graph"
 
+# Agent-specific tool filters
+SCOUT_TOOLS: list[str] = [
+    "search_catalog",
+    "check_field_values",
+    "get_searchable_custom_fields",
+    "get_picklist_values"
+]
+
 # ---------------------------------------------------------------------------
 # Salesforce instance URL — loaded from auth.json at import time.
 # Falls back to the public login URL if auth.json is absent.

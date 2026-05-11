@@ -562,7 +562,7 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
             "PeriodBoundary": "Anniversary",
-            "BillingFrequency": "null",
+            "BillingFrequency": "",
             "Quantity": item.get("Quantity", 1),
             "UnitPrice": item.get("UnitPrice", 100),
             "StartDate": item.get("StartDate", "2025-01-01"),
