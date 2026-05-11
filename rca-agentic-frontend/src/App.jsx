@@ -3,6 +3,7 @@ import SelectionHub from './components/SelectionHub';
 import Dashboard from './components/Dashboard';
 import ThemeToggle from './components/ThemeToggle';
 import OrchestratorView from './components/OrchestratorView';
+import AgentforceView from './components/AgentforceView';
 import './MetaTheme.css';
 import './App.css';
 
@@ -11,7 +12,7 @@ import './App.css';
  * Manages the high-level routing and theme state.
  */
 const App = () => {
-  const [view, setView] = useState('selection'); // selection, dashboard, chat
+  const [view, setView] = useState('selection'); // selection, dashboard, chat, agentforce
   const [selectedModule, setSelectedModule] = useState(null);
   const [isDark, setIsDark] = useState(false);
 
@@ -33,6 +34,10 @@ const App = () => {
     setView('chat');
   };
 
+  const handleLaunchAgentforce = () => {
+    setView('agentforce');
+  };
+
   return (
     <div className={isDark ? 'dark' : ''}>
       {/* Global Background Layer */}
@@ -52,6 +57,7 @@ const App = () => {
         {view === 'dashboard' && (
           <Dashboard
             onLaunchChat={handleLaunchChat}
+            onLaunchAgentforce={handleLaunchAgentforce}
             onBack={() => setView('selection')}
             onEditQuote={(id) => console.log('Edit quote', id)}
           />
@@ -59,6 +65,14 @@ const App = () => {
         
         {view === 'chat' && (
           <OrchestratorView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+          />
+        )}
+
+        {view === 'agentforce' && (
+          <AgentforceView 
             onBack={() => setView('dashboard')} 
             selectedModule={selectedModule} 
             isDark={isDark} 

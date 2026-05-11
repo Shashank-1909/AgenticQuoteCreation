@@ -296,7 +296,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           animationDelay: showScout ? '0.1s' : '0s',
         }}>
           <NodeCard
-            label="Quote Architect"
+            label="Quote Builder"
             subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={FileText} w={AC.w} h={AC.h} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} 
@@ -307,7 +307,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#fbbf2455', marginTop: 8,
-          }}>Quote Architect</div>
+          }}>Quote Builder</div>
         </div>
       )}
 

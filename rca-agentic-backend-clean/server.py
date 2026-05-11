@@ -352,7 +352,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice, Product2.Type, ProductSellingModel.SellingModelType FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
     
     from urllib.parse import quote
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
@@ -374,7 +374,9 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
             "PricebookEntryId": r.get("Id"),
             "Product2Id": r.get("Product2Id"),
             "Pricebook2Id": r.get("Pricebook2Id"),
-            "UnitPrice": r.get("UnitPrice")
+            "UnitPrice": r.get("UnitPrice"),
+            "Type": r.get("Product2", {}).get("Type"),
+            "SellingModelType": (r.get("ProductSellingModel") or {}).get("SellingModelType")
         })
         
     standard_pricebook_id = results[0]["Pricebook2Id"] if results else ""
@@ -527,6 +529,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
                     - Quantity (default 1)
                     - UnitPrice (from pricebook resolution tool)
                     - Discount (numeric percentage, e.g., 10 for 10%)
+                    - Type (from pricebook resolution tool - CRITICAL for billing validation)
                     - StartDate / EndDate (optional, defaults applied automatically)
 
     After calling: Return the Quote ID from the response to the user. If the response
@@ -581,14 +584,18 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
-            "PeriodBoundary": "Anniversary",
-            "BillingFrequency": "Annual",
             "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
             "Discount": discount,
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
+
+        # Only add subscription-specific fields if they are provided in the item data
+        # This prevents 'Billing Treatment' errors caused by unauthorized frequency overrides
+        for field in ["BillingFrequency", "PeriodBoundary"]:
+            if field in item and item[field]:
+                record_item[field] = item[field]
 
         for k, v in item.items():
             if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", "StartDate", "EndDate"]:
@@ -615,7 +622,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         }
     }
 
-    endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
+    endpoint = f"{instance_url}/services/data/v66.0/connect/rev/sales-transaction/actions/place"
 
     import json
     try:
