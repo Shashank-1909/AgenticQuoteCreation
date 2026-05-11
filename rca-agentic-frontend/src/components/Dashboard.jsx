@@ -1,7 +1,7 @@
-import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles, ArrowLeft } from 'lucide-react';
+import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles, ArrowLeft, BrainCircuit } from 'lucide-react';
 import { config } from '../config';
 
-const Dashboard = ({ onBack, onLaunchChat }) => {
+const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
   const stats = [
     { 
       label: 'Accounts',     
@@ -80,11 +80,6 @@ const Dashboard = ({ onBack, onLaunchChat }) => {
               <>
                 <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
                 <div className="h-8 w-[1px] bg-slate-200 mx-2" />
-                <div>
-                  <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
-                    Meta Intelligence
-                  </h1>
-                </div>
               </>
             ) : (
               <>
@@ -197,18 +192,32 @@ const Dashboard = ({ onBack, onLaunchChat }) => {
         </div>
       </div>
 
-      {/* ── Floating Neural Orchestrator Button (fixed bottom-right) ── */}
-      <button
-        onClick={onLaunchChat}
-        className="fixed bottom-8 right-10 group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-4 px-8 rounded-2xl bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition-all shadow-xl hover:shadow-indigo-500/30 overflow-hidden z-50 backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-        <span className="relative z-10 flex items-center gap-2">
-          <Sparkles size={16} className="group-hover:animate-pulse" />
-          Neural Orchestrator
-          <ArrowUpRight size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
-        </span>
-      </button>
+      <div className="fixed bottom-8 right-10 flex flex-col gap-3 items-end z-50">
+        <button
+          onClick={onLaunchAgentforce}
+          className="group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 py-4 px-8 rounded-2xl bg-emerald-500/10 hover:bg-emerald-600 hover:text-white transition-all shadow-xl hover:shadow-emerald-500/30 overflow-hidden backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <span className="relative z-10 flex items-center gap-2">
+            <BrainCircuit size={16} className="group-hover:animate-pulse" />
+            
+            Agivant Agentforce 
+            <Sparkles size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
+          </span>
+        </button>
+
+        <button
+          onClick={onLaunchChat}
+          className="group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-4 px-8 rounded-2xl bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition-all shadow-xl hover:shadow-indigo-500/30 overflow-hidden backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <span className="relative z-10 flex items-center gap-2">
+            <Sparkles size={16} className="group-hover:animate-pulse" />
+            Neural Orchestrator
+            <ArrowUpRight size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
+          </span>
+        </button>
+      </div>
     </div>
   );
 };

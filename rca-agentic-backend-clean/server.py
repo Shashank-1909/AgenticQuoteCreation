@@ -352,7 +352,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice, Product2.Type, ProductSellingModel.SellingModelType FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
     
     from urllib.parse import quote
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
@@ -374,7 +374,9 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
             "PricebookEntryId": r.get("Id"),
             "Product2Id": r.get("Product2Id"),
             "Pricebook2Id": r.get("Pricebook2Id"),
-            "UnitPrice": r.get("UnitPrice")
+            "UnitPrice": r.get("UnitPrice"),
+            "Type": r.get("Product2", {}).get("Type"),
+            "SellingModelType": (r.get("ProductSellingModel") or {}).get("SellingModelType")
         })
         
     standard_pricebook_id = results[0]["Pricebook2Id"] if results else ""
@@ -504,7 +506,6 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
-
 @mcp.tool()
 def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
     """
@@ -582,7 +583,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
             "PeriodBoundary": "Anniversary",
-            "BillingFrequency": "Annual",
+            "BillingFrequency": "",
             "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
             "Discount": discount,
