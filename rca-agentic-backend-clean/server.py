@@ -506,7 +506,6 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
-
 @mcp.tool()
 def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
     """
@@ -529,7 +528,6 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
                     - Quantity (default 1)
                     - UnitPrice (from pricebook resolution tool)
                     - Discount (numeric percentage, e.g., 10 for 10%)
-                    - Type (from pricebook resolution tool - CRITICAL for billing validation)
                     - StartDate / EndDate (optional, defaults applied automatically)
 
     After calling: Return the Quote ID from the response to the user. If the response
@@ -584,18 +582,14 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
+            "PeriodBoundary": "Anniversary",
+            "BillingFrequency": "",
             "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
             "Discount": discount,
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
-
-        # Only add subscription-specific fields if they are provided in the item data
-        # This prevents 'Billing Treatment' errors caused by unauthorized frequency overrides
-        for field in ["BillingFrequency", "PeriodBoundary"]:
-            if field in item and item[field]:
-                record_item[field] = item[field]
 
         for k, v in item.items():
             if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", "StartDate", "EndDate"]:
@@ -622,7 +616,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         }
     }
 
-    endpoint = f"{instance_url}/services/data/v66.0/connect/rev/sales-transaction/actions/place"
+    endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
 
     import json
     try:
