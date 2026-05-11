@@ -95,21 +95,24 @@ const ProductConfigModal = ({ isOpen, onClose, products, onConfirm }) => {
         </div>
 
         {/* Search Bar */}
-        <div className="px-10 py-5 bg-white/[0.01] border-b border-white/5 flex items-center justify-between gap-6 z-10">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+        <div className="px-10 py-4 bg-white/[0.02] border-b border-white/5 flex items-center justify-between gap-8 z-10">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={14} />
             <input 
               type="text" 
-              placeholder="Search items by name..." 
+              placeholder="Filter products in pipeline..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/30 border border-white/5 rounded-2xl py-3 pl-12 pr-6 text-[11px] font-bold text-[var(--text-main)] placeholder-slate-600 outline-none focus:border-indigo-500/40 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-11 pr-6 text-[10.5px] font-bold text-[var(--text-main)] placeholder-slate-600 outline-none focus:bg-white/[0.08] focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner"
             />
           </div>
-          <div className="flex items-center gap-6 bg-white/5 px-6 py-3 rounded-2xl border border-white/5">
-             <div className="flex flex-col items-end">
-               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest opacity-60">Total Units</span>
-               <span className="text-sm font-black text-indigo-500">{totalQuantity}</span>
+          <div className="flex items-center gap-5 px-5 py-2 rounded-xl bg-indigo-500/5 border border-indigo-500/10 shadow-sm">
+             <div className="flex flex-col items-center">
+               <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-60 mb-0.5">Pipeline Units</span>
+               <div className="flex items-center gap-2">
+                 <Package size={12} className="text-indigo-500" />
+                 <span className="text-xs font-black text-[var(--text-main)] tracking-tight">{totalQuantity}</span>
+               </div>
              </div>
           </div>
         </div>

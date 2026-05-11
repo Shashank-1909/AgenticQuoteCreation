@@ -24,7 +24,6 @@ from app.core.config import (
     TOOL_ACCOUNTS,
     TOOL_OPPORTUNITIES,
     TOOL_QUOTE,
-    TOOL_UPDATE_TOOLS,
     USER_ID,
     SF_INSTANCE_URL,
 )
@@ -104,11 +103,6 @@ async def handle_tool_result(
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse quote tool response: %s", exc)
 
-    # ── Quote update tools — keep quote flow active ──────────────────────
-    if tool_name in TOOL_UPDATE_TOOLS:
-        state.quote_flow[session_id] = True
-        logger.info("Session %s → quote flow remains ACTIVE (update operation: %s)", session_id, tool_name)
-
     # ── Build and send TOOL_RESULT payload ────────────────────────────────
     payload: dict = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
     if tool_name == TOOL_QUOTE:
@@ -151,13 +145,8 @@ async def process_events(
         # ── Tool call (LLM → Tool) ────────────────────────────────────────
         for fn_call in (event.get_function_calls() or []):
             tool_name: str = getattr(fn_call, "name", "unknown")
-            tool_args = getattr(fn_call, "args", {})
-            logger.info("[TOOL CALL] → %s with args %s", tool_name, tool_args)
-            await websocket.send_json({
-                "type": "TOOL_TRIGGER",
-                "tool": tool_name,
-                "args": tool_args
-            })
+            logger.info("[TOOL CALL] → %s", tool_name)
+            await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
 
         # ── Tool response (Tool → LLM) ────────────────────────────────────
         for fn_resp in (event.get_function_responses() or []):

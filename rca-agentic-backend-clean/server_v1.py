@@ -9,20 +9,6 @@ load_dotenv()
 # Initialize the MCP Server using FastMCP
 mcp = FastMCP("Salesforce RCA Deal Management MCP Server")
 
-# Role-based tool filtering
-AGENT_ROLE = os.getenv("AGENT_ROLE", "ALL").upper()
-
-def scout_tool(func):
-    if AGENT_ROLE in ["SCOUT", "ALL"]:
-        return mcp.tool()(func)
-    return func
-
-def architect_tool(func):
-    if AGENT_ROLE in ["ARCHITECT", "ALL"]:
-        return mcp.tool()(func)
-    return func
-
-
 # ---------------------------------------------------------------------------
 # FIELD VALUE INDEX — built lazily on first check_field_values call
 # Key: lowercase token (e.g. "west", "256gb")
@@ -47,7 +33,7 @@ def get_salesforce_auth():
     }
     return headers, auth_data['instance_url']
 
-@scout_tool
+@mcp.tool()
 def search_catalog(
         search_term: str = None,
         filters: dict = None,
@@ -143,7 +129,7 @@ def search_catalog(
         "results": results
     }, indent=2)
 
-@scout_tool
+@mcp.tool()
 def get_searchable_custom_fields() -> str:
     """
     Discovers the API names of all custom fields available for product attribute filtering.
@@ -187,7 +173,7 @@ def get_searchable_custom_fields() -> str:
         "custom_fields": results
     }, indent=2)
 
-@scout_tool
+@mcp.tool()
 def get_picklist_values(field_api_name: str) -> str:
     """
     Retrieves all valid picklist options for a specific Salesforce custom field.
@@ -235,7 +221,7 @@ def get_picklist_values(field_api_name: str) -> str:
         "valid_options": valid_options
     }, indent=2)
 
-@scout_tool
+@mcp.tool()
 def check_field_values(candidates: list[str]) -> str:
     """
     FIELD CLASSIFICATION TOOL — must be the FIRST tool called for any product search,
@@ -340,115 +326,62 @@ def check_field_values(candidates: list[str]) -> str:
     }, indent=2)
 
 
-@architect_tool
-def resolve_pricebook_entries(product_ids: list[str], pricebook_id: str = None) -> str:
+@mcp.tool()
+def resolve_pricebook_entries(product_ids: list[str]) -> str:
     """
-    Resolves Product2 IDs to active PricebookEntry IDs and unit prices.
-    
-    This tool is a MANDATORY prerequisite before creating or adding products to a quote.
-    
+    Resolves Salesforce Product2 IDs to their active PricebookEntry IDs and unit prices.
+
+    When to call: Immediately before creating a quote. This is a mandatory prerequisite
+    — quote line items require PricebookEntryIds, not Product2Ids directly.
+    Always call this before the quote graph submission tool, even if you think you
+    already have pricing data.
+
     Args:
         product_ids: List of Product2 IDs obtained from product search results.
-        pricebook_id: (Optional) The specific Pricebook2Id to resolve entries for. 
-                     MANDATORY when adding products to an existing quote.
+                     Do not fabricate IDs — use only what the search tools returned.
+
+    After calling: Use the returned PricebookEntryId and UnitPrice values to construct
+                   the line items for the quote graph submission tool.
     """
     headers, instance_url = get_salesforce_auth()
-    import requests, json
     
     if not product_ids:
+        import json
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
-    # 1. Fetch Pricebook Entries
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    
-    if pricebook_id:
-        pb_query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice, Product2.Name FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2Id = '{pricebook_id}' AND IsActive = true"
-    else:
-        pb_query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice, Product2.Name FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND IsActive = true"
     
     from urllib.parse import quote
-    pb_endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(pb_query)}"
+    endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
     
     try:
-        pb_resp = requests.get(pb_endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
-    if pb_resp.status_code not in [200, 201]:
-        return f"Error: Salesforce API returned status code {pb_resp.status_code}\n{pb_resp.text}"
+    if response.status_code not in [200, 201]:
+        return f"Error: Salesforce API returned status code {response.status_code}\n{response.text}"
         
-    pb_data = pb_resp.json()
-    pb_records = pb_data.get("records", [])
-    
-    if not pb_records:
-        import json
-        return json.dumps({"status": "error", "message": "No active pricebook entries found for the given product IDs."})
-
-    # 2. Fetch Selling Model Types for these products
-    sm_query = f"SELECT Id, (SELECT ProductSellingModel.SellingModelType FROM ProductSellingModelOptions) FROM Product2 WHERE Id IN ({formatted_ids})"
-    sm_endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(sm_query)}"
-    
-    sm_types = {}
-    try:
-        sm_resp = requests.get(sm_endpoint, headers=headers)
-        if sm_resp.status_code == 200:
-            for r in sm_resp.json().get("records", []):
-                models = r.get("ProductSellingModelOptions", {}).get("records", [])
-                types = [m.get("ProductSellingModel", {}).get("SellingModelType") for m in models]
-                if any(t in ["TermDefined", "Evergreen"] for t in types):
-                    sm_types[r["Id"]] = "Subscription"
-                elif "OneTime" in types:
-                    sm_types[r["Id"]] = "OneTime"
-                else:
-                    sm_types[r["Id"]] = "Unknown"
-    except Exception:
-        pass # Fallback to Unknown if SM query fails
-
-    # 3. Group by Pricebook and build results
-    from collections import defaultdict
-    by_pricebook = defaultdict(list)
-    for r in pb_records:
-        by_pricebook[r.get("Pricebook2Id")].append(r)
-    
-    if pricebook_id:
-        # If specific pricebook requested, only use that one
-        if pricebook_id not in by_pricebook:
-             return json.dumps({"status": "error", "message": "This product is not available in the quote's assigned pricebook."})
-        target_pb_id = pricebook_id
-        target_entries = by_pricebook[pricebook_id]
-    else:
-        # Auto-select best pricebook
-        target_pb_id = max(by_pricebook, key=lambda pb: len(set(e.get("Product2Id") for e in by_pricebook[pb])))
-        target_entries = by_pricebook[target_pb_id]
+    data = response.json()
+    records = data.get("records", [])
     
     results = []
-    for r in target_entries:
-        pid = r.get("Product2Id")
+    for r in records:
         results.append({
             "PricebookEntryId": r.get("Id"),
-            "Product2Id": pid,
+            "Product2Id": r.get("Product2Id"),
             "Pricebook2Id": r.get("Pricebook2Id"),
-            "UnitPrice": r.get("UnitPrice"),
-            "SellingModelType": sm_types.get(pid, "Unknown")
+            "UnitPrice": r.get("UnitPrice")
         })
         
     import json
     return json.dumps({
         "status": "success",
-        "pricebook_id": target_pb_id,
         "resolved_entries": results
     }, indent=2)
 
-        
-    import json
-    return json.dumps({
-        "status": "success",
-        "pricebook_id": best_pb_id,
-        "resolved_entries": results
-    }, indent=2)
-
-
-@architect_tool
+@mcp.tool()
 def get_my_accounts() -> str:
     """
     Fetches the Salesforce accounts owned by the currently authenticated user.
@@ -509,7 +442,7 @@ def get_my_accounts() -> str:
     })
 
 
-@architect_tool
+@mcp.tool()
 def get_opportunities_for_account(account_id: str) -> str:
     """
     Fetches open Opportunities linked to a specific Salesforce Account.
@@ -567,8 +500,8 @@ def get_opportunities_for_account(account_id: str) -> str:
     })
 
 
-@architect_tool
-def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "") -> str:
+@mcp.tool()
+def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -582,8 +515,7 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
                         Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
                         If not provided, the quote will be created without an Opportunity link.
         pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
-                      MUST be taken from the 'pricebook_id' field in the resolve_pricebook_entries response.
-                      If not provided, it will be auto-detected from line item data.
+                      Defaults to the standard pricebook if not specified.
         line_items: One dict per product, each containing:
                     - Product2Id (from search results)
                     - PricebookEntryId (from pricebook resolution tool)
@@ -603,22 +535,14 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         match = re.search(r'(006[A-Za-z0-9]{15})', opportunity_id)
         clean_opp_id = match.group(1) if match else opportunity_id.strip()
 
-    # Auto-detect pricebook_id from line items if not provided
-    if not pricebook_id:
-        for item in line_items:
-            if item.get("Pricebook2Id"):
-                pricebook_id = item["Pricebook2Id"]
-                break
-
     quote_record = {
         "attributes": {
             "method": "POST",
             "type": "Quote"
         },
         "Name": "Agentic_Deal_Management_Quote",
+        "Pricebook2Id": pricebook_id
     }
-    if pricebook_id:
-        quote_record["Pricebook2Id"] = pricebook_id
     if clean_opp_id:
         quote_record["OpportunityId"] = clean_opp_id
 
@@ -629,8 +553,6 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
             import json
             return json.dumps({"status": "error", "message": "CRITICAL: Every line item MUST include Product2Id and PricebookEntryId."})
 
-        SellingModelType = item.get("SellingModelType", "Unknown")
-        
         record_item = {
             "attributes": {
                 "type": "QuoteLineItem",
@@ -639,30 +561,17 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
+            "PeriodBoundary": "Anniversary",
+            "BillingFrequency": "null",
             "Quantity": item.get("Quantity", 1),
-            "UnitPrice": item.get("UnitPrice", 100)
+            "UnitPrice": item.get("UnitPrice", 100),
+            "StartDate": item.get("StartDate", "2025-01-01"),
+            "EndDate": item.get("EndDate", "2026-01-01")
         }
 
-        # Dynamic field handling based on SellingModelType
-        if SellingModelType in ["Subscription", "TermDefined", "Evergreen"]:
-            # Required for Subscription-based models
-            record_item["StartDate"] = item.get("StartDate", "2025-01-01")
-            record_item["EndDate"] = item.get("EndDate", "2026-01-01")
-            record_item["BillingFrequency"] = item.get("BillingFrequency", "Annual")
-            record_item["PeriodBoundary"] = item.get("PeriodBoundary", "Anniversary")
-        elif SellingModelType == "OneTime":
-            # For OneTime products, we explicitly omit BillingFrequency, PeriodBoundary, EndDate, and StartDate
-            pass
-        else:
-            # For Unknown types, we play it safe and avoid subscription fields that might cause validation errors
-            pass
-
-        # Safe passthrough of allowed fields
-        for field in ["Description", "Discount", "TaxCode"]:
-            if field in item:
-                record_item[field] = item[field]
-
-
+        for k, v in item.items():
+            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "StartDate", "EndDate"]:
+                record_item[k] = v
 
         records.append({"referenceId": f"refQuoteLine{i}", "record": record_item})
 
@@ -703,7 +612,7 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         "salesforce_response": response.json()
     }, indent=2)
 
-@architect_tool
+@mcp.tool()
 def update_quote_discount(quote_id: str, discount: float) -> str:
     import requests as _requests
     import json as _json
@@ -827,7 +736,7 @@ def update_quote_discount(quote_id: str, discount: float) -> str:
         "salesforce_response": response_body
     }, indent=2)
 
-@architect_tool
+@mcp.tool()
 def get_quotes_for_opportunity(opportunity_id: str) -> str:
     """
     Fetches Salesforce quotes associated with a specific Opportunity ID.
@@ -872,7 +781,7 @@ def get_quotes_for_opportunity(opportunity_id: str) -> str:
         "message": f"Found {len(quotes)} quotes. Waiting for user selection."
     })
 
-@architect_tool
+@mcp.tool()
 def get_quote_details(quote_id: str) -> str:
     """
     Fetches the quote line items for a specific quote.
@@ -885,23 +794,6 @@ def get_quote_details(quote_id: str) -> str:
     headers, instance_url = get_salesforce_auth()
     import requests, json
 
-    # 1. Fetch Quote header info (to get Pricebook2Id)
-    header_query = f"SELECT Id, Name, Pricebook2Id FROM Quote WHERE Id = '{clean_id}'"
-    header_resp = requests.get(
-        f"{instance_url}/services/data/v59.0/query",
-        headers=headers,
-        params={"q": header_query}
-    )
-    
-    pricebook_id = None
-    quote_name = ""
-    if header_resp.status_code == 200:
-        header_data = header_resp.json()
-        if header_data.get("records"):
-            pricebook_id = header_data["records"][0].get("Pricebook2Id")
-            quote_name = header_data["records"][0].get("Name")
-
-    # 2. Fetch Line Items
     query = (
         f"SELECT Id, Product2.Name, Product2Id, Quantity, UnitPrice, Discount, TotalPrice "
         f"FROM QuoteLineItem WHERE QuoteId = '{clean_id}'"
@@ -913,7 +805,6 @@ def get_quote_details(quote_id: str) -> str:
     )
     if resp.status_code != 200:
         return json.dumps({"error": resp.text, "line_items": []})
-
 
     items = []
     for rec in resp.json().get("records", []):
@@ -930,14 +821,11 @@ def get_quote_details(quote_id: str) -> str:
     return json.dumps({
         "status": "success",
         "quote_id": clean_id,
-        "quote_name": quote_name,
-        "pricebook_id": pricebook_id,
         "line_items": items,
         "count": len(items)
     }, indent=2)
 
-
-@architect_tool
+@mcp.tool()
 def rename_quote(quote_id: str, new_name: str) -> str:
     """
     Renames a quote using REST PATCH.
@@ -957,7 +845,7 @@ def rename_quote(quote_id: str, new_name: str) -> str:
     else:
         return json.dumps({"status": "error", "error": resp.text})
 
-@architect_tool
+@mcp.tool()
 def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
     """
     Use Graph API for: add / update / delete line items.
@@ -1002,23 +890,9 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         if method == "POST":
             record_item["QuoteId"] = clean_id
             
-            # Dynamic selling-model handling
-            selling_model = op.get("SellingModelType", "Unknown")
-            if selling_model in ["Subscription", "TermDefined", "Evergreen"]:
-                from datetime import date, timedelta
-                today = date.today().isoformat()
-                next_year = (date.today() + timedelta(days=365)).isoformat()
-                
-                record_item["StartDate"] = op.get("StartDate", today)
-                record_item["EndDate"] = op.get("EndDate", next_year)
-                record_item["BillingFrequency"] = op.get("BillingFrequency", "Annual")
-                record_item["PeriodBoundary"] = op.get("PeriodBoundary", "Anniversary")
-            
         for k, v in op.items():
-            if k.lower() not in ["method", "id", "type", "startdate", "enddate", "billingfrequency", "periodboundary", "sellingmodeltype"]:
+            if k.lower() not in ["method", "id", "type"]:
                 record_item[k] = v
-
-
                 
         graph_records.append({
             "referenceId": f"opLine{idx}",
@@ -1047,6 +921,52 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         "message": "Operations executed successfully",
         "salesforce_response": resp.json()
     }, indent=2)
+
+@mcp.tool()
+def add_product_to_quote(quote_id: str, product_id: str, pricebook_entry_id: str, quantity: int = 1, unit_price: float = 100.0) -> str:
+    """
+    Adds a new product to an existing quote.
+    
+    When to call: Use this when the user wants to add a product to their current active quote.
+    Mandatory: Must provide Product2Id and PricebookEntryId (resolve pricing first if needed).
+    """
+    op = {
+        "method": "POST",
+        "Product2Id": product_id,
+        "PricebookEntryId": pricebook_entry_id,
+        "Quantity": quantity,
+        "UnitPrice": unit_price
+    }
+    return manage_quote_line_items(quote_id, [op])
+
+@mcp.tool()
+def update_quote_quantity(quote_id: str, line_item_id: str, quantity: int) -> str:
+    """
+    Updates the quantity of an existing line item in a quote.
+    
+    When to call: Use this when the user wants to change the quantity of a specific product already in the quote.
+    Requires the 18-character QuoteLineItem ID.
+    """
+    op = {
+        "method": "PATCH",
+        "id": line_item_id,
+        "Quantity": quantity
+    }
+    return manage_quote_line_items(quote_id, [op])
+
+@mcp.tool()
+def delete_product_from_quote(quote_id: str, line_item_id: str) -> str:
+    """
+    Removes a product (line item) from a quote.
+    
+    When to call: Use this when the user wants to delete or remove a product from their quote.
+    Requires the 18-character QuoteLineItem ID.
+    """
+    op = {
+        "method": "DELETE",
+        "id": line_item_id
+    }
+    return manage_quote_line_items(quote_id, [op])
 
 
 if __name__ == "__main__":

@@ -55,29 +55,29 @@ const SelectionHub = ({ onSelect }) => (
         <div className="flex items-center gap-3">
           {config.theme === 'Meta' ? (
             <>
-              <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
-              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+              <img src={config.META_LOGO_URL} alt="Meta" className="h-7 object-contain" />
+              <div className="h-5 w-[1px] bg-slate-200 mx-2" />
               <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
+                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
               </div>
             </>
           ) : (
             <>
-              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-10 object-contain" />
-              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-7 object-contain" />
+              <div className="h-5 w-[1px] bg-slate-200 mx-2" />
               <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Agentic AI Platform</span>
+                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Agentic AI Platform</span>
               </div>
             </>
           )}
         </div>
 
         {/* Stats bar */}
-        <div className="hidden md:flex items-center gap-px rounded-2xl overflow-hidden border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
+        <div className="hidden md:flex items-center gap-px rounded-xl overflow-hidden border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
           {stats.map((s, i) => (
-            <div key={i} className="flex flex-col items-center px-6 py-2.5 gap-0">
-              <span className="text-sm font-black text-indigo-500 leading-none">{s.value}</span>
-              <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{s.label}</span>
+            <div key={i} className="flex flex-col items-center px-4 py-1.5 gap-0">
+              <span className="text-xs font-black text-indigo-500 leading-none">{s.value}</span>
+              <span className="text-[8px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{s.label}</span>
             </div>
           ))}
         </div>
@@ -90,11 +90,11 @@ const SelectionHub = ({ onSelect }) => (
       </nav>
 
       {/* ─── Hero ─── */}
-      <div className="mb-8">
+      <div className="mb-6">
         {/* Agentic badge */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 border border-indigo-500/15 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-            <Bot size={12} />
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 border border-indigo-500/15 text-[8.5px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+            <Bot size={10} />
             Autonomous Agentic AI · Salesforce-Native
           </div>
         </div>
@@ -102,11 +102,11 @@ const SelectionHub = ({ onSelect }) => (
         {/* Headline + sub */}
         <div className="flex items-end justify-between gap-8">
           <div>
-            <h1 className="text-4xl lg:text-[52px] font-black leading-[1.1] tracking-tight text-[var(--text-main)] mb-3">
+            <h1 className="text-2xl lg:text-[38px] font-black leading-[1.1] tracking-tight text-[var(--text-main)] mb-2">
               What would you like to<br />
               <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">build today?</span>
             </h1>
-            <p className="text-[var(--text-muted)] text-sm lg:text-base max-w-xl leading-relaxed">
+            <p className="text-[var(--text-muted)] text-xs lg:text-[13px] max-w-lg leading-relaxed opacity-80">
               {config.theme === 'Meta' ? config.META_TAGLINE : "Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention."}
             </p>
           </div>

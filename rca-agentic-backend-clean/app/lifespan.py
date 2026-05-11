@@ -42,10 +42,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting MCP server connections...")
 
     # Each sub-agent gets its own isolated MCP subprocess to avoid shared state.
-    # We pass the role as an env var so server_v1.py can filter available tools.
-    mcp_scout     = build_mcp_toolset(env={"AGENT_ROLE": "SCOUT"})
-    mcp_architect = build_mcp_toolset(env={"AGENT_ROLE": "ARCHITECT"})
-
+    mcp_scout     = build_mcp_toolset()
+    mcp_architect = build_mcp_toolset()
 
     catalog_scout   = build_catalog_scout(mcp_scout)
     quote_architect = build_quote_architect(mcp_architect)

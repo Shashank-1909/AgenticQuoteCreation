@@ -25,23 +25,15 @@ USER_ID:           str   = "dev"
 MODEL_NAME:        str   = "gemini-2.5-pro"
 SERVER_PORT:       int   = 8001
 MCP_TIMEOUT:       float = 60.0
-#MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
+# MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
 MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server_v1.py")
 # ---------------------------------------------------------------------------
 # Tool names — referenced in event-routing logic.
-# These match the function names in server_v1.py exactly.
+# These match the function names in server.py exactly.
 # ---------------------------------------------------------------------------
 TOOL_ACCOUNTS:      str = "get_my_accounts"
 TOOL_OPPORTUNITIES: str = "get_opportunities_for_account"
 TOOL_QUOTE:         str = "evaluate_quote_graph"
-# Quote update tools — keep quote_flow active during these operations
-TOOL_UPDATE_TOOLS:  list = [
-    "update_quote_discount",
-    "get_quotes_for_opportunity",
-    "get_quote_details",
-    "rename_quote",
-    "manage_quote_line_items",
-]
 
 # ---------------------------------------------------------------------------
 # Salesforce instance URL — loaded from auth.json at import time.
