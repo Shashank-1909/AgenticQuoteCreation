@@ -24,10 +24,10 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
   const [results, setResults] = useState([]);
   const [quotes, setQuotes] = useState([]);
-  const [selectionPanel, setSelectionPanel] = useState(null); 
-  const [confirmedAccount, setConfirmedAccount] = useState(null); 
-  const [confirmedSelections, setConfirmedSelections] = useState([]); 
-  const [vaultHistory, setVaultHistory] = useState([]); 
+  const [selectionPanel, setSelectionPanel] = useState(null);
+  const [confirmedAccount, setConfirmedAccount] = useState(null);
+  const [confirmedSelections, setConfirmedSelections] = useState([]);
+  const [vaultHistory, setVaultHistory] = useState([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -37,13 +37,14 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     setInputValue(text);
   };
 
-  const pendingResultsRef = useRef(null);              
-  const pendingSelectionRef = useRef(null);            
-  const [composingReply, setComposingReply] = useState(false); 
-  const [selectedProducts, setSelectedProducts] = useState(new Set()); 
+  const pendingResultsRef = useRef(null);
+  const pendingSelectionRef = useRef(null);
+  const pendingConfigProductsRef = useRef(null); // snapshot of selected products at send-time
+  const [composingReply, setComposingReply] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState(new Set());
 
-  const [graphActive, setGraphActive] = useState(false); 
-  const [graphReady, setGraphReady] = useState(false); 
+  const [graphActive, setGraphActive] = useState(false);
+  const [graphReady, setGraphReady] = useState(false);
 
   const [leftWidth, setLeftWidth] = useState(300);
   const [rightWidth, setRightWidth] = useState(465);
@@ -51,7 +52,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [isResizingRight, setIsResizingRight] = useState(false);
 
   const chatEndRef = useRef(null);
-  const rightPanelEndRef = useRef(null);  
+  const rightPanelEndRef = useRef(null);
   const ws = useRef(null);
   const centerRef = useRef(null);
   const resultsScrollRef = useRef(null);
@@ -228,17 +229,17 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 // Robust extraction of Quote ID from response
                 let qId = 'Generated';
                 if (parsed.salesforce_response?.graphs?.[0]?.records?.[0]?.id) {
-                   qId = parsed.salesforce_response.graphs[0].records[0].id;
+                  qId = parsed.salesforce_response.graphs[0].records[0].id;
                 } else {
-                   const qIdMatch = data.data.match(/0Q0[a-zA-Z0-9]{12,15}/);
-                   if (qIdMatch) qId = qIdMatch[0];
+                  const qIdMatch = data.data.match(/0Q0[a-zA-Z0-9]{12,15}/);
+                  if (qIdMatch) qId = qIdMatch[0];
                 }
-                
+
                 const inst = parsed.instance_url || 'https://login.salesforce.com';
-                const newQuote = { 
-                  id: qId, 
-                  status: 'Draft', 
-                  sfLink: qId && qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null 
+                const newQuote = {
+                  id: qId,
+                  status: 'Draft',
+                  sfLink: qId && qId !== 'Generated' ? `${inst}/lightning/r/Quote/${qId}/view` : null
                 };
                 const quoteItem = { type: 'quote', data: newQuote, id: Date.now() };
                 setQuotes(prev => [...prev, newQuote]);
@@ -262,7 +263,13 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             }
             setComposingReply(false);
             if (data.data?.trim()) {
-              setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: data.data }]);
+              if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
+                // Agent requested UI config. Don't show text, just pop modal!
+                setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: "Let's configure your selected products first." }]);
+                setTimeout(() => handleOpenConfig(), 400);
+              } else {
+                setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: data.data }]);
+              }
             }
             break;
 
@@ -281,8 +288,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   const handlePreview = async (quoteId) => {
     if (!quoteId || quoteId === 'Generated') {
-       alert('Cannot preview a quote that was not successfully generated in Salesforce.');
-       return;
+      alert('Cannot preview a quote that was not successfully generated in Salesforce.');
+      return;
     }
     setLoadingPreview(true);
     try {
@@ -308,6 +315,33 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
+    let finalMessage = text;
+    // If they have products selected in the UI, capture them NOW (before any state resets)
+    // and silently append them as context to the message.
+    if (selectedProducts.size > 0) {
+      const fromHistory = vaultHistory.filter(i => i.type === 'products').flatMap(i => i.data);
+      // Also check the live results state, in case vaultHistory hasn't been updated yet
+      const allAvailable = [...fromHistory, ...results];
+      const seenIds = new Set();
+      const selected = [];
+      for (const p of allAvailable) {
+        if (selectedProducts.has(p.id) && !seenIds.has(p.id)) {
+          selected.push(p);
+          seenIds.add(p.id);
+        }
+      }
+      // Save the snapshot to the ref BEFORE anything gets cleared by state resets below
+      pendingConfigProductsRef.current = selected;
+
+      const list = selected.map(p => `${p.name} (ID: ${p.id})`).join(', ');
+      finalMessage = `${text} [System Context: The user currently has these products selected in the UI: ${list}]`;
+      
+      // Hide the floating Configure button immediately — the user has committed to
+      // the quote flow. Product data is safely preserved in pendingConfigProductsRef
+      // in case the Agent returns [ACTION: OPEN_CONFIG_MODAL].
+      setSelectedProducts(new Set());
+    }
+
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     setInputValue('');
 
@@ -319,7 +353,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     }
 
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(text);
+      ws.current.send(finalMessage);
     } else {
       setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: 'Backend disconnected.' }]);
     }
@@ -346,19 +380,25 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [configProducts, setConfigProducts] = useState([]);
 
   const handleOpenConfig = () => {
-    const allProductsInHistory = vaultHistory
-      .filter(item => item.type === 'products')
-      .flatMap(item => item.data);
-    const selected = allProductsInHistory.filter(p => selectedProducts.has(p.id));
-    const uniqueSelected = [];
-    const seenIds = new Set();
-    for (const p of selected) {
-      if (!seenIds.has(p.id)) {
-        uniqueSelected.push({ ...p, quantity: 1, discount: 0 });
-        seenIds.add(p.id);
+    // PRIMARY SOURCE: use the snapshot captured at send-time (guaranteed to be correct)
+    // FALLBACK: reconstruct from vaultHistory + results if no snapshot exists (e.g. button click)
+    let selected = [];
+    if (pendingConfigProductsRef.current && pendingConfigProductsRef.current.length > 0) {
+      selected = pendingConfigProductsRef.current;
+      pendingConfigProductsRef.current = null; // consume the snapshot
+    } else {
+      const fromHistory = vaultHistory.filter(item => item.type === 'products').flatMap(item => item.data);
+      const allAvailable = [...fromHistory, ...results];
+      const seenIds = new Set();
+      for (const p of allAvailable) {
+        if (selectedProducts.has(p.id) && !seenIds.has(p.id)) {
+          selected.push(p);
+          seenIds.add(p.id);
+        }
       }
     }
-    setConfigProducts(uniqueSelected);
+    const withDefaults = selected.map(p => ({ ...p, quantity: 1, discount: 0 }));
+    setConfigProducts(withDefaults);
     setIsConfigOpen(true);
   };
 
@@ -366,11 +406,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     if (isBusy) return;
     const list = configuredItems.map(p => `${p.name} (ID: ${p.id}, Quantity: ${p.quantity}, Discount: ${p.discount}%)`).join(', ');
     const text = configuredItems.length === 1 ? `Create a quote for ${list}` : `Create a quote for the following products: ${list}`;
-    
+
     // Add record to Vault History
     const configItem = { type: 'configured_products', data: configuredItems, id: Date.now() };
     setVaultHistory(prev => [...prev, configItem]);
-    
+
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
     setIsConfigOpen(false);
@@ -399,7 +439,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     const currentProducts = vaultHistory
       .filter(item => item.type === 'products')
       .flatMap(item => item.data);
-    
+
     setSelectedProducts(
       selectedProducts.size === currentProducts.length ? new Set() : new Set(currentProducts.map(p => p.id))
     );
@@ -415,20 +455,20 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
         <section className="h-full border-r border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500" style={{ width: leftWidth }}>
           {/* Background Glow for Panel */}
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-indigo-500/[0.03] to-transparent pointer-events-none" />
-          
+
           <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02] relative z-10">
             <div className="flex items-center gap-3">
               {config.theme === 'Meta' ? (
                 <div className="flex items-center gap-3">
-                   <img src={config.META_LOGO_URL} alt="Meta" className="h-5 object-contain" />
-                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
-                   {leftWidth > 180 && <span className="text-[7.5px] font-black text-indigo-500/60 dark:text-indigo-400/60 uppercase tracking-[0.3em]">Connect</span>}
+                  <img src={config.META_LOGO_URL} alt="Meta" className="h-5 object-contain" />
+                  {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
+                  {leftWidth > 180 && <span className="text-[7.5px] font-black text-indigo-500/60 dark:text-indigo-400/60 uppercase tracking-[0.3em]">Connect</span>}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                   <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-6 object-contain" />
-                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
-                   {leftWidth > 180 && <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.3em]">Control Center</span>}
+                  <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-6 object-contain" />
+                  {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
+                  {leftWidth > 180 && <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-[0.3em]">Control Center</span>}
                 </div>
               )}
             </div>
@@ -576,9 +616,9 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             <div className="px-5 py-3 border-b border-[var(--glass-border)] bg-white/[0.01]">
               <div className="relative group/search">
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/search:text-indigo-500 transition-colors" />
-                <input 
-                  type="text" 
-                  placeholder="Filter results..." 
+                <input
+                  type="text"
+                  placeholder="Filter results..."
                   value={vaultSearchQuery}
                   onChange={(e) => setVaultSearchQuery(e.target.value)}
                   className="w-full bg-black/10 border border-white/5 rounded-xl py-2 pl-9 pr-3 text-[10px] font-bold text-[var(--text-main)] outline-none focus:border-indigo-500/30 transition-all placeholder-slate-600 shadow-inner"
@@ -597,8 +637,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
             {vaultHistory.map((item) => {
               if (item.type === 'products') {
-                const filteredProds = item.data.filter(p => 
-                  p.name.toLowerCase().includes(vaultSearchQuery.toLowerCase()) || 
+                const filteredProds = item.data.filter(p =>
+                  p.name.toLowerCase().includes(vaultSearchQuery.toLowerCase()) ||
                   (p.sku && p.sku.toLowerCase().includes(vaultSearchQuery.toLowerCase()))
                 );
                 if (vaultSearchQuery && filteredProds.length === 0) return null;
@@ -688,7 +728,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <div className="glass-card rounded-[1.5rem] border-white/10 p-4 shadow-xl relative overflow-hidden bg-indigo-500/[0.03]">
                       {/* Decorative elements */}
                       <div className="absolute -top-16 -right-16 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px]" />
-                      
+
                       <div className="pb-3 flex items-center justify-between relative z-10 border-b border-white/5 mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-1 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.6)] animate-pulse" />
@@ -704,12 +744,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                               <span className="text-[10px] font-bold text-[var(--text-main)] truncate pr-3">{prod.name}</span>
                               <div className="flex items-center gap-2 mt-1">
                                 <div className="flex items-center gap-1 bg-slate-500/5 px-1.5 py-0.5 rounded border border-white/5">
-                                   <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Qty</span>
-                                   <span className="text-[8.5px] font-black text-indigo-400">{prod.quantity}</span>
+                                  <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Qty</span>
+                                  <span className="text-[8.5px] font-black text-indigo-400">{prod.quantity}</span>
                                 </div>
                                 <div className="flex items-center gap-1 bg-slate-500/5 px-1.5 py-0.5 rounded border border-white/5">
-                                   <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Disc</span>
-                                   <span className="text-[8.5px] font-black text-emerald-400">{prod.discount}%</span>
+                                  <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">Disc</span>
+                                  <span className="text-[8.5px] font-black text-emerald-400">{prod.discount}%</span>
                                 </div>
                               </div>
                             </div>
@@ -721,11 +761,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                       </div>
 
                       <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10 opacity-40">
-                         <span className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-500">Pipeline Sequence 02</span>
-                         <div className="flex items-center gap-1">
-                           <div className="w-0.5 h-0.5 rounded-full bg-indigo-500" />
-                           <div className="w-0.5 h-0.5 rounded-full bg-indigo-500/30" />
-                         </div>
+                        <span className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-500">Pipeline Sequence 02</span>
+                        <div className="flex items-center gap-1">
+                          <div className="w-0.5 h-0.5 rounded-full bg-indigo-500" />
+                          <div className="w-0.5 h-0.5 rounded-full bg-indigo-500/30" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -747,7 +787,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                       <div className="pt-2">
                         <div className="bg-white/5 border border-white/10 p-4 rounded-2xl group hover:shadow-2xl transition-all relative overflow-hidden">
                           <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-opacity">
-                             <Zap size={40} />
+                            <Zap size={40} />
                           </div>
                           <div className="flex items-start justify-between mb-3 relative z-10">
                             <div className="flex flex-col gap-1">
