@@ -427,7 +427,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
         }}>
           <NodeCard
-            label="Quote Updator"
+            label="Quote Modifier"
             subLabel={uActive ? (updatorComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
             icon={Pencil} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'}
@@ -438,7 +438,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#a78bfa55', marginTop: 8,
-          }}>Quote Updator</div>
+          }}>Quote Modifier</div>
         </div>
       )}
 
