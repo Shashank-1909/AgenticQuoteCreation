@@ -19,7 +19,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     { 
       id: 1, 
       role: 'assistant', 
-      content: `Hello! I'm your Agentforce Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Agivant Agentforce'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
       type: 'text'
     }
   ]);
@@ -40,9 +41,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [workspaceView, setWorkspaceView] = useState('graph'); // graph, preview, account
   const [zoomLevel, setZoomLevel] = useState(0.75);
+  const [quotes, setQuotes] = useState([]);
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
+  const pendingResultsRef = useRef(null);
+  const pendingSelectionRef = useRef(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -141,40 +145,57 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         try {
           const parsed = JSON.parse(data.data);
           if (data.tool === 'search_catalog' && parsed.results) {
-            addMessage({
-              type: 'card',
-              cardType: 'products',
-              data: parsed.results,
-              content: "I've searched the catalog and found these products:"
-            });
+            pendingResultsRef.current = parsed.results;
           }
           if (data.tool === 'evaluate_quote_graph') {
             let qId = extractQuoteId(data.data);
             const newQuote = { id: qId, status: 'Draft' };
+            setQuotes(prev => [...prev, newQuote]);
+            // Clear any pending cards since the quote is now finalized
+            pendingResultsRef.current = null;
+            pendingSelectionRef.current = null;
+            
             addMessage({
               type: 'card',
               cardType: 'quote',
               data: newQuote,
               content: "Quote generated successfully in Salesforce."
             });
-            handlePreview(qId);
+            // handlePreview(qId);
           }
         } catch (_) { }
         break;
 
       case 'USER_SELECTION_NEEDED':
-        addMessage({
-          type: 'card',
-          cardType: 'selection',
-          data: { type: data.selection_for, options: data.options || [] },
-          content: `Please select an ${data.selection_for}:`
-        });
+        pendingSelectionRef.current = { type: data.selection_for, options: data.options || [] };
         break;
 
       case 'FINAL_REPLY':
         setReasoning(null);
+        if (pendingResultsRef.current) {
+          addMessage({
+            type: 'card',
+            cardType: 'products',
+            data: pendingResultsRef.current,
+            content: "I've searched the catalog and found these products:"
+          });
+          pendingResultsRef.current = null;
+        }
+        if (pendingSelectionRef.current) {
+          addMessage({
+            type: 'card',
+            cardType: 'selection',
+            data: pendingSelectionRef.current,
+            content: `Please select an ${pendingSelectionRef.current.type}:`
+          });
+          pendingSelectionRef.current = null;
+        }
         if (data.data?.trim()) {
-          addMessage({ type: 'text', content: data.data });
+          if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
+            setTimeout(() => handleOpenConfig(), 100);
+          } else {
+            addMessage({ type: 'text', content: data.data });
+          }
         }
         break;
 
@@ -194,7 +215,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   };
 
   const addMessage = (msg) => {
-    setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', ...msg }]);
+    const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
+    setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
   };
 
   const handleSend = (e) => {
@@ -202,36 +224,73 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
+    // Support dynamic preview/summary commands
+    const cmd = text.toLowerCase();
+    
+    // Support dynamic preview/summary/overview commands
+    const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    if (isPreviewCmd) {
+      let quoteIdToPreview = null;
+      const latestFromState = quotes[quotes.length - 1]?.id;
+      
+      if (latestFromState && latestFromState !== 'Generated') {
+        quoteIdToPreview = latestFromState;
+      } else {
+        // Fallback: search messages for a quote ID pattern (0Q0...)
+        const allContent = messages.map(m => m.content).join(' ');
+        const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
+        if (match) quoteIdToPreview = match[0];
+      }
+
+      if (quoteIdToPreview) {
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        handlePreview(quoteIdToPreview);
+        setInputValue('');
+        return;
+      }
+    }
+
+
     let finalMessage = text;
-
     if (selectedProducts.size > 0) {
-      const selectedList = configProducts
-        .filter(p => selectedProducts.has(p.id))
-        .map(p => ({
-          ...p,
-          quantity: productConfigs[p.id]?.qty || 1,
-          discount: productConfigs[p.id]?.discount || 0
-        }));
-
-      if (selectedList.length > 0) {
-        const listStr = selectedList.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
-        finalMessage = `${text} [System Context: The user currently has these products selected in the UI: ${listStr}]`;
-        
-        setSelectedProducts(new Set());
-        setProductConfigs({});
-        setBulkQty('');
-        setBulkDiscount('');
+      const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
+      const allProds = productMessages.flatMap(m => m.data);
+      const selected = allProds.filter(p => selectedProducts.has(p.id));
+      if (selected.length > 0) {
+        const list = selected.map(p => `${p.name} (ID: ${p.id})`).join(', ');
+        finalMessage += `\n\n[Products in context: ${list}]`;
       }
     }
 
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    ws.current?.send(finalMessage);
+    ws.current?.send(JSON.stringify({
+      text: finalMessage,
+      module: selectedModule?.id || 'sales'
+    }));
   };
 
   const extractQuoteId = (dataStr) => {
     const match = dataStr.match(/0Q0[a-zA-Z0-9]{12,15}/);
     return match ? match[0] : 'Generated';
+  };
+
+  const handleOpenConfig = () => {
+    // Collect all unique products from the chat history
+    const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
+    const allProds = productMessages.flatMap(m => m.data);
+    const selected = allProds.filter(p => selectedProducts.has(p.id));
+    
+    if (selected.length > 0) {
+      const mapped = selected.map(p => ({
+        ...p,
+        quantity: productConfigs[p.id]?.qty || 1,
+        discount: productConfigs[p.id]?.discount || 0
+      }));
+      const unique = Array.from(new Map(mapped.map(item => [item.id, item])).values());
+      setConfigProducts(unique);
+      setIsConfigOpen(true);
+    }
   };
 
   const handlePreview = async (quoteId) => {
@@ -340,7 +399,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   };
 
   return (
-    <div className={`agentforce-container ${isDark ? 'dark' : ''}`}>
+    <div className={`agentforce-container ${isDark ? 'dark' : ''} ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
       
       {/* LEFT WORKSPACE — CONTEXT VIEW */}
       <section className="af-workspace">
@@ -350,7 +409,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               <ArrowLeft size={18} />
             </button>
             <div className="flex flex-col">
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">Agent Workspace</h2>
+              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
+                {config.theme === 'Meta' ? 'Meta Workspace' : 'Agent Workspace'}
+              </h2>
               <span className="text-[10px] text-slate-500 font-bold uppercase">{selectedModule?.title}</span>
             </div>
           </div>
@@ -495,11 +556,17 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
       <section className="af-sidebar">
         <div className="af-sidebar-header">
-           <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <BrainCircuit size={18} color="white" />
+           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
+              {config.theme === 'Meta' ? (
+                <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+              ) : (
+                <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
+              )}
            </div>
            <div className="flex flex-col">
-              <h3 className="text-xs font-black uppercase tracking-tighter">Agentforce</h3>
+              <h3 className="text-xs font-black uppercase tracking-tighter">
+                {config.theme === 'Meta' ? 'Meta Assistant' : 'Agivant Agentforce'}
+              </h3>
               <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
            </div>
            <Settings size={14} className="ml-auto text-slate-500 cursor-pointer" />
@@ -508,6 +575,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         <div className="af-chat-area">
           {messages.map(msg => (
             <div key={msg.id} className={`af-message ${msg.role}`}>
+              {msg.role === 'assistant' && (
+                <div className="flex items-center gap-1.5 mb-1 px-1">
+                  <div className="w-1 h-2 bg-indigo-500/40 rounded-full" />
+                  <span className="text-[7px] font-black uppercase tracking-widest text-slate-500">
+                    {msg.aiName || (config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI')}
+                  </span>
+                </div>
+              )}
               <div className="af-bubble">
                 {msg.content}
               </div>
@@ -609,16 +684,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                       );
                     })}
                   </div>
-                  {selectedProducts.size > 0 && (
-                    <div className="p-3 border-t border-white/5 bg-indigo-500/5">
-                       <button 
-                        onClick={() => handleConfirmInline(msg.data)}
-                        className="w-full py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
-                       >
-                         <Zap size={12} fill="currentColor" /> Create Quote ({selectedProducts.size} Items)
-                       </button>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -673,7 +738,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               type="text" 
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              placeholder="Ask Agivant Agentforce..."
+              placeholder={config.theme === 'Meta' ? 'Ask Meta Agentforce...' : 'Ask Agivant Agentforce...'}
               className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
              />
              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
@@ -681,7 +746,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
              </button>
           </form>
           <div className="mt-4 flex flex-wrap gap-2">
-             {SUGGESTIONS.slice(0, 2).map((s, i) => (
+             <div className="flex items-center gap-2 mb-2 w-full">
+               <div className="h-[1px] flex-1 bg-white/5"></div>
+               <span className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">Quick Actions</span>
+               <div className="h-[1px] flex-1 bg-white/5"></div>
+             </div>
+             {SUGGESTIONS.slice(0, 3).map((s, i) => (
                <button 
                 key={i} 
                 onClick={() => setInputValue(s.text)}
@@ -701,7 +771,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         onConfirm={(configuredItems) => {
           const list = configuredItems.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
           setInputValue(`Create a quote for: ${list}`);
-          handleSend();
+          handleSend(); // This will add the message to the UI and send the JSON
           setIsConfigOpen(false);
         }} 
       />

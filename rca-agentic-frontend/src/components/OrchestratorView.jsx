@@ -48,7 +48,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const [graphReady, setGraphReady] = useState(false);
 
   const [leftWidth, setLeftWidth] = useState(300);
-  const [rightWidth, setRightWidth] = useState(465);
+  const [rightWidth, setRightWidth] = useState(500);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
@@ -270,9 +270,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             setComposingReply(false);
             if (data.data?.trim()) {
               if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
-                // Agent requested UI config. Don't show text, just pop modal!
-                setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: "Let's configure your selected products first." }]);
-                setTimeout(() => handleOpenConfig(), 400);
+                // Agent requested UI config. pop modal!
+                setTimeout(() => handleOpenConfig(), 100);
               } else {
                 setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: data.data }]);
               }
@@ -326,6 +325,41 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     e.preventDefault();
     const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
+    const cmd = text.toLowerCase();
+
+    // Support dynamic preview/summary/overview commands
+    const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    if (isPreviewCmd) {
+      let quoteIdToPreview = null;
+      const latestFromState = quotes[quotes.length - 1]?.id;
+      
+      if (latestFromState && latestFromState !== 'Generated') {
+        quoteIdToPreview = latestFromState;
+      } else {
+        // Fallback: search messages for a quote ID pattern (0Q0...)
+        const allText = messages.map(m => m.content).join(' ');
+        const match = allText.match(/0Q0[a-zA-Z0-9]{12,15}/);
+        if (match) quoteIdToPreview = match[0];
+      }
+
+      if (quoteIdToPreview) {
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        handlePreview(quoteIdToPreview);
+        setInputValue('');
+        return;
+      }
+    }
+
+    // Support dynamic "create a quote" command
+    const isCreateCmd = (cmd.includes('create') || cmd.includes('generate') || cmd.includes('finalize') || cmd.includes('submit')) && cmd.includes('quote');
+    if (isCreateCmd) {
+      if (selectedProducts.size > 0) {
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        handleOpenConfig();
+        setInputValue('');
+        return;
+      }
+    }
 
     let finalMessage = text;
     // If they have products selected in the UI, capture them NOW (before any state resets)
@@ -829,14 +863,6 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             })}
             <div ref={rightPanelEndRef} />
           </div>
-          {selectedProducts.size > 0 && (
-            <div className="absolute bottom-0 left-0 right-0 p-4 pt-5 pb-5 border-t border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-3xl z-20 shadow-2xl transition-all" style={{ animation: 'slide-up-in 0.28s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-              <button onClick={handleOpenConfig} disabled={isBusy} className={`w-full p-4 rounded-xl text-[8.5px] font-extrabold tracking-widest uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isBusy ? 'bg-slate-500/10 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5'}`}>
-                {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} fill="currentColor" />}
-                Configure Selected Products — {selectedProducts.size} Items
-              </button>
-            </div>
-          )}
         </section>
       </div>
 

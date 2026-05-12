@@ -42,7 +42,7 @@
 
 /* RIGHT SIDEBAR (AGENT) */
 .af-sidebar {
-  width: 400px;
+  width: 500px;
   display: flex;
   flex-direction: column;
   background: var(--card-bg);

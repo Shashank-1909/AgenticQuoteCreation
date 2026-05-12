@@ -134,7 +134,7 @@ const SelectionHub = ({ onSelect }) => (
         {modules.map((m, i) => (
           <button
             key={m.id}
-            onClick={() => onSelect(m.id)}
+            onClick={() => onSelect(m)}
             className={`group relative text-left rounded-[28px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl overflow-hidden p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl focus:outline-none`}
             style={{
               animation: `float-up 0.55s ease-out ${i * 80}ms both`,
