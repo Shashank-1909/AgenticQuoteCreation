@@ -201,7 +201,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
           <span className="relative z-10 flex items-center gap-2">
             <BrainCircuit size={16} className="group-hover:animate-pulse" />
             
-            Agivant Agentforce 
+            Quoting Accelerator 
             <Sparkles size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
           </span>
         </button>
