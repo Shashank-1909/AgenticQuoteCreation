@@ -100,7 +100,7 @@
 }
 
 .user .af-bubble {
-  background: var(--primary-main, #6366f1);
+  background: var(--indigo-500);
   color: white;
   border-bottom-right-radius: 0.25rem;
 }
@@ -119,10 +119,10 @@
   gap: 0.5rem;
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(59, 130, 246, 0.05);
   border-radius: 0.75rem;
   font-size: 0.75rem;
-  color: #6366f1;
+  color: var(--indigo-500);
   font-weight: 600;
   animation: af-pulse 2s infinite;
 }
@@ -140,7 +140,7 @@
 
 .af-card-header {
   padding: 1rem;
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(59, 130, 246, 0.05);
   border-bottom: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
@@ -214,6 +214,6 @@
 }
 .af-chat-area::-webkit-scrollbar-thumb,
 .af-workspace::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.2);
+  background: var(--indigo-500);
   border-radius: 10px;
 }
