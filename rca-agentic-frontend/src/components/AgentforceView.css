@@ -18,7 +18,7 @@
   background: rgba(255, 255, 255, 0.02);
   position: relative;
   overflow: hidden;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Remove transition to prevent lag during resizing */
 }
 
 .af-workspace-header {
@@ -50,7 +50,6 @@
   border-left: 1px solid var(--glass-border);
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
   z-index: 50;
-  transition: width 0.3s ease;
 }
 
 .af-sidebar-header {
@@ -216,4 +215,31 @@
 .af-workspace::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.2);
   border-radius: 10px;
+}
+
+/* RESIZER */
+.af-resizer {
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: all 0.2s;
+  z-index: 100;
+  position: relative;
+}
+
+.af-resizer:hover,
+.af-resizer.active {
+  background: #6366f1;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+  width: 4px;
+}
+
+/* CURSORS */
+.cursor-grab {
+  cursor: grab !important;
+}
+
+.cursor-grabbing {
+  cursor: grabbing !important;
 }

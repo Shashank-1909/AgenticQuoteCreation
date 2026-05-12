@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
-  Eye, ExternalLink, Search, LayoutDashboard, FileText
+  Eye, ExternalLink, Search, LayoutDashboard, FileText, Plus, Minus
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -40,6 +40,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [bulkQty, setBulkQty] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [workspaceView, setWorkspaceView] = useState('graph'); // graph, preview, account
+  const [zoomLevel, setZoomLevel] = useState(0.75);
+  const [sidebarWidth, setSidebarWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
@@ -60,6 +66,44 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     };
     return () => ws.current?.close();
   }, []);
+
+  // Resizing Logic
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 320 && newWidth < 800) {
+        setSidebarWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsResizing(false);
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Panning Logic
+  const handlePanStart = (e) => {
+    if (e.target.closest('button')) return;
+    setIsPanning(true);
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handlePanMove = (e) => {
+    if (!isPanning) return;
+    const dx = e.clientX - lastMousePos.x;
+    const dy = e.clientY - lastMousePos.y;
+    setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handlePanEnd = () => setIsPanning(false);
 
   const handleWsMessage = (data) => {
     switch (data.type) {
@@ -200,9 +244,42 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
+    let textToSend = text;
+
+    // Intercept if user types about selected products
+    if (text.toLowerCase().includes('quote') && selectedProducts.size > 0) {
+      let allProducts = [];
+      messages.forEach(m => {
+        if (m.type === 'card' && m.cardType === 'products' && Array.isArray(m.data)) {
+          allProducts = [...allProducts, ...m.data];
+        }
+      });
+      
+      const selectedList = allProducts
+        .filter(p => selectedProducts.has(p.id))
+        .map(p => ({
+          ...p,
+          quantity: productConfigs[p.id]?.qty || 1,
+          discount: productConfigs[p.id]?.discount || 0
+        }));
+        
+      if (selectedList.length > 0) {
+        // Only get unique products by ID
+        const uniqueProducts = Array.from(new Map(selectedList.map(item => [item.id, item])).values());
+        const listStr = uniqueProducts.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
+        textToSend = `${text} -> Products: ${listStr}`;
+        
+        // Clear selections
+        setSelectedProducts(new Set());
+        setProductConfigs({});
+        setBulkQty('');
+        setBulkDiscount('');
+      }
+    }
+
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    ws.current?.send(text);
+    ws.current?.send(textToSend);
   };
 
   const extractQuoteId = (dataStr) => {
@@ -265,7 +342,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     
     const listStr = selectedList.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
     const text = `Create a quote for: ${listStr}`;
-    setInputValue(text);
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     ws.current?.send(text);
     
@@ -320,7 +396,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     <div className={`agentforce-container ${isDark ? 'dark' : ''}`}>
       
       {/* LEFT WORKSPACE — CONTEXT VIEW */}
-      <section className="af-workspace">
+      <section className="af-workspace" style={{ flex: 1 }}>
         <div className="af-workspace-header">
           <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-2 rounded-full hover:bg-white/10 text-slate-400">
@@ -348,9 +424,42 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         </div>
 
         <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
-          {workspaceView === 'graph' && (
-             <div className="w-full h-full scale-75 origin-center">
-                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+           {workspaceView === 'graph' && (
+             <div 
+                className={`w-full h-full relative overflow-hidden flex items-center justify-center ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                onMouseDown={handlePanStart}
+                onMouseMove={handlePanMove}
+                onMouseUp={handlePanEnd}
+                onMouseLeave={handlePanEnd}
+             >
+                <div 
+                  style={{ 
+                    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`, 
+                    transition: isPanning ? 'none' : 'transform 0.3s ease-out',
+                    transformOrigin: 'center center'
+                  }} 
+                  className="origin-center"
+                >
+                  <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+                </div>
+                
+                {/* Zoom Controls */}
+                <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(z + 0.1, 2)); }} 
+                     className="w-10 h-10 bg-white text-slate-600 rounded-xl shadow-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+                     title="Zoom In"
+                   >
+                     <Plus size={20} strokeWidth={2.5} />
+                   </button>
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(z - 0.1, 0.2)); }} 
+                     className="w-10 h-10 bg-white text-slate-600 rounded-xl shadow-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 hover:text-indigo-600 transition-colors"
+                     title="Zoom Out"
+                   >
+                     <Minus size={20} strokeWidth={2.5} />
+                   </button>
+                </div>
              </div>
           )}
           {workspaceView === 'preview' && (
@@ -434,51 +543,51 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                  </div>
                ) : previewType === 'summary' && summaryData ? (
                  <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                    <div className="af-card overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl p-10">
+                    <div className="af-card overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-xl p-12">
                        <div className="flex justify-between items-start mb-10">
                           <div className="flex-1">
-                             <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
+                             <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
                                 {summaryData.opportunity || 'GLOBAL FINANCE CORP'}
                              </div>
-                             <h2 className="text-3xl font-black text-[#0f172a] mb-2 tracking-tight">
+                             <h2 className="text-[2rem] leading-tight font-black text-[#1e1b4b] mb-3 tracking-tight">
                                 {summaryData.quote_title || 'Quote Summary'}
                              </h2>
-                             <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                             <div className="flex items-center gap-3 text-xs font-bold text-slate-400">
                                 <span>{summaryData.quote_id}</span>
-                                <span>•</span>
+                                <div className="w-1 h-1 rounded-full bg-slate-300" />
                                 <span>{summaryData.date || '2024-09-12'}</span>
                              </div>
                           </div>
 
                           <div className="text-right">
-                             <div className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest mb-4 shadow-sm ${
+                             <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 ${
                                summaryData.status_label === 'CLOSED WON' || summaryData.status_label === 'APPROVED'
-                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                 : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                 ? 'bg-emerald-50 text-emerald-600'
+                                 : 'bg-indigo-50 text-indigo-600'
                              }`}>
                                 {summaryData.status_label || 'DRAFT'}
                              </div>
-                             <div className="text-4xl font-black text-[#0f172a] tracking-tight">
+                             <div className="text-[2.5rem] leading-none font-black text-[#1e1b4b] tracking-tight">
                                 ${summaryData.grand_total?.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                 {summaryData.grand_total > 1000000 ? 'M' : ''}
                              </div>
-                             <div className="text-xs font-bold text-slate-400 mt-1">
-                                {summaryData.overall_discount || '0% disc.'}
+                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                                {summaryData.overall_discount || '0% DISC.'}
                              </div>
                           </div>
                        </div>
 
-                       <div className="h-px bg-slate-100 w-full mb-10" />
+                       <div className="h-px bg-slate-100/50 w-full mb-10" />
 
                        <div className="mb-10">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-8">Line Items</label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-6">LINE ITEMS</label>
+                          <div className="flex flex-col gap-5">
                              {summaryData.line_items?.map((item, i) => (
-                               <div key={i} className="flex justify-between items-center group pb-4 border-b border-slate-50 last:border-0 md:border-0">
-                                 <div className="text-[14px] font-bold text-[#0f172a] group-hover:text-indigo-600 transition-colors truncate pr-4">
+                               <div key={i} className="flex justify-between items-center group">
+                                 <div className="text-[15px] font-black text-[#1e1b4b] group-hover:text-indigo-600 transition-colors truncate pr-4">
                                    {item.name}
                                  </div>
-                                 <div className="text-[14px] font-black text-indigo-400 whitespace-nowrap">
+                                 <div className="text-[15px] font-black text-indigo-500 whitespace-nowrap">
                                    ${(item.total / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })}K
                                  </div>
                                </div>
@@ -486,16 +595,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                           </div>
                        </div>
 
-                       <div className="h-px bg-slate-100 w-full mb-10" />
+                       <div className="h-px bg-slate-100/50 w-full mb-10" />
 
                        <div>
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-6">Deal Analysis</label>
-                          <p className="text-base font-medium text-slate-500 leading-relaxed mb-8 max-w-4xl">
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-6">DEAL ANALYSIS</label>
+                          <p className="text-[15px] font-medium text-slate-600 leading-relaxed mb-8 max-w-4xl">
                              {summaryData.summary_analysis || 'No analysis available.'}
                           </p>
                           <div className="flex flex-wrap gap-3">
                              {summaryData.tags?.map((tag, i) => (
-                               <div key={i} className="px-5 py-2.5 rounded-2xl bg-indigo-50 text-indigo-600 text-[11px] font-black uppercase tracking-wider border border-indigo-100/50 shadow-sm">
+                               <div key={i} className="px-4 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-widest">
                                  {tag}
                                </div>
                              ))}
@@ -514,8 +623,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         </div>
       </section>
 
+      {/* RESIZER HANDLE */}
+      <div 
+        className={`af-resizer ${isResizing ? 'active' : ''}`}
+        onMouseDown={() => setIsResizing(true)}
+      />
+
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
-      <section className="af-sidebar">
+      <section className="af-sidebar" style={{ width: sidebarWidth, flexShrink: 0 }}>
         <div className="af-sidebar-header">
            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <BrainCircuit size={18} color="white" />
@@ -529,10 +644,18 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
         <div className="af-chat-area">
           {messages.map(msg => (
-            <div key={msg.id} className={`af-message ${msg.role}`}>
-              <div className="af-bubble">
-                {msg.content}
-              </div>
+            <div key={msg.id} className={`af-message ${msg.role} flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              {msg.role === 'assistant' && (
+                <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm border border-indigo-500/20">
+                   <BrainCircuit size={16} className="text-indigo-500" />
+                </div>
+              )}
+              <div className="flex flex-col gap-3 flex-1 min-w-0">
+                {msg.content && (
+                  <div className={`af-bubble ${msg.role === 'user' ? 'bg-indigo-500 text-white' : 'bg-white border border-slate-100 text-slate-700 shadow-sm'}`}>
+                    {msg.content}
+                  </div>
+                )}
               
               {msg.type === 'card' && msg.cardType === 'products' && (
                 <div className="af-card">
@@ -674,6 +797,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                    </div>
                 </div>
               )}
+              </div>
             </div>
           ))}
           

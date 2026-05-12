@@ -507,7 +507,7 @@ def get_opportunities_for_account(account_id: str) -> str:
     })
 
 @mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
+def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -582,17 +582,26 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
-            "PeriodBoundary": "Anniversary",
-            "BillingFrequency": "",
             "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
-            "Discount": discount,
-            "StartDate": item.get("StartDate", "2025-01-01"),
-            "EndDate": item.get("EndDate", "2026-01-01")
+            "Discount": discount
         }
 
+        # Only add subscription fields if the product has a selling model (is a subscription)
+        is_subscription = item.get("SellingModelType") and item.get("SellingModelType") != "One-Time"
+        if is_subscription:
+            record_item["PeriodBoundary"] = "Anniversary"
+            record_item["BillingFrequency"] = "Annual"
+            record_item["StartDate"] = item.get("StartDate", "2025-01-01")
+            record_item["EndDate"] = item.get("EndDate", "2026-01-01")
+
+        # Add any other valid fields, but EXCLUDE metadata returned by resolve_pricebook_entries
+        excluded_fields = [
+            "Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", 
+            "StartDate", "EndDate", "Type", "SellingModelType", "Pricebook2Id"
+        ]
         for k, v in item.items():
-            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", "StartDate", "EndDate"]:
+            if k not in excluded_fields:
                 record_item[k] = v
 
         records.append({"referenceId": f"refQuoteLine{i}", "record": record_item})
