@@ -174,7 +174,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             )}
 
             {/* Scout → tool curves — Circuit Trace style */}
-            {scout.tools.slice(0, 6).map((tool, i) => {
+            {scout.tools.slice(0, 4).map((tool, i) => {
               const tp = scoutToolPos[i];
               const pid = `ps${i}`;
               const d = makeToolPath(scoutCx, SC_BOT, tp);
@@ -208,7 +208,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             })}
 
             {/* Arch → tool curves — Circuit Trace style */}
-            {arch.tools.slice(0, 6).map((tool, i) => {
+            {arch.tools.slice(0, 4).map((tool, i) => {
               const tp = archToolPos[i];
               const pid = `pa${i}`;
               const d = makeToolPath(archCx, AC_BOT, tp);
@@ -312,7 +312,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       )}
 
       {/* Tool circles — per-tool active/done state */}
-      {graphReady && scout.tools.slice(0, 6).map((tool, i) => {
+      {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
         const tp = scoutToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
@@ -321,7 +321,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         );
       })}
 
-      {graphReady && arch.tools.slice(0, 6).map((tool, i) => {
+      {graphReady && arch.tools.slice(0, 4).map((tool, i) => {
         const tp = archToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}

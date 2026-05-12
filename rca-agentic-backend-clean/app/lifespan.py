@@ -45,13 +45,6 @@ async def lifespan(app: FastAPI):
     mcp_scout     = build_mcp_toolset()
     mcp_architect = build_mcp_toolset()
 
-    # Apply strict tool separation
-    from app.core.config import SCOUT_TOOLS
-    mcp_scout.tool_filter = SCOUT_TOOLS
-    
-    # Architect gets everything EXCEPT what Scout has
-    mcp_architect.tool_filter = lambda tool_name: tool_name not in SCOUT_TOOLS
-
     catalog_scout   = build_catalog_scout(mcp_scout)
     quote_architect = build_quote_architect(mcp_architect)
     deal_manager    = build_deal_manager(catalog_scout, quote_architect)

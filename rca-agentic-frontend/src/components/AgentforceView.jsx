@@ -32,7 +32,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [configProducts, setConfigProducts] = useState([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewType, setPreviewType] = useState('details'); // details, summary
   const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [productConfigs, setProductConfigs] = useState({}); // { id: { qty, discount } }
   const [bulkQty, setBulkQty] = useState('');
@@ -176,6 +178,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         }
         break;
 
+      case 'QUOTE_SUMMARY':
+        setSummaryData(data.data);
+        setPreviewType('summary');
+        setWorkspaceView('preview');
+        break;
+
       case 'ERROR':
         addMessage({ type: 'text', content: `⚠️ ${data.data}` });
         setReasoning(null);
@@ -210,6 +218,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       const data = await resp.json();
       if (data.status === 'success') {
         setPreviewData(data);
+        setPreviewType('details');
         setWorkspaceView('preview');
       }
     } catch (err) {
@@ -346,7 +355,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           )}
           {workspaceView === 'preview' && (
             <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-               {previewData ? (
+               {previewType === 'details' && previewData ? (
                  <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex items-center justify-between mb-2">
                        <div className="flex items-center gap-3">
@@ -388,7 +397,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                                 <tr className="text-sm font-bold border-b border-white/5">
                                    <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
                                    <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                                   <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">₹{(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                                   <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
                                 </tr>
                              </tbody>
                           </table>
@@ -413,13 +422,84 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                                       <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
                                       <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">₹{line.UnitPrice?.toLocaleString()}</td>
+                                      <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
                                       <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                                      <td className="px-6 py-4 text-xs font-black text-right">₹{line.TotalPrice?.toLocaleString()}</td>
+                                      <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
                                    </tr>
                                 ))}
                              </tbody>
                           </table>
+                       </div>
+                    </div>
+                 </div>
+               ) : previewType === 'summary' && summaryData ? (
+                 <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                    <div className="af-card overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl p-10">
+                       <div className="flex justify-between items-start mb-10">
+                          <div className="flex-1">
+                             <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
+                                {summaryData.opportunity || 'GLOBAL FINANCE CORP'}
+                             </div>
+                             <h2 className="text-3xl font-black text-[#0f172a] mb-2 tracking-tight">
+                                {summaryData.quote_title || 'Quote Summary'}
+                             </h2>
+                             <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                                <span>{summaryData.quote_id}</span>
+                                <span>•</span>
+                                <span>{summaryData.date || '2024-09-12'}</span>
+                             </div>
+                          </div>
+
+                          <div className="text-right">
+                             <div className={`inline-flex items-center px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest mb-4 shadow-sm ${
+                               summaryData.status_label === 'CLOSED WON' || summaryData.status_label === 'APPROVED'
+                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                 : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                             }`}>
+                                {summaryData.status_label || 'DRAFT'}
+                             </div>
+                             <div className="text-4xl font-black text-[#0f172a] tracking-tight">
+                                ${summaryData.grand_total?.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                {summaryData.grand_total > 1000000 ? 'M' : ''}
+                             </div>
+                             <div className="text-xs font-bold text-slate-400 mt-1">
+                                {summaryData.overall_discount || '0% disc.'}
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="h-px bg-slate-100 w-full mb-10" />
+
+                       <div className="mb-10">
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-8">Line Items</label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                             {summaryData.line_items?.map((item, i) => (
+                               <div key={i} className="flex justify-between items-center group pb-4 border-b border-slate-50 last:border-0 md:border-0">
+                                 <div className="text-[14px] font-bold text-[#0f172a] group-hover:text-indigo-600 transition-colors truncate pr-4">
+                                   {item.name}
+                                 </div>
+                                 <div className="text-[14px] font-black text-indigo-400 whitespace-nowrap">
+                                   ${(item.total / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })}K
+                                 </div>
+                               </div>
+                             ))}
+                          </div>
+                       </div>
+
+                       <div className="h-px bg-slate-100 w-full mb-10" />
+
+                       <div>
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-6">Deal Analysis</label>
+                          <p className="text-base font-medium text-slate-500 leading-relaxed mb-8 max-w-4xl">
+                             {summaryData.summary_analysis || 'No analysis available.'}
+                          </p>
+                          <div className="flex flex-wrap gap-3">
+                             {summaryData.tags?.map((tag, i) => (
+                               <div key={i} className="px-5 py-2.5 rounded-2xl bg-indigo-50 text-indigo-600 text-[11px] font-black uppercase tracking-wider border border-indigo-100/50 shadow-sm">
+                                 {tag}
+                               </div>
+                             ))}
+                          </div>
                        </div>
                     </div>
                  </div>
