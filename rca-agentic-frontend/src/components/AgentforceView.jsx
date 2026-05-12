@@ -203,7 +203,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         // Quote modification complete — auto-refresh and open Record Preview
         if (data.quote_id) {
           setReasoning('Refreshing quote preview...');
-          handlePreview(data.quote_id);
+          // handlePreview(data.quote_id);
         }
         break;
 
