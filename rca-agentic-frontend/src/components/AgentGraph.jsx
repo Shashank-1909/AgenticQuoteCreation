@@ -1,11 +1,11 @@
 import React from 'react';
-import { Network, Search, FileText } from 'lucide-react';
+import { Network, Search, FileText, Pencil } from 'lucide-react';
 import { config } from '../config';
 import NodeCard from './NodeCard';
 import ToolNode from './ToolNode';
 import {
   GW, GH, DM_W, DM_H, DM_ACTIVE_TOP, DM_IDLE_TOP, DM_LEFT, DM_ACTIVE_BOT,
-  SC, AC, SC_TOP, AC_TOP, SC_BOT, AC_BOT,
+  NODE_W, NODE_H, NODE_TOP, NODE_BOT, MID_Y,
   getToolPositions, makeToolPath, shortLabel
 } from '../constants';
 
@@ -26,44 +26,71 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   const dr = isDark ? 4 : 5;      // leading dot radius
   const tdr = isDark ? 3 : 4;      // tool leading dot radius
 
-  const { coordinator, Catalog_Scout: scout, Quote_Architect: arch } = orchestration;
+  const { coordinator, Catalog_Scout: scout, Quote_Architect: arch, Quote_Updator: updator } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
   const sActive = scout.state === 'active', sDone = scout.state === 'done';
   const aActive = arch.state === 'active', aDone = arch.state === 'done';
+  const uActive = updator.state === 'active', uDone = updator.state === 'done';
 
   // Agent is composing its reply: it's still active but no tool is currently running
   const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
   const archComposing = aActive && arch.tools.length > 0 && !arch.tools.some(t => t.state === 'active');
+  const updatorComposing = uActive && updator.tools.length > 0 && !updator.tools.some(t => t.state === 'active');
 
   // DM→Agent line flows ONLY during the brief handoff window:
-  //   - Agent just activated (no tools called yet), AND DM was the one who routed it.
-  // Once the first tool fires, or if DM was bypassed (Turn 2+ quote flow), the line dims.
   const scoutHandoffActive = sActive && scout.tools.length === 0 && scout.routedByDm;
   const archHandoffActive  = aActive && arch.tools.length  === 0 && arch.routedByDm;
+  const updatorHandoffActive = uActive && updator.tools.length === 0 && updator.routedByDm;
 
   const showScout = scout.state !== 'idle';
   const showArch = arch.state !== 'idle';
-  const bothAgents = showScout && showArch;
+  const showUpdator = updator.state !== 'idle';
 
   // ── Dynamic agent positions ──────────────────────────────
-  // Single agent → centered (GW/2). Both agents → original left/right split.
-  const scoutCx = bothAgents ? SC.cx : GW / 2;
-  const archCx = bothAgents ? AC.cx : GW / 2;
-  const scoutLeft = scoutCx - SC.w / 2;
-  const archLeft = archCx - AC.w / 2;
+  const visibleKeys = [];
+  if (showScout) visibleKeys.push('scout');
+  if (showArch) visibleKeys.push('arch');
+  if (showUpdator) visibleKeys.push('updator');
+
+  const getAgentCx = (agentKey) => {
+    const total = visibleKeys.length;
+    if (total === 0) return GW / 2;
+    const idx = visibleKeys.indexOf(agentKey);
+    if (idx === -1) return GW / 2; // Shouldn't happen if showXYZ is true
+    if (total === 1) return GW / 2;
+    if (total === 2) return idx === 0 ? GW * 0.3 : GW * 0.7;
+    if (total === 3) {
+      if (idx === 0) return GW * 0.2;
+      if (idx === 1) return GW * 0.5;
+      return GW * 0.8;
+    }
+    return GW / 2;
+  };
+
+  const scoutCx = getAgentCx('scout');
+  const archCx = getAgentCx('arch');
+  const updatorCx = getAgentCx('updator');
+
+  const scoutLeft = scoutCx - NODE_W / 2;
+  const archLeft = archCx - NODE_W / 2;
+  const updatorLeft = updatorCx - NODE_W / 2;
 
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
-  const midY = (DM_ACTIVE_BOT + SC_TOP) / 2;  // ≈ 163
-  const pathToScout = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${midY} ${scoutCx} ${midY} ${scoutCx} ${SC_TOP}`;
-  const pathToArch = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${midY} ${archCx}  ${midY} ${archCx}  ${AC_TOP}`;
+  const pathToScout   = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${scoutCx}   ${MID_Y} ${scoutCx}   ${NODE_TOP}`;
+  const pathToArch    = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${archCx}    ${MID_Y} ${archCx}    ${NODE_TOP}`;
+  const pathToUpdator = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${updatorCx} ${MID_Y} ${updatorCx} ${NODE_TOP}`;
 
   // ── Dynamic tool positions (relative to agent cx) ─────────
-  const scoutToolPos = getToolPositions(scoutCx);
-  const archToolPos = getToolPositions(archCx);
+  const scoutToolPos   = getToolPositions(scoutCx, scout.tools.length);
+  const archToolPos    = getToolPositions(archCx, arch.tools.length);
+  const updatorToolPos = getToolPositions(updatorCx, updator.tools.length);
 
   // DM vertical position
   const dmTop = graphActive ? DM_ACTIVE_TOP : DM_IDLE_TOP;
+
+  // Path transition style for smooth morphing
+  const pathTransition = 'd 0.72s cubic-bezier(0.4,0,0.2,1), stroke-opacity 0.5s';
 
   return (
     <div style={{ position: 'relative', width: GW, height: GH, margin: '0 auto', flexShrink: 0 }}>
@@ -74,7 +101,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         overflow: 'visible', pointerEvents: 'none',
       }}>
         <defs>
-          {[['cyan', '2.5'], ['amber', '2.5']].map(([n, s]) => (
+          {[['cyan', '2.5'], ['amber', '2.5'], ['violet', '2.5']].map(([n, s]) => (
             <filter key={n} id={`glow-${n}`}>
               <feGaussianBlur stdDeviation={s} result="b" />
               <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -93,7 +120,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           {/* Gradient: DM indigo → Scout cyan  (follows the bezier direction) */}
           <linearGradient id="grad-scout"
             x1={GW / 2} y1={DM_ACTIVE_BOT}
-            x2={scoutCx} y2={SC_TOP}
+            x2={scoutCx} y2={NODE_TOP}
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} />
@@ -102,10 +129,19 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           {/* Gradient: DM indigo → Arch amber */}
           <linearGradient id="grad-arch"
             x1={GW / 2} y1={DM_ACTIVE_BOT}
-            x2={archCx} y2={AC_TOP}
+            x2={archCx} y2={NODE_TOP}
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} />
+          </linearGradient>
+
+          {/* Gradient: DM indigo → Updator violet */}
+          <linearGradient id="grad-updator"
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
+            x2={updatorCx} y2={NODE_TOP}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
+            <stop offset="100%" stopColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'} />
           </linearGradient>
         </defs>
 
@@ -119,6 +155,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   stroke="url(#grad-scout)"
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
+                  style={{ transition: pathTransition }}
                 />
                 {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
                 {scoutHandoffActive && (
@@ -128,6 +165,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
+                      transition: pathTransition
                     }}
                   />
                 )}
@@ -150,6 +188,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   stroke="url(#grad-arch)"
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
+                  style={{ transition: pathTransition }}
                 />
                 {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
                 {archHandoffActive && (
@@ -159,6 +198,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
+                      transition: pathTransition
                     }}
                   />
                 )}
@@ -173,11 +213,44 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               </>
             )}
 
+            {/* DM → Updator  — Circuit Trace: 3 layers (violet) */}
+            {showUpdator && (
+              <>
+                {/* L1: Ghost channel */}
+                <path id="pcu" d={pathToUpdator}
+                  stroke="url(#grad-updator)"
+                  strokeWidth={csw} fill="none"
+                  strokeOpacity={cLit ? ch : cq}
+                  style={{ transition: pathTransition }}
+                />
+                {/* L2: Flowing dashes — handoff only */}
+                {updatorHandoffActive && (
+                  <path d={pathToUpdator}
+                    stroke="url(#grad-updator)"
+                    strokeWidth={dsw} fill="none"
+                    style={{
+                      strokeDasharray: '6 18',
+                      animation: 'flowDash 0.65s linear infinite',
+                      transition: pathTransition
+                    }}
+                  />
+                )}
+                {/* L3: Leading dot — handoff only */}
+                {updatorHandoffActive && (
+                  <circle r={dr} fill={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'}>
+                    <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
+                      <mpath href="#pcu" />
+                    </animateMotion>
+                  </circle>
+                )}
+              </>
+            )}
+
             {/* Scout → tool curves — Circuit Trace style */}
             {scout.tools.slice(0, 4).map((tool, i) => {
               const tp = scoutToolPos[i];
               const pid = `ps${i}`;
-              const d = makeToolPath(scoutCx, SC_BOT, tp);
+              const d = makeToolPath(scoutCx, NODE_BOT, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
               return (
@@ -186,13 +259,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <path id={pid} d={d}
                     stroke="#22d3ee" strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={{ transition: 'stroke-opacity 0.5s' }}
+                    style={{ transition: pathTransition }}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
                       stroke="#22d3ee" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite' }}
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
@@ -211,7 +284,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             {arch.tools.slice(0, 4).map((tool, i) => {
               const tp = archToolPos[i];
               const pid = `pa${i}`;
-              const d = makeToolPath(archCx, AC_BOT, tp);
+              const d = makeToolPath(archCx, NODE_BOT, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
               return (
@@ -220,18 +293,52 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <path id={pid} d={d}
                     stroke="#fbbf24" strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={{ transition: 'stroke-opacity 0.5s' }}
+                    style={{ transition: pathTransition }}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
                       stroke="#fbbf24" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite' }}
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
                   {toolActive && (
                     <circle r={tdr} fill="#fbbf24" filter="url(#glow-amber)">
+                      <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
+                        <mpath href={`#${pid}`} />
+                      </animateMotion>
+                    </circle>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {/* Updator → tool curves — Circuit Trace style (violet) */}
+            {updator.tools.slice(0, 4).map((tool, i) => {
+              const tp = updatorToolPos[i];
+              const pid = `pu${i}`;
+              const d = makeToolPath(updatorCx, NODE_BOT, tp);
+              const toolActive = tool.state === 'active';
+              const toolDone = tool.state === 'done';
+              return (
+                <React.Fragment key={tool.name}>
+                  {/* L1: Ghost channel — dims once tool is done */}
+                  <path id={pid} d={d}
+                    stroke="#a78bfa" strokeWidth={tsw} fill="none"
+                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
+                    style={{ transition: pathTransition }}
+                  />
+                  {/* L2: Flowing dashes — only while THIS tool is active */}
+                  {toolActive && (
+                    <path d={d}
+                      stroke="#a78bfa" strokeWidth={tdsw} fill="none"
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
+                    />
+                  )}
+                  {/* L3: Leading dot — only while THIS tool is active */}
+                  {toolActive && (
+                    <circle r={tdr} fill="#a78bfa" filter="url(#glow-violet)">
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
                         <mpath href={`#${pid}`} />
                       </animateMotion>
@@ -263,18 +370,18 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         />
       </div>
 
-      {/* Agent cards — appear only when activated, shift left when peer arrives */}
+      {/* Agent cards — appear only when activated, shift horizontally dynamically */}
       {graphReady && showScout && (
         <div style={{
           position: 'absolute',
-          left: scoutLeft, top: SC_TOP,
+          left: scoutLeft, top: NODE_TOP,
           transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
           animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
         }}>
           <NodeCard
             label="Catalog Scout"
             subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
-            icon={Search} w={SC.w} h={SC.h} borderRadius={16}
+            icon={Search} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} 
             glowColor={config.theme === 'Meta' ? 'rgba(0,129,251,0.5)' : 'rgba(6,182,212,0.5)'}
             isIdle={false} isActive={sActive} isDone={sDone}
@@ -290,15 +397,15 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       {graphReady && showArch && (
         <div style={{
           position: 'absolute',
-          left: archLeft, top: AC_TOP,
+          left: archLeft, top: NODE_TOP,
           transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
           animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
-          animationDelay: showScout ? '0.1s' : '0s',
+          animationDelay: showScout && visibleKeys.length === 2 ? '0.1s' : '0s',
         }}>
           <NodeCard
             label="Quote Builder"
             subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
-            icon={FileText} w={AC.w} h={AC.h} borderRadius={16}
+            icon={FileText} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} 
             glowColor={config.theme === 'Meta' ? 'rgba(49,162,76,0.5)' : 'rgba(245,158,11,0.5)'}
             isIdle={false} isActive={aActive} isDone={aDone}
@@ -311,13 +418,39 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         </div>
       )}
 
+      {/* Quote Updator — violet, appears centered during update flow */}
+      {graphReady && showUpdator && (
+        <div style={{
+          position: 'absolute',
+          left: updatorLeft, top: NODE_TOP,
+          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
+          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+        }}>
+          <NodeCard
+            label="Quote Updator"
+            subLabel={uActive ? (updatorComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            icon={Pencil} w={NODE_W} h={NODE_H} borderRadius={16}
+            accentColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'}
+            glowColor={config.theme === 'Meta' ? 'rgba(155,89,182,0.5)' : 'rgba(167,139,250,0.5)'}
+            isIdle={false} isActive={uActive} isDone={uDone}
+          />
+          <div style={{
+            textAlign: 'center', fontSize: 7.5, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: '#a78bfa55', marginTop: 8,
+          }}>Quote Updator</div>
+        </div>
+      )}
+
       {/* Tool circles — per-tool active/done state */}
       {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
         const tp = scoutToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#22d3ee"
-            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} />
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
+            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+          />
         );
       })}
 
@@ -326,7 +459,20 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#fbbf24"
-            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} />
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
+            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+          />
+        );
+      })}
+
+      {graphReady && updator.tools.slice(0, 4).map((tool, i) => {
+        const tp = updatorToolPos[i];
+        return (
+          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool.name)} color="#a78bfa"
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
+            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+          />
         );
       })}
     </div>

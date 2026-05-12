@@ -10,7 +10,7 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
     left: cx - TOOL_R, top: cy - TOOL_R,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     animation: 'tool-appear 0.5s cubic-bezier(0.34,1.56,0.64,1) both',
-    transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
+    transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
   }}>
     <div style={{
       width: TOOL_R * 2, height: TOOL_R * 2, borderRadius: '50%',
@@ -37,7 +37,7 @@ const ToolNode = ({ cx, cy, label, color, active, done, isDark = true }) => (
           : (isDark ? `${color}66` : `${color}dd`),
       marginTop: 5, textAlign: 'center',
       whiteSpace: 'normal', wordBreak: 'break-word',
-      maxWidth: 68, lineHeight: 1.25,
+      maxWidth: 54, lineHeight: 1.25,
       overflow: 'visible',
       transition: 'color 0.4s',
 

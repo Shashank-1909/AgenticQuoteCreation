@@ -24,6 +24,8 @@ from app.core.config import (
     TOOL_ACCOUNTS,
     TOOL_OPPORTUNITIES,
     TOOL_QUOTE,
+    TOOL_LINE_ITEMS,
+    TOOL_MANAGE_LINES,
     USER_ID,
     SF_INSTANCE_URL,
 )
@@ -102,6 +104,40 @@ async def handle_tool_result(
                 logger.info("Session %s → quote flow COMPLETE (back to coordinator)", session_id)
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse quote tool response: %s", exc)
+
+    # ── Quote line items loaded (Quote Updator: Step 2) ─────────────────────
+    if tool_name == TOOL_LINE_ITEMS:
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                await websocket.send_json({
+                    "type":     "LINE_ITEMS_LOADED",
+                    "quote_id": parsed["quote_id"],
+                    "items":    parsed["line_items"],
+                    "count":    parsed["count"],
+                })
+                state.update_flow[session_id] = True
+                logger.info(
+                    "Session %s → update flow ACTIVE (%d line items loaded)",
+                    session_id, parsed["count"],
+                )
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse line items response: %s", exc)
+
+    # ── Quote modification complete ───────────────────────────────────
+    if tool_name == TOOL_MANAGE_LINES:
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                state.update_flow[session_id] = False
+                await websocket.send_json({
+                    "type":     "QUOTE_UPDATED",
+                    "quote_id": parsed.get("quote_id", ""),
+                    "message":  parsed.get("message", "Quote updated successfully."),
+                })
+                logger.info("Session %s → update flow COMPLETE", session_id)
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse manage_quote_line_items response: %s", exc)
 
     # ── Build and send TOOL_RESULT payload ────────────────────────────────
     payload: dict = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
-  Eye, ExternalLink, Search, LayoutDashboard, FileText
+  Eye, ExternalLink, Search, LayoutDashboard, FileText,
+  ZoomIn, ZoomOut
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -38,6 +39,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [bulkQty, setBulkQty] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [workspaceView, setWorkspaceView] = useState('graph'); // graph, preview, account
+  const [zoomLevel, setZoomLevel] = useState(0.75);
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
@@ -68,7 +70,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           setOrchestration(prev => {
             const n = { ...prev };
             if (n.coordinator === 'active') n.coordinator = 'done';
-            for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
               if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             return n;
@@ -83,8 +85,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           const n = { ...prev };
           if (name === 'Deal_Manager') {
             n.coordinator = 'active';
-          } else if (name === 'Catalog_Scout' || name === 'Quote_Architect') {
-            for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+          } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator') {
+            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
               if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
@@ -99,7 +101,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
             if (n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
@@ -124,7 +126,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
             if (n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
@@ -176,6 +178,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         }
         break;
 
+      case 'QUOTE_UPDATED':
+        // Quote modification complete — auto-refresh and open Record Preview
+        if (data.quote_id) {
+          setReasoning('Refreshing quote preview...');
+          handlePreview(data.quote_id);
+        }
+        break;
+
       case 'ERROR':
         addMessage({ type: 'text', content: `⚠️ ${data.data}` });
         setReasoning(null);
@@ -192,9 +202,31 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
+    let finalMessage = text;
+
+    if (selectedProducts.size > 0) {
+      const selectedList = configProducts
+        .filter(p => selectedProducts.has(p.id))
+        .map(p => ({
+          ...p,
+          quantity: productConfigs[p.id]?.qty || 1,
+          discount: productConfigs[p.id]?.discount || 0
+        }));
+
+      if (selectedList.length > 0) {
+        const listStr = selectedList.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
+        finalMessage = `${text} [System Context: The user currently has these products selected in the UI: ${listStr}]`;
+        
+        setSelectedProducts(new Set());
+        setProductConfigs({});
+        setBulkQty('');
+        setBulkDiscount('');
+      }
+    }
+
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    ws.current?.send(text);
+    ws.current?.send(finalMessage);
   };
 
   const extractQuoteId = (dataStr) => {
@@ -340,8 +372,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
         <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
           {workspaceView === 'graph' && (
-             <div className="w-full h-full scale-75 origin-center">
-                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+             <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
+                <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+                  <button 
+                    onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
+                    className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${
+                      isDark 
+                        ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10' 
+                        : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
+                    }`}
+                    title="Zoom In"
+                  >
+                    <ZoomIn size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setZoomLevel(z => Math.max(0.4, z - 0.1))}
+                    className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${
+                      isDark 
+                        ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10' 
+                        : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
+                    }`}
+                    title="Zoom Out"
+                  >
+                    <ZoomOut size={16} />
+                  </button>
+                </div>
+                <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease-out' }} className="origin-center">
+                  <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+                </div>
              </div>
           )}
           {workspaceView === 'preview' && (

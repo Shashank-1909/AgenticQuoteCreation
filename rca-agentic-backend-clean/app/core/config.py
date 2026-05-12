@@ -35,6 +35,10 @@ TOOL_ACCOUNTS:      str = "get_my_accounts"
 TOOL_OPPORTUNITIES: str = "get_opportunities_for_account"
 TOOL_QUOTE:         str = "evaluate_quote_graph"
 
+# Quote Updator tools
+TOOL_LINE_ITEMS:    str = "get_quote_line_items"
+TOOL_MANAGE_LINES:  str = "manage_quote_line_items"
+
 # ---------------------------------------------------------------------------
 # Salesforce instance URL — loaded from auth.json at import time.
 # Falls back to the public login URL if auth.json is absent.

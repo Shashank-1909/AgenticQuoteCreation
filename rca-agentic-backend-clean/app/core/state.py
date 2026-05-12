@@ -16,10 +16,17 @@ from google.adk.runners import Runner
 class AppState:
     """Holds all runtime state for the lifetime of the FastAPI application."""
 
-    root_runner:  Runner  # Deal_Manager as root (initial routing, product search)
-    quote_runner: Runner  # Quote_Architect as root (direct access, skips Deal_Manager)
+    root_runner:   Runner  # Deal_Manager as root (initial routing, product search)
+    quote_runner:  Runner  # Quote_Architect as root (direct access, skips Deal_Manager)
+    update_runner: Runner  # Quote_Updator as root (direct access, skips Deal_Manager)
 
     # Tracks which sessions are mid-quote-creation.
     # True  → use quote_runner (Quote_Architect directly, Deal_Manager bypassed)
     # False → use root_runner  (Deal_Manager coordinator)
     quote_flow: dict[str, bool] = field(default_factory=dict)
+
+    # Tracks which sessions are mid-quote-update.
+    # True  → use update_runner (Quote_Updator directly, Deal_Manager bypassed)
+    # False → use root_runner   (Deal_Manager coordinator)
+    update_flow: dict[str, bool] = field(default_factory=dict)
+

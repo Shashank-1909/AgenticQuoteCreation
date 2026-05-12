@@ -40,6 +40,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
   const pendingResultsRef = useRef(null);
   const pendingSelectionRef = useRef(null);
   const pendingConfigProductsRef = useRef(null); // snapshot of selected products at send-time
+  const pendingQuoteRefreshRef = useRef(null);   // quote_id to auto-refresh after update
   const [composingReply, setComposingReply] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState(new Set());
 
@@ -146,7 +147,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               setOrchestration(prev => {
                 const n = { ...prev };
                 if (n.coordinator === 'active') n.coordinator = 'done';
-                for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+                for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
                   if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
                 }
                 return n;
@@ -165,8 +166,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               const n = { ...prev };
               if (name === 'Deal_Manager') {
                 n.coordinator = 'active';
-              } else if (name === 'Catalog_Scout' || name === 'Quote_Architect') {
-                for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+              } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator') {
+                for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
                   if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
                 }
                 const dmWasActive = n.coordinator === 'active';
@@ -180,7 +181,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           case 'TOOL_TRIGGER':
             setOrchestration(prev => {
               const n = { ...prev };
-              for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+              for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
                 if (n[k].state === 'active') {
                   const settled = n[k].tools.map(t =>
                     t.state === 'active' ? { ...t, state: 'done' } : t
@@ -205,7 +206,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
           case 'TOOL_RESULT':
             setOrchestration(prev => {
               const n = { ...prev };
-              for (const k of ['Catalog_Scout', 'Quote_Architect']) {
+              for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
                 if (n[k].tools.some(t => t.name === data.tool)) {
                   n[k] = {
                     ...n[k], tools: n[k].tools.map(t =>
@@ -248,6 +249,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             } catch (_) { }
             break;
 
+          case 'QUOTE_UPDATED':
+            // Store quote_id — FINAL_REPLY handler will auto-refresh the preview
+            if (data.quote_id) pendingQuoteRefreshRef.current = data.quote_id;
+            break;
+
           case 'FINAL_REPLY':
             if (pendingResultsRef.current) {
               const newResults = pendingResultsRef.current;
@@ -270,6 +276,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
               } else {
                 setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: data.data }]);
               }
+            }
+            // Auto-refresh & open Record Preview after a quote update
+            if (pendingQuoteRefreshRef.current) {
+              const qid = pendingQuoteRefreshRef.current;
+              pendingQuoteRefreshRef.current = null;
+              setTimeout(() => handlePreview(qid), 700);
             }
             break;
 
