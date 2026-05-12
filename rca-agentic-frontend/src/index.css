@@ -21,12 +21,12 @@
   --site-bg: #FFFFFF;
   --card-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 26, 114, 0.1);
-  --text-main: #001A72;
-  --text-muted: #666666;
-  --accent-primary: #2E3192;
-  --accent-secondary: #D4145A;
-  --indigo-500: #2100E0;
-  --indigo-600: #001A72;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --accent-primary: #3B82F6;
+  --accent-secondary: #0EA5E9;
+  --indigo-500: #60A5FA;
+  --indigo-600: #3B82F6;
   color-scheme: light;
   transition: all 0.5s ease;
 }

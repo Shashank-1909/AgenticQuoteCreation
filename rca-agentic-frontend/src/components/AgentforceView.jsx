@@ -20,7 +20,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       id: 1, 
       role: 'assistant', 
       aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Agivant Agentforce'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
       type: 'text'
     }
   ]);
@@ -468,9 +468,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : 'Agent Workspace'}
+                {config.theme === 'Meta' ? 'Meta Workspace' : 'Quoting Accelerator'}
               </h2>
-              <span className="text-[10px] text-slate-500 font-bold uppercase">{selectedModule?.title}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -623,7 +622,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
            </div>
            <div className="flex flex-col">
               <h3 className="text-xs font-black uppercase tracking-tighter">
-                {config.theme === 'Meta' ? 'Meta Assistant' : 'Agivant Agentforce'}
+                {config.theme === 'Meta' ? 'Meta Assistant' : 'Quoting Accelerator'}
               </h3>
               <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
            </div>
@@ -846,7 +845,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               type="text" 
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              placeholder={config.theme === 'Meta' ? 'Ask Meta Agentforce...' : 'Ask Agivant Agentforce...'}
+              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
               className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
              />
              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">

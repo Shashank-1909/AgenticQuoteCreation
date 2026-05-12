@@ -206,7 +206,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
           </span>
         </button>
 
-        <button
+        {/* <button
           onClick={onLaunchChat}
           className="group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-4 px-8 rounded-2xl bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition-all shadow-xl hover:shadow-indigo-500/30 overflow-hidden backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
         >
@@ -216,7 +216,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
             Neural Orchestrator
             <ArrowUpRight size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
           </span>
-        </button>
+        </button> */}
       </div>
     </div>
   );
