@@ -93,3 +93,14 @@ html.dark .meta-theme {
 html.dark .meta-theme .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #4b4c4f !important;
 }
+
+/* Hide number input arrows (spinners) */
+.meta-theme input::-webkit-outer-spin-button,
+.meta-theme input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.meta-theme input[type=number] {
+  -moz-appearance: textfield;
+}

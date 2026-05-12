@@ -82,7 +82,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                     <td className="px-6 py-5 text-sm font-bold text-slate-900">{quote.Account?.Name || '—'}</td>
                     <td className="px-6 py-5 text-sm font-bold text-slate-900">{quote.Opportunity?.Name || '—'}</td>
                     <td className="px-6 py-5 text-sm font-bold text-slate-900">{quote.StartDate || lines[0]?.StartDate || '—'}</td>
-                    <td className="px-6 py-5 text-sm font-black text-indigo-600 text-right">₹{totalContractValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-6 py-5 text-sm font-black text-indigo-600 text-right">${totalContractValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
@@ -113,11 +113,11 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                     return (
                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 text-sm font-medium text-slate-900">{line.Product2?.Name || '—'}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-slate-500 text-right">₹{(line.UnitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-500 text-right">${(line.UnitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td className="px-6 py-4 text-sm font-bold text-slate-900 text-center">{(line.Quantity || 0).toFixed(2)}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-slate-500 text-right">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-500 text-right">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td className="px-6 py-4 text-sm font-black text-indigo-600 text-center">{line.Discount ? `${line.Discount.toFixed(2)}%` : '0.00%'}</td>
-                        <td className="px-6 py-4 text-sm font-black text-slate-900 text-right">₹{(line.TotalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm font-black text-slate-900 text-right">${(line.TotalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       </tr>
                     );
                   })}
