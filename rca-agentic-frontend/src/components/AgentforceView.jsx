@@ -42,11 +42,17 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [workspaceView, setWorkspaceView] = useState('graph'); // graph, preview, account
   const [zoomLevel, setZoomLevel] = useState(0.75);
   const [quotes, setQuotes] = useState([]);
+  const [quoteNumberMap, setQuoteNumberMap] = useState({}); // { id: number }
+  const [showPreviewSuggestion, setShowPreviewSuggestion] = useState(false);
+  const [showUpdateSuggestion, setShowUpdateSuggestion] = useState(false);
+  const [showUpdateAllSuggestion, setShowUpdateAllSuggestion] = useState(false);
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
   const pendingResultsRef = useRef(null);
   const pendingSelectionRef = useRef(null);
+  const pendingUpdateRef = useRef(false);
+  const pendingCreationRef = useRef(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -155,12 +161,26 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             pendingResultsRef.current = null;
             pendingSelectionRef.current = null;
             
+            /*
             addMessage({
               type: 'card',
               cardType: 'quote',
               data: newQuote,
               content: "Quote generated successfully in Salesforce."
             });
+            */
+            
+            // Fetch quote number to replace ID in future messages
+            fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
+              .then(res => res.json())
+              .then(d => {
+                if (d.records?.[0]?.QuoteNumber) {
+                  setQuoteNumberMap(prev => ({ ...prev, [qId]: d.records[0].QuoteNumber }));
+                }
+              })
+              .catch(err => console.error('Error fetching quote number:', err));
+            
+            pendingCreationRef.current = true;
             // handlePreview(qId);
           }
         } catch (_) { }
@@ -190,20 +210,41 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           });
           pendingSelectionRef.current = null;
         }
+        if (pendingUpdateRef.current || pendingCreationRef.current) {
+          setShowPreviewSuggestion(true);
+          pendingUpdateRef.current = false;
+          pendingCreationRef.current = false;
+        }
         if (data.data?.trim()) {
           if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
             setTimeout(() => handleOpenConfig(), 100);
           } else {
-            addMessage({ type: 'text', content: data.data });
+            let processedText = data.data;
+            // Replace any Quote IDs with their Numbers if we have them
+            Object.entries(quoteNumberMap).forEach(([id, num]) => {
+              processedText = processedText.replace(new RegExp(id, 'g'), num);
+            });
+            // Also handle any potential 0Q0 matches that might have just arrived
+            const idMatch = processedText.match(/0Q0[a-zA-Z0-9]{12,15}/);
+            if (idMatch && quoteNumberMap[idMatch[0]]) {
+              processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
+            }
+
+            addMessage({ type: 'text', content: processedText });
+
+            // If AI asks which one to update or offers to update all, show "Update All" suggestion
+            const lcText = processedText.toLowerCase();
+            if (lcText.includes('update') && (lcText.includes('which one') || lcText.includes('all of them') || lcText.includes('specific ones'))) {
+              setShowUpdateAllSuggestion(true);
+            }
           }
         }
         break;
 
       case 'QUOTE_UPDATED':
-        // Quote modification complete — auto-refresh and open Record Preview
+        // Quote modification complete — set flag to show preview recommendation after the final reply
         if (data.quote_id) {
-          setReasoning('Refreshing quote preview...');
-          // handlePreview(data.quote_id);
+          pendingUpdateRef.current = true;
         }
         break;
 
@@ -219,9 +260,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
   };
 
-  const handleSend = (e) => {
+  const handleSend = (e, overrideText = null) => {
     e?.preventDefault();
-    const text = inputValue.trim();
+    const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
     // Support dynamic preview/summary commands
@@ -257,7 +298,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       const allProds = productMessages.flatMap(m => m.data);
       const selected = allProds.filter(p => selectedProducts.has(p.id));
       if (selected.length > 0) {
-        const list = selected.map(p => `${p.name} (ID: ${p.id})`).join(', ');
+        const list = selected.map(p => {
+          const cfg = productConfigs[p.id] || { qty: 1, discount: 0 };
+          return `${p.name} (ID: ${p.id}, Quantity: ${cfg.qty}, Discount: ${cfg.discount}%)`;
+        }).join(', ');
         finalMessage += `\n\n[Products in context: ${list}]`;
       }
     }
@@ -268,6 +312,17 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       text: finalMessage,
       module: selectedModule?.id || 'sales'
     }));
+
+    // Reset suggestions unless specifically triggered
+    setShowUpdateSuggestion(false);
+    setShowPreviewSuggestion(false);
+    setShowUpdateAllSuggestion(false);
+
+    // Clear selections and configs after sending to prevent stale context and hide recommendations
+    setSelectedProducts(new Set());
+    setProductConfigs({});
+    setBulkQty('');
+    setBulkDiscount('');
   };
 
   const extractQuoteId = (dataStr) => {
@@ -302,6 +357,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       if (data.status === 'success') {
         setPreviewData(data);
         setWorkspaceView('preview');
+        // Show update suggestion ONLY after preview is successfully displayed
+        setShowUpdateSuggestion(true);
+        setShowPreviewSuggestion(false);
       }
     } catch (err) {
       console.error(err);
@@ -507,7 +565,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                                 <tr className="text-sm font-bold border-b border-white/5">
                                    <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
                                    <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                                   <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">₹{(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                                   <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
                                 </tr>
                              </tbody>
                           </table>
@@ -532,9 +590,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                                       <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
                                       <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">₹{line.UnitPrice?.toLocaleString()}</td>
+                                      <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
                                       <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                                      <td className="px-6 py-4 text-xs font-black text-right">₹{line.TotalPrice?.toLocaleString()}</td>
+                                      <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
                                    </tr>
                                 ))}
                              </tbody>
@@ -619,9 +677,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                               placeholder="All"
                               className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
                              />
-                             <button onClick={() => applyBulk('qty', bulkQty)} className="p-1 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">
-                                <CheckCircle2 size={12} />
-                             </button>
+                          
                           </div>
                        </div>
                        <div className="flex-1">
@@ -638,9 +694,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                               placeholder="All"
                               className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
                              />
-                             <button onClick={() => applyBulk('discount', bulkDiscount)} className="p-1 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">
-                                <CheckCircle2 size={12} />
-                             </button>
+                         
                           </div>
                        </div>
                     </div>
@@ -651,11 +705,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                       const isSelected = selectedProducts.has(p.id);
                       return (
                         <div key={p.id} className={`p-3 mb-2 rounded-2xl border transition-all ${isSelected ? 'bg-indigo-500/[0.04] border-indigo-500/30 shadow-inner' : 'border-white/5 hover:bg-white/5'}`}>
-                           <div onClick={() => toggleProduct(p)} className="flex items-center gap-3 cursor-pointer mb-2">
-                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500 border-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]' : 'border-slate-500'}`}>
-                                 {isSelected && <CheckCircle2 size={10} color="white" />}
-                              </div>
-                              <span className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-500' : ''}`}>{p.name}</span>
+                           <div onClick={() => toggleProduct(p)} className="flex items-center gap-2 cursor-pointer mb-2">
+                              {isSelected && <CheckCircle2 size={14} className="text-indigo-500" />}
+                              <span className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-500' : 'text-slate-600'}`}>{p.name}</span>
                            </div>
                            
                            {isSelected && (
@@ -728,6 +780,62 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           )}
           
           {workflowState === 'orchestrating' && <TypingIndicator />}
+
+          <div className="flex flex-col gap-2 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-2">
+             {selectedProducts.size > 0 && (
+                <div className="flex justify-start">
+                   <button 
+                     onClick={() => setInputValue('Create a quote for the selected products')}
+                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                   >
+                     ✨ Create a Quote
+                   </button>
+                </div>
+             )}
+
+             {showPreviewSuggestion && (
+                <div className="flex justify-start">
+                   <button 
+                     onClick={() => {
+                       setInputValue('Preview the quote');
+                       setShowPreviewSuggestion(false);
+                     }}
+                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                   >
+                     ✨ Preview Quote
+                   </button>
+                </div>
+             )}
+
+             {showUpdateSuggestion && (
+                <div className="flex justify-start">
+                   <button 
+                     onClick={() => {
+                       setInputValue('Can you update the quantity to 10 and discount to 10% in this quote');
+                       setShowUpdateSuggestion(false);
+                     }}
+                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                   >
+                     ✨ Update Quote
+                   </button>
+                </div>
+             )}
+
+             {showUpdateAllSuggestion && (
+                <div className="flex justify-start">
+                   <button 
+                     onClick={() => {
+                       setInputValue('Update all the quote line items with quantity 10 and discount 10%');
+                       setShowUpdateAllSuggestion(false);
+                     }}
+                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                   >
+                     ✨ Update All Items
+                   </button>
+                </div>
+             )}
+          </div>
+          
           <div ref={chatEndRef} />
         </div>
 
@@ -745,12 +853,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 <Send size={20} />
              </button>
           </form>
-          <div className="mt-4 flex flex-wrap gap-2">
+          {/* <div className="mt-4 flex flex-wrap gap-2">
              <div className="flex items-center gap-2 mb-2 w-full">
                <div className="h-[1px] flex-1 bg-white/5"></div>
                <span className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">Quick Actions</span>
                <div className="h-[1px] flex-1 bg-white/5"></div>
              </div>
+             
              {SUGGESTIONS.slice(0, 3).map((s, i) => (
                <button 
                 key={i} 
@@ -760,7 +869,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                  {s.label}
                </button>
              ))}
-          </div>
+          </div> */}
         </div>
       </section>
 
