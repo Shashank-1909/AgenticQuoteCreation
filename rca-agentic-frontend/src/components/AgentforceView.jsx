@@ -472,16 +472,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
             <button 
               onClick={() => setWorkspaceView('graph')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight transition-all ${workspaceView === 'graph' ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:bg-white/5'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
             >
               Orchestration Flow
             </button>
             <button 
               onClick={() => setWorkspaceView('preview')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight transition-all ${workspaceView === 'preview' ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:bg-white/5'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
             >
               Record Preview
             </button>
