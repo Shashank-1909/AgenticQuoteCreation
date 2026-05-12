@@ -30,7 +30,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
     { 
       label: 'Approvals',    
       value: '14',   
-      sub: '3 need action',   
+      sub: '3 need actions',   
       icon: ShieldCheck, 
       color: config.theme === 'Meta' ? '#f7b928' : '#f59e0b', 
       gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent' 
@@ -39,11 +39,11 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
 
   const quotes = [
     { id: 'Q-9210', opp: 'Quantum Tech Expansion',  account: 'Quantum Tech Ltd',    status: 'DRAFT',    date: '2026-04-22' },
-    { id: 'Q-9188', opp: 'Neon Dynamics Core',       account: 'Neon Dynamics Inc',   status: 'SENT',     date: '2026-04-21' },
+    { id: 'Q-9188', opp: 'Neon Dynamics Core',       account: 'Neon Dynamics Inc',   status: 'APPROVED',     date: '2026-04-21' },
     { id: 'Q-9150', opp: 'Aether Logistics Hub',     account: 'Aether Logistics',    status: 'APPROVED', date: '2026-04-20' },
     { id: 'Q-9142', opp: 'Stellar Systems Launch',   account: 'Stellar Systems Inc', status: 'DRAFT',    date: '2026-04-19' },
-    { id: 'Q-9130', opp: 'BluePeak Cloud Suite',     account: 'BluePeak plc',        status: 'SENT',     date: '2026-04-18' },
-    { id: 'Q-9102', opp: 'Global Freight Config',    account: 'Atlas Logistics',     status: 'EXPIRED',  date: '2026-04-12' },
+    { id: 'Q-9130', opp: 'BluePeak Cloud Suite',     account: 'BluePeak plc',        status: 'APPROVED',     date: '2026-04-18' },
+    { id: 'Q-9102', opp: 'Global Freight Config',    account: 'Atlas Logistics',     status: 'DRAFT',  date: '2026-04-12' },
     { id: 'Q-9095', opp: 'Healthcare AI Core',       account: 'MediTech Gen',        status: 'DRAFT',    date: '2026-04-10' },
   ];
 
