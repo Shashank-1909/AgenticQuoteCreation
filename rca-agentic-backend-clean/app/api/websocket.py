@@ -67,14 +67,25 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             if not user_input.strip():
                 continue
 
-            # Choose runner based on active quote flow.
-            # If mid-quote-creation, use quote_runner which routes directly to
-            # Quote_Architect, skipping Deal_Manager entirely. Both runners
-            # share InMemorySessionService so conversation history is preserved.
-            in_quote_flow = _app_state.quote_flow.get(session_id, False)
-            active_runner = _app_state.quote_runner if in_quote_flow else _app_state.root_runner
-            if in_quote_flow:
+            # Choose runner based on active flow.
+            # Priority: update_flow > quote_flow > root (Deal_Manager).
+            # update_runner → Quote_Updator directly (mid-update bypass)
+            # quote_runner  → Quote_Architect directly (mid-creation bypass)
+            # root_runner   → Deal_Manager coordinator (all other messages)
+            # All three runners share InMemorySessionService so conversation
+            # history is preserved when the active runner switches.
+            in_update_flow = _app_state.update_flow.get(session_id, False)
+            in_quote_flow  = _app_state.quote_flow.get(session_id, False)
+
+            if in_update_flow:
+                active_runner = _app_state.update_runner
+                logger.info("Quote_Updator runner active (Deal_Manager bypassed)")
+            elif in_quote_flow:
+                active_runner = _app_state.quote_runner
                 logger.info("Quote_Architect runner active (Deal_Manager bypassed)")
+            else:
+                active_runner = _app_state.root_runner
+
 
             logger.info("Message received: %s", user_input)
             await websocket.send_json({"type": "STATE", "state": "orchestrating"})
@@ -86,6 +97,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         logger.info("Client disconnected. Session: %s", session_id)
         _app_state.quote_flow.pop(session_id, None)
+        _app_state.update_flow.pop(session_id, None)
         try:
             await session_service.delete_session(
                 app_name=APP_NAME, user_id=USER_ID, session_id=session_id,
@@ -97,6 +109,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     except Exception as exc:
         logger.error("WebSocket error for session %s: %s", session_id, exc, exc_info=True)
         _app_state.quote_flow.pop(session_id, None)
+        _app_state.update_flow.pop(session_id, None)
         try:
             await websocket.send_json({"type": "ERROR", "data": str(exc)})
         except Exception:

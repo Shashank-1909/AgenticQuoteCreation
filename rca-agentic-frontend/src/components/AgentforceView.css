@@ -1,0 +1,219 @@
+/* AgentforceView.css */
+
+.agentforce-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--site-bg);
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* LEFT WORKSPACE */
+.af-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.af-workspace-header {
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-blur: 10px;
+}
+
+.af-workspace-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* RIGHT SIDEBAR (AGENT) */
+.af-sidebar {
+  width: 500px;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  backdrop-blur: 40px;
+  border-left: 1px solid var(--glass-border);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  transition: width 0.3s ease;
+}
+
+.af-sidebar-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.af-chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  scroll-behavior: smooth;
+}
+
+.af-input-area {
+  padding: 1.5rem;
+  border-top: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* MESSAGE BUBBLES */
+.af-message {
+  max-width: 85%;
+  animation: af-fade-in 0.3s ease-out both;
+}
+
+.af-message.user {
+  align-self: flex-end;
+}
+
+.af-message.assistant {
+  align-self: flex-start;
+}
+
+.af-bubble {
+  padding: 1rem 1.25rem;
+  border-radius: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.user .af-bubble {
+  background: var(--indigo-500);
+  color: white;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.assistant .af-bubble {
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  border-bottom-left-radius: 0.25rem;
+}
+
+/* REASONING STEPS */
+.af-reasoning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--indigo-500);
+  font-weight: 600;
+  animation: af-pulse 2s infinite;
+}
+
+/* RICH CARDS */
+.af-card {
+  margin-top: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  animation: af-slide-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.af-card-header {
+  padding: 1rem;
+  background: rgba(59, 130, 246, 0.05);
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.af-card-content {
+  padding: 1rem;
+}
+
+/* ANIMATIONS */
+@keyframes af-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes af-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes af-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* TABLE STYLING */
+.af-workspace table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.af-workspace th {
+  background: rgba(255, 255, 255, 0.01);
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.af-workspace td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.af-workspace tr:last-child td {
+  border-bottom: none;
+}
+
+.af-workspace .glass-card {
+  background: var(--card-bg);
+  backdrop-blur: 20px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* CUSTOM SCROLLBAR */
+.af-chat-area::-webkit-scrollbar,
+.af-workspace::-webkit-scrollbar {
+  width: 4px;
+}
+.af-chat-area::-webkit-scrollbar-track,
+.af-workspace::-webkit-scrollbar-track {
+  background: transparent;
+}
+.af-chat-area::-webkit-scrollbar-thumb,
+.af-workspace::-webkit-scrollbar-thumb {
+  background: var(--indigo-500);
+  border-radius: 10px;
+}

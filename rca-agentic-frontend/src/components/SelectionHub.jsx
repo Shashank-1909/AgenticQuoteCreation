@@ -5,37 +5,31 @@ import { config } from '../config';
 const modules = [
   {
     id: 'cpq',
-    title: 'CPQ Orchestrator',
-    desc: 'Precision pricing configuration with real-time logic verification and autonomous deal optimization.',
-    icon: Settings,
+    title: 'Salesforce CPQ',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
     accent: config.theme === 'Meta' ? '#0064E0' : '#6366f1',
-    badge: 'Advanced',
     gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent',
   },
   {
     id: 'rca',
-    title: 'RCA Agentic Flow',
-    desc: 'LLM-driven root cause analysis that automatically surfaces and resolves deal-blocking inconsistencies.',
-    icon: CheckCircle2,
+    title: 'Salesforce RCA',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
     accent: config.theme === 'Meta' ? '#31A24C' : '#10b981',
-    badge: 'Core',
     gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent',
   },
   {
     id: 'oracle',
-    title: 'Oracle ERP Bridge',
-    desc: 'Seamless bi-directional synchronization between Salesforce CPQ and Oracle Cloud ERP at enterprise scale.',
-    icon: Database,
+    title: 'Oracle CPQ',
+    logo: 'https://www.vectorlogo.zone/logos/oracle/oracle-icon.svg',
     accent: config.theme === 'Meta' ? '#F7B928' : '#f59e0b',
-    badge: 'Enterprise',
     gradient: config.theme === 'Meta' ? 'from-yellow-600/10 via-yellow-600/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent',
   },
 ];
 
 const stats = [
   { value: '10×', label: 'Faster Quoting' },
-  { value: '99.4%', label: 'Data Accuracy' },
-  { value: '< 2s', label: 'Agent Response' },
+  { value: '+10%', label: 'Win Rate Uplift' },
+  { value: '95%', label: 'Risk Reduction' },
 ];
 
 const SelectionHub = ({ onSelect }) => (
@@ -55,29 +49,27 @@ const SelectionHub = ({ onSelect }) => (
         <div className="flex items-center gap-3">
           {config.theme === 'Meta' ? (
             <>
-              <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
-              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+              <img src={config.META_LOGO_URL} alt="Meta" className="h-7 object-contain" />
+              <div className="h-5 w-[1px] bg-slate-200 mx-2" />
               <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
+                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
               </div>
             </>
           ) : (
             <>
-              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-10 object-contain" />
-              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-              <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Agentic AI Platform</span>
-              </div>
+              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-7 object-contain" />
+              <div className="h-5 w-[1px] bg-slate-200 mx-2" />
+            
             </>
           )}
         </div>
 
         {/* Stats bar */}
-        <div className="hidden md:flex items-center gap-px rounded-2xl overflow-hidden border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
+        <div className="hidden md:flex items-center gap-px rounded-xl overflow-hidden border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
           {stats.map((s, i) => (
-            <div key={i} className="flex flex-col items-center px-6 py-2.5 gap-0">
-              <span className="text-sm font-black text-indigo-500 leading-none">{s.value}</span>
-              <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{s.label}</span>
+            <div key={i} className="flex flex-col items-center px-4 py-1.5 gap-0">
+              <span className="text-xs font-black text-indigo-500 leading-none">{s.value}</span>
+              <span className="text-[8px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{s.label}</span>
             </div>
           ))}
         </div>
@@ -90,23 +82,23 @@ const SelectionHub = ({ onSelect }) => (
       </nav>
 
       {/* ─── Hero ─── */}
-      <div className="mb-8">
+      <div className="mb-6">
         {/* Agentic badge */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 border border-indigo-500/15 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-            <Bot size={12} />
-            Autonomous Agentic AI · Salesforce-Native
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 border border-indigo-500/15 text-[8.5px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+            <Bot size={10} />
+            Autonomous Agentic AI 
           </div>
         </div>
 
         {/* Headline + sub */}
         <div className="flex items-end justify-between gap-8">
           <div>
-            <h1 className="text-4xl lg:text-[52px] font-black leading-[1.1] tracking-tight text-[var(--text-main)] mb-3">
-              What would you like to<br />
-              <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">build today?</span>
+            <h1 className="text-2xl lg:text-[38px] font-black leading-[1.1] tracking-tight text-[var(--text-main)] mb-2">
+              Explore our CPQ Agnostic<br />
+              <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">Agentic Quote Accelerator</span>
             </h1>
-            <p className="text-[var(--text-muted)] text-sm lg:text-base max-w-xl leading-relaxed">
+            <p className="text-[var(--text-muted)] text-xs lg:text-[13px] max-w-lg leading-relaxed opacity-80">
               {config.theme === 'Meta' ? config.META_TAGLINE : "Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention."}
             </p>
           </div>
@@ -130,12 +122,12 @@ const SelectionHub = ({ onSelect }) => (
       </div>
 
       {/* ─── Module Cards ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 flex-1 max-h-[320px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
         {modules.map((m, i) => (
           <button
             key={m.id}
-            onClick={() => onSelect(m.id)}
-            className={`group relative text-left rounded-[28px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl overflow-hidden p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl focus:outline-none`}
+            onClick={() => onSelect(m)}
+            className={`group relative text-left rounded-[28px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl overflow-hidden p-8 py-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl focus:outline-none`}
             style={{
               animation: `float-up 0.55s ease-out ${i * 80}ms both`,
               boxShadow: `0 4px 24px ${m.accent}08`,
@@ -150,18 +142,16 @@ const SelectionHub = ({ onSelect }) => (
             <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-300" style={{ color: m.accent }} />
 
             <div className="relative z-10">
-              {/* Icon + badge */}
-              <div className="flex items-start justify-between mb-5">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
-                  style={{ background: m.accent + '15', border: `1.5px solid ${m.accent}30` }}>
-                  <m.icon size={22} style={{ color: m.accent }} />
+              {/* Logo */}
+              <div className="flex items-start justify-between mb-6">
+                <div className="h-12 px-4 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                  style={{ background: m.accent + '08', border: `1px solid ${m.accent}20` }}>
+                  <img src={m.logo} alt={m.title} className="h-6 w-auto object-contain" />
                 </div>
-                <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-[var(--glass-border)] text-[var(--text-muted)]">{m.badge}</span>
               </div>
 
               {/* Text */}
-              <h3 className="text-lg font-black text-[var(--text-main)] mb-2 tracking-tight transition-colors group-hover:text-[var(--text-main)]">{m.title}</h3>
-              <p className="text-[12px] text-[var(--text-muted)] leading-relaxed mb-4">{m.desc}</p>
+              <h3 className="text-lg font-black text-[var(--text-main)] mb-5 tracking-tight transition-colors group-hover:text-[var(--text-main)]">{m.title}</h3>
 
               {/* CTA */}
               <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-widest transition-colors duration-200" style={{ color: m.accent }}>

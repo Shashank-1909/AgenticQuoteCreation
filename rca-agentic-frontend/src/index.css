@@ -14,6 +14,9 @@
     50% { opacity: 1; transform: scaleX(1); }
     100% { opacity: 0; transform: scaleX(1); transform-origin: right; }
   }
+
+  --indigo-500: #60A5FA;
+  --indigo-600: #3B82F6;
 }
 
 /* Base Theme Variables */
@@ -21,12 +24,10 @@
   --site-bg: #FFFFFF;
   --card-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 26, 114, 0.1);
-  --text-main: #001A72;
-  --text-muted: #666666;
-  --accent-primary: #2E3192;
-  --accent-secondary: #D4145A;
-  --indigo-500: #2100E0;
-  --indigo-600: #001A72;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --accent-primary: #3B82F6;
+  --accent-secondary: #0EA5E9;
   color-scheme: light;
   transition: all 0.5s ease;
 }
@@ -106,4 +107,16 @@ html, body {
   background: var(--card-bg);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(24px);
+}
+
+/* Globally hide number input arrows (spinners) */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: none;
 }

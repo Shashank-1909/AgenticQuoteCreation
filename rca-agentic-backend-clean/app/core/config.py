@@ -38,6 +38,10 @@ TOOL_PARSER_TRANSCRIPT: str = "parse_transcript_to_requirements"
 TOOL_PARSER_DOC:        str = "parse_requirements_doc"
 TOOL_MAPPER:            str = "map_requirements_to_catalog"
 
+# Quote Updator tools
+TOOL_LINE_ITEMS:    str = "get_quote_line_items"
+TOOL_MANAGE_LINES:  str = "manage_quote_line_items"
+
 # ---------------------------------------------------------------------------
 # Salesforce instance URL — loaded from auth.json at import time.
 # Falls back to the public login URL if auth.json is absent.

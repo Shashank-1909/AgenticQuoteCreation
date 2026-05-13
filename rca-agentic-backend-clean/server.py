@@ -63,7 +63,7 @@ def search_catalog(
     """
     headers, instance_url = get_salesforce_auth()
     
-    endpoint = f"{instance_url}/services/data/v66.0/connect/pcm/products?include=/products"
+    endpoint = f"{instance_url}/services/data/v65.0/connect/pcm/products?include=/products"
     
     criteria = []
     if filters:
@@ -194,7 +194,7 @@ def get_picklist_values(field_api_name: str) -> str:
     headers, instance_url = get_salesforce_auth()
     
     # Use Master record type '012000000000000AAA'
-    endpoint = f"{instance_url}/services/data/v66.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA/{field_api_name}"
+    endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA/{field_api_name}"
     
     try:
         response = requests.get(endpoint, headers=headers)
@@ -282,7 +282,7 @@ def check_field_values(candidates: list[str]) -> str:
                         valid_fields.add(name)
             
             # Step 2: Query the UI API strictly for all Picklist values on Product2
-            ui_endpoint = f"{instance_url}/services/data/v66.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA"
+            ui_endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA"
             ui_resp = requests.get(ui_endpoint, headers=headers)
             if ui_resp.status_code == 200:
                 picklist_field_values = ui_resp.json().get("picklistFieldValues", {})
@@ -356,10 +356,10 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice, Product2.Type, ProductSellingModel.SellingModelType FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
     
     from urllib.parse import quote
-    endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
+    endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
     
     try:
         response = requests.get(endpoint, headers=headers)
@@ -378,7 +378,9 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
             "PricebookEntryId": r.get("Id"),
             "Product2Id": r.get("Product2Id"),
             "Pricebook2Id": r.get("Pricebook2Id"),
-            "UnitPrice": r.get("UnitPrice")
+            "UnitPrice": r.get("UnitPrice"),
+            "Type": r.get("Product2", {}).get("Type"),
+            "SellingModelType": (r.get("ProductSellingModel") or {}).get("SellingModelType")
         })
         
     standard_pricebook_id = results[0]["Pricebook2Id"] if results else ""
@@ -508,7 +510,6 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
-
 @mcp.tool()
 def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportunity_id: str = "") -> str:
     """
@@ -530,6 +531,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
                     - PricebookEntryId (from pricebook resolution tool)
                     - Quantity (default 1)
                     - UnitPrice (from pricebook resolution tool)
+                    - Discount (numeric percentage, e.g., 10 for 10%)
                     - StartDate / EndDate (optional, defaults applied automatically)
 
     After calling: Return the Quote ID from the response to the user. If the response
@@ -573,6 +575,20 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
             import json
             return json.dumps({"status": "error", "message": "CRITICAL: Every line item MUST include Product2Id and PricebookEntryId."})
 
+        # Sanitize Quantity and Discount (handle strings like "10%" or "5 units")
+        def sanitize_numeric(val, default=0):
+            if val is None: return default
+            if isinstance(val, (int, float)): return val
+            try:
+                # Remove non-numeric chars except decimal point
+                clean_val = re.sub(r'[^-0-9.]', '', str(val))
+                return float(clean_val) if clean_val else default
+            except:
+                return default
+
+        qty = sanitize_numeric(item.get("Quantity"), 1)
+        discount = sanitize_numeric(item.get("Discount"), 0)
+
         record_item = {
             "attributes": {
                 "type": "QuoteLineItem",
@@ -581,8 +597,9 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
-            "Quantity": item.get("Quantity", 1),
+            "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
+            "Discount": discount,
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
@@ -593,7 +610,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
                 record_item[field] = item[field]
 
         for k, v in item.items():
-            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "StartDate", "EndDate"]:
+            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", "StartDate", "EndDate"]:
                 record_item[k] = v
 
         records.append({"referenceId": f"refQuoteLine{i}", "record": record_item})
@@ -617,7 +634,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
         }
     }
 
-    endpoint = f"{instance_url}/services/data/v66.0/connect/rev/sales-transaction/actions/place"
+    endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
 
     import json
     try:
@@ -703,12 +720,190 @@ def get_quote_preview(quote_id: str) -> str:
         
         return json.dumps({
             "status": "success",
+            "instance_url": instance_url,
             "records": [quote_obj]
         }, indent=2)
         
     except Exception as e:
         print(f"[DEBUG] Unexpected error: {str(e)}")
         return json.dumps({"status": "error", "message": str(e)})
+
+@mcp.tool()
+def get_quote_line_items(quote_id: str) -> str:
+    """
+    Fetches all line items for a specific Salesforce Quote, including each
+    line item's exact 18-character QuoteLineItem ID required for updates.
+
+    WHEN TO CALL: This is the MANDATORY first step before any quote modification.
+    Always call this before manage_quote_line_items — you cannot update or delete
+    a line item without its exact QuoteLineItem ID (starts with '0Z4').
+
+    Args:
+        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0').
+                  Extract this from the conversation history — do NOT ask the
+                  user to provide it if a quote was already created this session.
+
+    RETURNS (JSON):
+        status:     "success" or "error"
+        quote_id:   the sanitised Quote ID used in the query
+        line_items: list of objects, each containing —
+                      Id          (18-char QuoteLineItem ID, starts with '0Z4')
+                      ProductName (human-readable product name for matching)
+                      Product2Id  (Product2 ID, starts with '01t')
+                      Quantity    (current quantity)
+                      UnitPrice   (unit price)
+                      Discount    (discount percentage, 0–100)
+                      TotalPrice  (computed total)
+        count:      number of line items found
+    """
+    import re
+    match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
+    clean_id = match.group(1) if match else quote_id.strip()
+
+    headers, instance_url = get_salesforce_auth()
+
+    query = (
+        f"SELECT Id, Product2.Name, Product2Id, Quantity, UnitPrice, Discount, TotalPrice "
+        f"FROM QuoteLineItem WHERE QuoteId = '{clean_id}'"
+    )
+    resp = requests.get(
+        f"{instance_url}/services/data/v59.0/query",
+        headers=headers,
+        params={"q": query}
+    )
+    if resp.status_code != 200:
+        return json.dumps({"status": "error", "message": resp.text, "line_items": []})
+
+    items = []
+    for rec in resp.json().get("records", []):
+        items.append({
+            "Id":          rec["Id"],
+            "ProductName": (rec.get("Product2") or {}).get("Name", "Unknown"),
+            "Product2Id":  rec.get("Product2Id"),
+            "Quantity":    rec.get("Quantity"),
+            "UnitPrice":   rec.get("UnitPrice"),
+            "Discount":    rec.get("Discount"),
+            "TotalPrice":  rec.get("TotalPrice"),
+        })
+
+    return json.dumps({
+        "status":     "success",
+        "quote_id":   clean_id,
+        "line_items": items,
+        "count":      len(items),
+    }, indent=2)
+
+
+@mcp.tool()
+def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
+    """
+    Applies targeted add / update / delete operations to quote line items
+    via the Salesforce Revenue Cloud Graph API.
+
+    WHEN TO CALL: Only AFTER calling get_quote_line_items to obtain the exact
+    18-character QuoteLineItem IDs (starts with '0Z4'). Never fabricate IDs.
+
+    Args:
+        quote_id:   18-character Salesforce Quote ID (starts with '0Q0').
+        operations: List of operation dicts. Each dict must contain 'method'
+                    (PATCH, DELETE, or POST) plus the fields described below.
+
+        PATCH  — update fields on an existing line item:
+                 { "method": "PATCH", "id": "0Z4...", "Quantity": 3, "Discount": 10 }
+                 'id' is REQUIRED. Include only the fields you want to change.
+
+        DELETE — remove a line item from the quote:
+                 { "method": "DELETE", "id": "0Z4..." }
+                 'id' is REQUIRED.
+
+        POST   — add a new line item (requires pre-resolved pricing):
+                 { "method": "POST", "Product2Id": "01t...", "PricebookEntryId": "01u...",
+                   "Quantity": 1, "UnitPrice": 100 }
+
+        Multiple operations can be passed in a single call.
+
+    RETURNS (JSON):
+        status:              "success" or "error"
+        message:             human-readable outcome
+        salesforce_response: raw Graph API response body
+    """
+    import re
+    match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
+    clean_id = match.group(1) if match else quote_id.strip()
+
+    headers, instance_url = get_salesforce_auth()
+
+    # Anchor record — the quote itself (PATCH with no field changes = a no-op touch
+    # that is required by the Graph API to establish the transaction context)
+    graph_records = [
+        {
+            "referenceId": "refQuote",
+            "record": {
+                "attributes": {
+                    "method": "PATCH",
+                    "type":   "Quote",
+                    "id":     clean_id,
+                }
+            }
+        }
+    ]
+
+    for idx, op in enumerate(operations):
+        method = op.get("method", "PATCH").upper()
+        record_attrs = {"method": method, "type": "QuoteLineItem"}
+
+        if method in ("PATCH", "DELETE"):
+            line_id = op.get("id") or op.get("Id")
+            if not line_id:
+                return json.dumps({
+                    "status":  "error",
+                    "message": f"Operation #{idx + 1}: 'id' (QuoteLineItem ID) is required for {method}.",
+                })
+            record_attrs["id"] = line_id
+
+        record_body = {"attributes": record_attrs}
+
+        if method == "POST":
+            record_body["QuoteId"] = clean_id
+
+        # Copy all other fields (Quantity, Discount, Product2Id, etc.)
+        for k, v in op.items():
+            if k.lower() not in ("method", "id", "type"):
+                record_body[k] = v
+
+        graph_records.append({"referenceId": f"opLine{idx}", "record": record_body})
+
+    payload = {
+        "pricingPref":      "System",
+        "catalogRatesPref": "Skip",
+        "configurationPref": {"configurationMethod": "Skip"},
+        "taxPref":          "Skip",
+        "graph": {
+            "graphId": "manageLineItems",
+            "records": graph_records,
+        }
+    }
+
+    endpoint = f"{instance_url}/services/data/v65.0/connect/rev/sales-transaction/actions/place"
+    try:
+        resp = requests.post(endpoint, headers=headers, json=payload, timeout=60)
+    except Exception as exc:
+        return json.dumps({"status": "error", "message": f"Request failed: {exc}"})
+
+    if resp.status_code not in (200, 201):
+        return json.dumps({
+            "status":  "error",
+            "message": f"Salesforce Graph API error ({resp.status_code}).",
+            "details": resp.text,
+        })
+
+    return json.dumps({
+        "status":              "success",
+        "quote_id":            clean_id,
+        "message":             f"{len(operations)} operation(s) applied to quote {clean_id}.",
+        "salesforce_response": resp.json(),
+    }, indent=2)
+
 
 
 @mcp.tool()
