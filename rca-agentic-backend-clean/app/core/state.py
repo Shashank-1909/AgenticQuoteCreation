@@ -9,6 +9,7 @@ dependencies visible, prevents hidden coupling, and makes testing easy.
 
 from dataclasses import dataclass, field
 
+# pyrefly: ignore [missing-import]
 from google.adk.runners import Runner
 
 

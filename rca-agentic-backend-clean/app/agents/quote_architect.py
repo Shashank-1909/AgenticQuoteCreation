@@ -9,7 +9,9 @@ lifecycle: account selection → opportunity selection → pricing resolution
 the Catalog Scout's responsibility.
 """
 
+# pyrefly: ignore [missing-import]
 from google.adk.agents import LlmAgent
+# pyrefly: ignore [missing-import]
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 
 from app.core.config import MODEL_NAME
@@ -78,9 +80,11 @@ STEP 3 — RESOLVE PRICING:
   If no active pricing is returned for any product, inform the user and do not proceed.
 
 STEP 4 — CREATE QUOTE:
-  Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ),
-  passing ALL resolved line items (one per product) AND the confirmed Opportunity ID from Step 2 (or from history).
-  A single quote can contain multiple line items — include all of them in one call.
+  Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ).
+  - Pass the `pricebook_id` you received from the pricing tool in Step 3.
+  - Pass ALL resolved line items (one per product).
+  - Pass the confirmed Opportunity ID from Step 2 (or from history).
+  - IMPORTANT: If a product is NOT a subscription (e.g. hardware, perpetual license), do NOT include "BillingFrequency" or "PeriodBoundary" in that line item. If you are unsure, omit them; the system will use defaults if needed.
   Report the Quote ID back to the user with a clear success message.
 
 - If Account and Opportunity are NOT already confirmed, never skip steps — always Account → Opportunity → Pricing → Quote

@@ -4,6 +4,7 @@ app/agents/deal_manager.py
 Factory function for the Deal Manager coordinator agent.
 """
 
+# pyrefly: ignore [missing-import]
 from google.adk.agents import LlmAgent
 
 from app.core.config import MODEL_NAME

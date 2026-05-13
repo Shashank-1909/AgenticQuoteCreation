@@ -1,8 +1,12 @@
 import os
+import sys
 import json
 import requests
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -506,7 +510,7 @@ def get_opportunities_for_account(account_id: str) -> str:
 
 
 @mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
+def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportunity_id: str = "") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -540,6 +544,17 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         match = re.search(r'(006[A-Za-z0-9]{15})', opportunity_id)
         clean_opp_id = match.group(1) if match else opportunity_id.strip()
 
+    # Fallback for pricebook_id if not provided
+    if not pricebook_id:
+        sys.stderr.write("[DEBUG] No pricebook_id provided, querying for Standard Pricebook...\n")
+        query = "SELECT Id FROM Pricebook2 WHERE IsStandard = true AND IsActive = true LIMIT 1"
+        pb_resp = requests.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": query})
+        if pb_resp.status_code == 200:
+            records = pb_resp.json().get("records", [])
+            if records:
+                pricebook_id = records[0]["Id"]
+                sys.stderr.write(f"[DEBUG] Found Standard Pricebook: {pricebook_id}\n")
+    
     quote_record = {
         "attributes": {
             "method": "POST",
@@ -566,13 +581,16 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
-            "PeriodBoundary": "Anniversary",
-                "BillingFrequency": "Annual",
             "Quantity": item.get("Quantity", 1),
             "UnitPrice": item.get("UnitPrice", 100),
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
+
+        # Only add subscription-specific fields if they are provided
+        for field in ["BillingFrequency", "PeriodBoundary"]:
+            if field in item:
+                record_item[field] = item[field]
 
         for k, v in item.items():
             if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "StartDate", "EndDate"]:
@@ -614,8 +632,9 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         "status": "success",
         "message": "Salesforce successfully validated the Quote Graph!",
         "opportunity_id": clean_opp_id or "not linked",
-        "salesforce_response": response.json()
+            "salesforce_response": response.json()
     }, indent=2)
+
 
 @mcp.tool()
 def get_quote_preview(quote_id: str) -> str:
@@ -761,6 +780,252 @@ def search_products(search_term: str, region: str = None, page_size: int = 15) -
             "If multiple products were found, present them to the user and ask which one "
             "they want to select. If only one was found, ask for confirmation before "
             "proceeding to pricing."
+        )
+    }, indent=2)
+
+
+@mcp.tool()
+def parse_transcript_to_requirements(transcript_text: str) -> str:
+    """
+    Extracts product requirements and customer intent from a call transcript or meeting notes.
+    Maps explicit product mentions to catalog SKUs automatically, then presents them for
+    user selection before proceeding to account → opportunity → quote creation.
+
+    When to call: When the user provides a raw call transcript or meeting notes and wants
+    to extract requirements and create a quote. After calling this tool, follow the
+    next_steps instructions exactly — do NOT skip product selection or account selection.
+    """
+    # Initialize client based on environment
+    use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true"
+    if use_vertex:
+        client = genai.Client(
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        )
+    else:
+        client = genai.Client()
+
+    prompt = f"""
+    Analyze the following call transcript and extract the customer's requirements.
+    Return a JSON array of objects, where each object has:
+    - "product_name": The core product or category mentioned (keep it concise, e.g. "Tablet" or "Laptop")
+    - "quantity": The quantity requested (integer, use 1 if unspecified)
+    - "context": Brief pain points or reasons
+
+    Transcript:
+    {transcript_text}
+    """
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
+        requirements = json.loads(response.text)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Error analyzing transcript with LLM: {str(e)}"})
+
+    # Map each extracted requirement to catalog products via SOQL search sequentially for stability.
+    all_catalog_products = []
+    mapped_requirements = []
+
+    sys.stderr.write(f"\n[DEBUG] Starting transcript mapping for {len(requirements)} requirements...\n")
+
+    for i, req in enumerate(requirements):
+        prod_name = req.get("product_name", "").strip()
+        if not prod_name: continue
+        
+        sys.stderr.write(f"[DEBUG] ({i+1}/{len(requirements)}) Searching for: {prod_name}\n")
+        
+        try:
+            search_result_json = search_products(search_term=prod_name, page_size=5)
+            search_data = json.loads(search_result_json)
+            products_found = search_data.get("results", [])
+        except Exception as e:
+            sys.stderr.write(f"[DEBUG] Error searching for {prod_name}: {str(e)}\n")
+            products_found = []
+
+        mapped_requirements.append({
+            "extracted_need": req,
+            "mapped_catalog_products": products_found,
+            "confidence": "High" if len(products_found) == 1 else "Medium" if len(products_found) > 1 else "Low"
+        })
+
+        seen_ids = {p["id"] for p in all_catalog_products}
+        for p in products_found:
+            if p["id"] not in seen_ids:
+                all_catalog_products.append(p)
+                seen_ids.add(p["id"])
+
+    sys.stderr.write(f"[DEBUG] Mapping complete. Found {len(all_catalog_products)} unique products.\n")
+
+    return json.dumps({
+        "status": "success",
+        "message": f"Extracted {len(requirements)} requirements and mapped to {len(all_catalog_products)} catalog products.",
+        "requirements": mapped_requirements,
+        "results": all_catalog_products,
+        "count": len(all_catalog_products),
+        "next_steps": (
+            "IMPORTANT — follow these steps in order, do not skip any:\n"
+            "1. Present the mapped catalog products to the user as a selectable list. Ask them to confirm which products they want to include in the quote.\n"
+            "2. Once the user confirms the products, call get_my_accounts to fetch their Salesforce accounts.\n"
+            "3. After the user selects an account, call get_opportunities_for_account.\n"
+            "4. Finally, call evaluate_quote_graph to create the quote.\n"
+        )
+    }, indent=2)
+
+
+@mcp.tool()
+def parse_requirements_doc(document_content: str) -> str:
+    """
+    Accepts raw text from a requirements document (RFP, SOW, etc.) and extracts individual
+    requirements. Maps each requirement to the best-fit catalog product, then presents them
+    for user selection before proceeding to account → opportunity → quote creation.
+
+    When to call: When the user uploads or pastes an RFP, SOW, or requirements document.
+    After calling this tool, follow the next_steps instructions exactly — do NOT skip
+    product selection or account/opportunity selection.
+    """
+    # Initialize client based on environment
+    use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true"
+    if use_vertex:
+        client = genai.Client(
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        )
+    else:
+        client = genai.Client()
+
+    prompt = f"""
+    Analyze the following requirements document text.
+    Return a JSON array of objects, where each object has:
+    - "requirement": The specific functional or technical requirement
+    - "type": functional, technical, commercial, or SLA
+    - "suggested_product": A brief keyword of what product or category would solve this (e.g. "Tablet")
+    - "quantity": The requested quantity as an integer. Use 1 if not specified.
+
+    Document Text:
+    {document_content}
+    """
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
+        requirements = json.loads(response.text)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Error analyzing document with LLM: {str(e)}"})
+
+    all_catalog_products = []
+    mapped_requirements = []
+
+    sys.stderr.write(f"\n[DEBUG] Starting document mapping for {len(requirements)} requirements...\n")
+
+    for i, req in enumerate(requirements):
+        suggested = req.get("suggested_product", "").strip()
+        if not suggested: continue
+        
+        sys.stderr.write(f"[DEBUG] ({i+1}/{len(requirements)}) Mapping requirement to: {suggested}\n")
+        
+        try:
+            search_result_json = search_products(search_term=suggested, page_size=5)
+            search_data = json.loads(search_result_json)
+            products_found = search_data.get("results", [])
+        except Exception as e:
+            sys.stderr.write(f"[DEBUG] Error searching for {suggested}: {str(e)}\n")
+            products_found = []
+
+        req["mapped_products"] = products_found
+        req["confidence"] = "High" if len(products_found) == 1 else "Medium" if len(products_found) > 1 else "Low"
+        mapped_requirements.append(req)
+
+        seen_ids = {p["id"] for p in all_catalog_products}
+        for p in products_found:
+            if p["id"] not in seen_ids:
+                all_catalog_products.append(p)
+                seen_ids.add(p["id"])
+
+    sys.stderr.write(f"[DEBUG] Document mapping complete. Found {len(all_catalog_products)} unique products.\n")
+
+    return json.dumps({
+        "status": "success",
+        "message": f"Successfully extracted {len(requirements)} requirements and mapped them to the catalog.",
+        "requirements": mapped_requirements,
+        "results": all_catalog_products,
+        "count": len(all_catalog_products),
+        "next_steps": (
+            "IMPORTANT — follow these steps in order, do not skip any:\n"
+            "1. Summarize the requirements concisely, then present the mapped catalog products to the user as a selectable list. Ask them to confirm which products they want to include.\n"
+            "2. Once the user confirms, call get_my_accounts.\n"
+            "3. After account selection, call get_opportunities_for_account.\n"
+            "4. Finally, call evaluate_quote_graph.\n"
+        )
+    }, indent=2)
+
+
+@mcp.tool()
+def map_requirements_to_catalog(requirements: list[dict]) -> str:
+    """
+    Takes a list of extracted product requirements and maps them to actual Salesforce
+    catalog products via parallel SOQL searches.
+
+    Args:
+        requirements: List of dicts, each with 'product_name' and optionally 'quantity'.
+                      Example: [{"product_name": "Tablet", "quantity": 5}]
+    """
+    all_catalog_products = []
+    mapped_requirements = []
+
+    sys.stderr.write(f"\n[DEBUG] Parallel mapping for {len(requirements)} items...\n")
+
+    def _search_one(req):
+        prod_name = req.get("product_name", "").strip()
+        if not prod_name:
+            return req, []
+        try:
+            # Call the existing search_products tool function directly
+            result_json = search_products(search_term=prod_name, page_size=5)
+            return req, json.loads(result_json).get("results", [])
+        except Exception as e:
+            sys.stderr.write(f"[DEBUG] Error searching for {prod_name}: {str(e)}\n")
+            return req, []
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        search_results = list(executor.map(_search_one, requirements))
+
+    for req, products_found in search_results:
+        mapped_requirements.append({
+            "extracted_need": req,
+            "mapped_catalog_products": products_found,
+            "confidence": "High" if len(products_found) == 1 else "Medium" if len(products_found) > 1 else "Low"
+        })
+
+        seen_ids = {p["id"] for p in all_catalog_products}
+        for p in products_found:
+            if p["id"] not in seen_ids:
+                all_catalog_products.append(p)
+                seen_ids.add(p["id"])
+
+    sys.stderr.write(f"[DEBUG] Parallel mapping complete. Found {len(all_catalog_products)} unique products.\n")
+
+    return json.dumps({
+        "status": "success",
+        "message": f"Mapped {len(requirements)} requirements to {len(all_catalog_products)} products.",
+        "requirements": mapped_requirements,
+        "results": all_catalog_products,
+        "count": len(all_catalog_products),
+        "next_steps": (
+            "1. Present the mapped catalog products to the user for confirmation.\n"
+            "2. Once confirmed, proceed with account and opportunity selection.\n"
         )
     }, indent=2)
 

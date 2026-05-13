@@ -16,8 +16,11 @@ import logging
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+import io
+import PyPDF2
+import docx
 
 # Load environment variables FIRST — before any Google SDK modules are imported,
 # so that GOOGLE_GENAI_USE_VERTEXAI and GOOGLE_CLOUD_PROJECT are available.
@@ -57,6 +60,36 @@ async def quote_preview(quote_id: str):
     result_str = get_quote_preview(quote_id)
     print(f"[DEBUG] Result status: {json.loads(result_str).get('status')}")
     return json.loads(result_str)
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Extracts text from uploaded PDF or Docx files."""
+    filename = file.filename
+    content_type = file.content_type
+    
+    print(f"[DEBUG] Received file: {filename}, Type: {content_type}")
+    
+    content = await file.read()
+    text = ""
+    
+    try:
+        if filename.endswith(".pdf"):
+            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+        elif filename.endswith(".docx"):
+            doc = docx.Document(io.BytesIO(content))
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+        elif filename.endswith(".txt"):
+            text = content.decode("utf-8")
+        else:
+            return {"status": "error", "message": "Unsupported file format. Please upload PDF, Docx, or Txt."}
+        
+        return {"status": "success", "text": text.strip(), "filename": filename}
+    except Exception as e:
+        print(f"[DEBUG] Error parsing file: {str(e)}")
+        return {"status": "error", "message": f"Error parsing file: {str(e)}"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT)

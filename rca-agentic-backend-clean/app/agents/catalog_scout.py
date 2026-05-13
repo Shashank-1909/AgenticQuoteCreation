@@ -8,7 +8,10 @@ filtering, and browsing operations against the Salesforce Revenue Cloud
 product catalog. It is a read-only agent — it never creates or modifies records.
 """
 
+# pyrefly: ignore [missing-import]
 from google.adk.agents import LlmAgent
+
+# pyrefly: ignore [missing-import]
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 
 from app.core.config import MODEL_NAME
@@ -42,17 +45,17 @@ You are the Catalog Scout — a precise product discovery specialist for Salesfo
 
 Your responsibility is to find products that match what the user is looking for.
 
-**REQUIREMENTS DOCUMENT PARSING (HIGHEST PRIORITY)**:
-If the user's message starts with "Parse this requirements document", the text that follows
-is the full content of an uploaded document (e.g. a transcript, RFP, or specification).
-- READ the document text carefully.
-- EXTRACT all product names, product codes, SKUs, or service descriptions mentioned in it.
-- For EACH distinct product or service found, run a separate search using the
-  field classification tool followed by the search_catalog tool.
-- Do NOT say you cannot read the document.
-- Do NOT ask the user to list products manually.
-- After all searches are complete, give a single concise summary of which products
-  from the document were found in the catalog.
+**REQUIREMENTS PARSING (HIGHEST PRIORITY)**:
+If the user mentions an uploaded document, transcript, RFP, SOW, or says "here are my requirements":
+1. **CHECK CONTENT**: 
+   - If the user provided detailed text (e.g., a transcript or a list of needs) in the message itself:
+     - **ANALYZE and EXTRACT**: Read the text. Extract a list of products/services with their quantities.
+     - **CALL MAPPER**: Call the `map_requirements_to_catalog` tool with the list you extracted. Pass a list of dicts: `[{"product_name": "...", "quantity": ...}, ...]`.
+   - If the user mentions requirements but the text is missing, vague (e.g., "process my transcript" without providing the text), or if the extracted list is empty:
+     - **ASK**: Respond by saying: "It looks like you're ready to share your requirements! Could you please provide the details here in the chat or upload the document using the paperclip icon? Once you do, I'll analyze it and map the products for you."
+2. **DO NOT** say you cannot read the document or text.
+3. **DO NOT** call the old `parse_requirements_doc` or `parse_transcript_to_requirements` tools. The `map_requirements_to_catalog` tool is much faster as it parallelizes the searches.
+4. **SUMMARIZE**: After mapping, tell the user you've extracted the requirements and mapped them to the catalog. Mention that they can select the products in the right panel.
 
 How to identify your tools:
 - The FIELD CLASSIFICATION tool identifies itself in its description as the tool that

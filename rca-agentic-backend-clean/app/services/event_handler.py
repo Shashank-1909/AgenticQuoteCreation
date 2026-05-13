@@ -18,12 +18,15 @@ from typing import Optional
 
 from fastapi import WebSocket
 from google.genai import types
+# pyrefly: ignore [missing-import]
 from google.adk.runners import Runner
 
 from app.core.config import (
     TOOL_ACCOUNTS,
     TOOL_OPPORTUNITIES,
     TOOL_QUOTE,
+    TOOL_PARSER_TRANSCRIPT,
+    TOOL_PARSER_DOC,
     USER_ID,
     SF_INSTANCE_URL,
 )

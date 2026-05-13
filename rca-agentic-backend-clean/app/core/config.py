@@ -24,7 +24,7 @@ APP_NAME:          str   = "deal_manager_v2"
 USER_ID:           str   = "dev"
 MODEL_NAME:        str   = "gemini-2.5-pro"
 SERVER_PORT:       int   = 8001
-MCP_TIMEOUT:       float = 60.0
+MCP_TIMEOUT:       float = 600.0
 MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
 # MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server_v1.py")
 # ---------------------------------------------------------------------------
@@ -34,6 +34,9 @@ MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
 TOOL_ACCOUNTS:      str = "get_my_accounts"
 TOOL_OPPORTUNITIES: str = "get_opportunities_for_account"
 TOOL_QUOTE:         str = "evaluate_quote_graph"
+TOOL_PARSER_TRANSCRIPT: str = "parse_transcript_to_requirements"
+TOOL_PARSER_DOC:        str = "parse_requirements_doc"
+TOOL_MAPPER:            str = "map_requirements_to_catalog"
 
 # ---------------------------------------------------------------------------
 # Salesforce instance URL — loaded from auth.json at import time.
