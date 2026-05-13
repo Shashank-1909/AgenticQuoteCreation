@@ -340,10 +340,8 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         product_ids: List of Product2 IDs obtained from product search results.
                      Do not fabricate IDs — use only what the search tools returned.
 
-    After calling: 
-        1. Extract the top-level 'pricebook_id' and pass it to evaluate_quote_graph.
-        2. Use the returned PricebookEntryId and UnitPrice values to construct
-           the line items for the quote graph submission tool.
+    After calling: Use the returned PricebookEntryId and UnitPrice values to construct
+                   the line items for the quote graph submission tool.
     """
     headers, instance_url = get_salesforce_auth()
     
@@ -352,7 +350,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         return json.dumps({"status": "error", "message": "product_ids list cannot be empty."})
         
     formatted_ids = ",".join([f"'{pid}'" for pid in product_ids])
-    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice, Product2.Type, ProductSellingModel.SellingModelType FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND Pricebook2.IsStandard = true AND IsActive = true"
+    query = f"SELECT Id, Pricebook2Id, Product2Id, UnitPrice FROM PricebookEntry WHERE Product2Id IN ({formatted_ids}) AND IsActive = true"
     
     from urllib.parse import quote
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
@@ -374,17 +372,12 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
             "PricebookEntryId": r.get("Id"),
             "Product2Id": r.get("Product2Id"),
             "Pricebook2Id": r.get("Pricebook2Id"),
-            "UnitPrice": r.get("UnitPrice"),
-            "Type": r.get("Product2", {}).get("Type"),
-            "SellingModelType": (r.get("ProductSellingModel") or {}).get("SellingModelType")
+            "UnitPrice": r.get("UnitPrice")
         })
         
-    standard_pricebook_id = results[0]["Pricebook2Id"] if results else ""
-
     import json
     return json.dumps({
         "status": "success",
-        "pricebook_id": standard_pricebook_id,
         "resolved_entries": results
     }, indent=2)
 
@@ -506,6 +499,7 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
+
 @mcp.tool()
 def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", pricebook_id: str = "01sNS00000DiMi5YAF") -> str:
     """
@@ -517,17 +511,16 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
     reject the request. If you get a validation error, read it carefully and fix the payload.
 
     Args:
-        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
-                      MUST be provided. You receive this from resolve_pricebook_entries.
         opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
                         Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
                         If not provided, the quote will be created without an Opportunity link.
+        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
+                      Defaults to the standard pricebook if not specified.
         line_items: One dict per product, each containing:
                     - Product2Id (from search results)
                     - PricebookEntryId (from pricebook resolution tool)
                     - Quantity (default 1)
                     - UnitPrice (from pricebook resolution tool)
-                    - Discount (numeric percentage, e.g., 10 for 10%)
                     - StartDate / EndDate (optional, defaults applied automatically)
 
     After calling: Return the Quote ID from the response to the user. If the response
@@ -560,20 +553,6 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
             import json
             return json.dumps({"status": "error", "message": "CRITICAL: Every line item MUST include Product2Id and PricebookEntryId."})
 
-        # Sanitize Quantity and Discount (handle strings like "10%" or "5 units")
-        def sanitize_numeric(val, default=0):
-            if val is None: return default
-            if isinstance(val, (int, float)): return val
-            try:
-                # Remove non-numeric chars except decimal point
-                clean_val = re.sub(r'[^-0-9.]', '', str(val))
-                return float(clean_val) if clean_val else default
-            except:
-                return default
-
-        qty = sanitize_numeric(item.get("Quantity"), 1)
-        discount = sanitize_numeric(item.get("Discount"), 0)
-
         record_item = {
             "attributes": {
                 "type": "QuoteLineItem",
@@ -582,26 +561,16 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
-            "Quantity": qty,
+            "PeriodBoundary": "Anniversary",
+            "BillingFrequency": "Annual",
+            "Quantity": item.get("Quantity", 1),
             "UnitPrice": item.get("UnitPrice", 100),
-            "Discount": discount
+            "StartDate": item.get("StartDate", "2025-01-01"),
+            "EndDate": item.get("EndDate", "2026-01-01")
         }
 
-        # Only add subscription fields if the product has a selling model (is a subscription)
-        is_subscription = item.get("SellingModelType") and item.get("SellingModelType") != "One-Time"
-        if is_subscription:
-            record_item["PeriodBoundary"] = "Anniversary"
-            record_item["BillingFrequency"] = "Annual"
-            record_item["StartDate"] = item.get("StartDate", "2025-01-01")
-            record_item["EndDate"] = item.get("EndDate", "2026-01-01")
-
-        # Add any other valid fields, but EXCLUDE metadata returned by resolve_pricebook_entries
-        excluded_fields = [
-            "Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", 
-            "StartDate", "EndDate", "Type", "SellingModelType", "Pricebook2Id"
-        ]
         for k, v in item.items():
-            if k not in excluded_fields:
+            if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "StartDate", "EndDate"]:
                 record_item[k] = v
 
         records.append({"referenceId": f"refQuoteLine{i}", "record": record_item})
@@ -642,81 +611,6 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         "opportunity_id": clean_opp_id or "not linked",
         "salesforce_response": response.json()
     }, indent=2)
-
-@mcp.tool()
-def get_quote_preview(quote_id: str) -> str:
-    """
-    Fetches detailed preview data for a specific Salesforce Quote, 
-    including its Account, Opportunity, and Quote Line Items.
-
-    Args:
-        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0').
-    """
-    print(f"[DEBUG] get_quote_preview called for {quote_id}")
-    try:
-        headers, instance_url = get_salesforce_auth()
-        print(f"[DEBUG] Auth success. Instance: {instance_url}")
-    except Exception as e:
-        print(f"[DEBUG] Auth failed: {str(e)}")
-        return json.dumps({"status": "error", "message": f"Auth error: {str(e)}"})
-    
-    # 1. Quote Details Query
-    quote_query = f"""
-    SELECT Id, Name, QuoteNumber, Status, GrandTotal, StartDate, ExpirationDate, 
-           Pricebook2Id, Opportunity.Name, Account.Name, Account.Website 
-    FROM Quote 
-    WHERE Id='{quote_id}'
-    """
-    
-    # 2. Quote Line Items Query
-    lines_query = f"""
-    SELECT Id, QuoteId, Product2Id, PricebookEntryId, Product2.Name, 
-           Product2.ProductCode, Product2.Family, Product2.Type, 
-           Product2.Description, Quantity, UnitPrice, TotalPrice, 
-           ListPrice, StartDate, EndDate, Discount, 
-           NetUnitPrice, SortOrder 
-    FROM QuoteLineItem 
-    WHERE QuoteId = '{quote_id}' 
-    ORDER BY SortOrder ASC, CreatedDate ASC 
-    LIMIT 2000
-    """
-    
-    from urllib.parse import quote
-    quote_endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(quote_query)}"
-    lines_endpoint = f"{instance_url}/services/data/v66.0/query/?q={quote(lines_query)}"
-    
-    try:
-        print(f"[DEBUG] Fetching quote details...")
-        quote_resp = requests.get(quote_endpoint, headers=headers)
-        print(f"[DEBUG] Fetching line items...")
-        lines_resp = requests.get(lines_endpoint, headers=headers)
-        
-        if quote_resp.status_code != 200 or lines_resp.status_code != 200:
-            err_msg = quote_resp.text if quote_resp.status_code != 200 else lines_resp.text
-            print(f"[DEBUG] Query failed: {err_msg}")
-            return json.dumps({
-                "status": "error", 
-                "message": f"Error fetching quote data: {err_msg}"
-            })
-            
-        quote_data = quote_resp.json().get("records", [])
-        if not quote_data:
-            print(f"[DEBUG] Quote {quote_id} not found.")
-            return json.dumps({"status": "error", "message": "Quote not found."})
-            
-        quote_obj = quote_data[0]
-        quote_obj["QuoteLineItems"] = lines_resp.json().get("records", [])
-        print(f"[DEBUG] Successfully merged {len(quote_obj['QuoteLineItems'])} lines.")
-        
-        return json.dumps({
-            "status": "success",
-            "instance_url": instance_url,
-            "records": [quote_obj]
-        }, indent=2)
-        
-    except Exception as e:
-        print(f"[DEBUG] Unexpected error: {str(e)}")
-        return json.dumps({"status": "error", "message": str(e)})
 
 @mcp.tool()
 def update_quote_discount(quote_id: str, discount: float) -> str:
@@ -929,97 +823,6 @@ def get_quote_details(quote_id: str) -> str:
         "quote_id": clean_id,
         "line_items": items,
         "count": len(items)
-    }, indent=2)
-
-@mcp.tool()
-def get_quote_summary(quote_id: str) -> str:
-    """
-    Fetches a high-level business summary of a quote, including header info and totals.
-    Use this specifically when the user asks for a 'summary', 'explanation', or 'pricing breakdown'.
-    """
-    import re, requests, json
-    match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
-    clean_id = match.group(1) if match else quote_id.strip()
-
-    headers, instance_url = get_salesforce_auth()
-
-    # 1. Fetch Quote Header info
-    q_query = (
-        f"SELECT Id, Name, Status, GrandTotal, Opportunity.Name "
-        f"FROM Quote WHERE Id = '{clean_id}'"
-    )
-    q_resp = requests.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_query})
-    
-    if q_resp.status_code != 200:
-        return json.dumps({"status": "error", "message": q_resp.text})
-    
-    q_records = q_resp.json().get("records", [])
-    if not q_records:
-        return json.dumps({"status": "error", "message": "Quote not found"})
-    
-    quote_info = q_records[0]
-
-    # 2. Fetch Line Items
-    l_query = (
-        f"SELECT Product2.Name, Quantity, UnitPrice, Discount, TotalPrice "
-        f"FROM QuoteLineItem WHERE QuoteId = '{clean_id}'"
-    )
-    l_resp = requests.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": l_query})
-    
-    line_items = []
-    if l_resp.status_code == 200:
-        for rec in l_resp.json().get("records", []):
-            line_items.append({
-                "name": rec["Product2"]["Name"],
-                "quantity": rec["Quantity"],
-                "unit_price": rec["UnitPrice"],
-                "discount": rec["Discount"],
-                "total": rec["TotalPrice"]
-            })
-
-    # 3. Analyze for Summary Note and Deal Analysis
-    total_qty = sum(item["quantity"] for item in line_items)
-    items_with_discount = [item for item in line_items if item.get("discount") and item["discount"] > 0]
-    total_list_price = sum(item["unit_price"] * item["quantity"] for item in line_items)
-    total_discount_val = total_list_price - (quote_info.get("GrandTotal") or 0)
-    overall_discount_pct = (total_discount_val / total_list_price * 100) if total_list_price > 0 else 0
-
-    status = quote_info.get("Status", "Draft").upper()
-    
-    # Dynamic Deal Analysis
-    if status == "CLOSED WON" or status == "APPROVED":
-        analysis = (
-            f"Successfully finalized with a {overall_discount_pct:.0f}% discount. The primary driver was strategic positioning "
-            f"of {len(line_items)} core products. The solution addresses all compliance and operational requirements, "
-            f"yielding significant efficiency gains for the client."
-        )
-        tags = ["Strategic pricing", "Compliance verified", f"{overall_discount_pct:.0f}% disc."]
-    else:
-        analysis = (
-            f"Quote is currently in {status} status. It includes {len(line_items)} line items with an "
-            f"estimated grand total of ${quote_info.get('GrandTotal'):,.2f}. Pricing includes a "
-            f"negotiated discount of {overall_discount_pct:.0f}% across key products."
-        )
-        tags = ["Pending approval", "Volume discount", "Standard terms"]
-
-    import datetime
-    today = datetime.date.today().strftime("%Y-%m-%d")
-
-    return json.dumps({
-        "status": "success",
-        "quote_id": clean_id,
-        "quote_name": quote_info.get("Name"),
-        "quote_title": f"Project {quote_info.get('Name')}",
-        "opportunity": quote_info.get("Opportunity", {}).get("Name", "N/A"),
-        "status_label": status,
-        "grand_total": quote_info.get("GrandTotal"),
-        "overall_discount": f"{overall_discount_pct:.0f}% disc.",
-        "date": today,
-        "line_items": line_items,
-        "total_products": len(line_items),
-        "total_quantity": total_qty,
-        "summary_analysis": analysis,
-        "tags": tags
     }, indent=2)
 
 @mcp.tool()

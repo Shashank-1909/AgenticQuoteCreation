@@ -24,6 +24,8 @@ from app.core.config import (
     TOOL_ACCOUNTS,
     TOOL_OPPORTUNITIES,
     TOOL_QUOTE,
+    TOOL_LINE_ITEMS,
+    TOOL_MANAGE_LINES,
     USER_ID,
     SF_INSTANCE_URL,
 )
@@ -65,7 +67,7 @@ async def handle_tool_result(
       - Sending the TOOL_RESULT WebSocket event in all cases
     """
     # ── Account and opportunity picklists ────────────────────────────────
-    if tool_name in (TOOL_ACCOUNTS, TOOL_OPPORTUNITIES, "get_quotes_for_opportunity"):
+    if tool_name in (TOOL_ACCOUNTS, TOOL_OPPORTUNITIES):
         try:
             parsed = json.loads(text_content)
             if tool_name == TOOL_ACCOUNTS and parsed.get("accounts"):
@@ -90,30 +92,8 @@ async def handle_tool_result(
                 )
                 state.quote_flow[session_id] = True
 
-            elif tool_name == "get_quotes_for_opportunity":
-                quotes = parsed.get("quotes") or []
-                await websocket.send_json({
-                    "type":          "USER_SELECTION_NEEDED",
-                    "selection_for": "quote",
-                    "options":       quotes,
-                })
-                logger.info("Quote picklist sent → %d options", len(quotes))
-
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse picklist tool response: %s", exc)
-
-    # ── Quote summary — emit specific event for rich UI ──────────────────
-    if tool_name == "quote_summary":
-        try:
-            parsed = json.loads(text_content)
-            if parsed.get("status") == "success":
-                await websocket.send_json({
-                    "type": "QUOTE_SUMMARY",
-                    "data": parsed
-                })
-                logger.info("Quote summary event sent for %s", parsed.get("quote_id"))
-        except json.JSONDecodeError as exc:
-            logger.warning("Could not parse quote summary response: %s", exc)
 
     # ── Quote completion — exit quote flow mode ───────────────────────────
     if tool_name == TOOL_QUOTE:
@@ -124,6 +104,40 @@ async def handle_tool_result(
                 logger.info("Session %s → quote flow COMPLETE (back to coordinator)", session_id)
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse quote tool response: %s", exc)
+
+    # ── Quote line items loaded (Quote Updator: Step 2) ─────────────────────
+    if tool_name == TOOL_LINE_ITEMS:
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                await websocket.send_json({
+                    "type":     "LINE_ITEMS_LOADED",
+                    "quote_id": parsed["quote_id"],
+                    "items":    parsed["line_items"],
+                    "count":    parsed["count"],
+                })
+                state.update_flow[session_id] = True
+                logger.info(
+                    "Session %s → update flow ACTIVE (%d line items loaded)",
+                    session_id, parsed["count"],
+                )
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse line items response: %s", exc)
+
+    # ── Quote modification complete ───────────────────────────────────
+    if tool_name == TOOL_MANAGE_LINES:
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                state.update_flow[session_id] = False
+                await websocket.send_json({
+                    "type":     "QUOTE_UPDATED",
+                    "quote_id": parsed.get("quote_id", ""),
+                    "message":  parsed.get("message", "Quote updated successfully."),
+                })
+                logger.info("Session %s → update flow COMPLETE", session_id)
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse manage_quote_line_items response: %s", exc)
 
     # ── Build and send TOOL_RESULT payload ────────────────────────────────
     payload: dict = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
@@ -151,9 +165,6 @@ async def process_events(
     Delegates all tool-result side effects to handle_tool_result.
     """
     current_agent: Optional[str] = None
-    # Track the latest mapped name for each tool during this turn to ensure 
-    # TOOL_RESULT matches the TOOL_TRIGGER label in the graph.
-    last_mapped_name: dict[str, str] = {}
 
     async for event in runner.run_async(
         user_id=USER_ID,
@@ -169,47 +180,16 @@ async def process_events(
 
         # ── Tool call (LLM → Tool) ────────────────────────────────────────
         for fn_call in (event.get_function_calls() or []):
-            real_tool_name: str = getattr(fn_call, "name", "unknown")
-            mapped_name = real_tool_name
-            
-            # ── Dynamic Orchestration Node Mapping ──
-            if real_tool_name == "manage_quote_line_items":
-                args = getattr(fn_call, "args", {}) or {}
-                ops = args.get("operations", [])
-                if ops and isinstance(ops, list) and len(ops) > 0:
-                    op = ops[0]
-                    method = op.get("method", "").upper()
-                    record = op.get("record", {})
-                    if method == "POST": mapped_name = "product_added"
-                    elif method == "DELETE": mapped_name = "product_removed"
-                    elif method == "PATCH":
-                        if any(k in op for k in ["Discount", "discount"]): 
-                            mapped_name = "discount_applied"
-                        elif any(k in op for k in ["Quantity", "quantity"]): 
-                            mapped_name = "quantity_updated"
-                        else: 
-                            mapped_name = "quantity_updated"
-            elif real_tool_name == "update_quote_discount":
-                mapped_name = "discount_applied"
-            elif real_tool_name == "rename_quote":
-                mapped_name = "quote_renamed"
-            elif real_tool_name == "get_quote_details":
-                mapped_name = "quote_details_fetch"
-            elif real_tool_name == "get_quote_summary":
-                mapped_name = "quote_summary"
-            
-            last_mapped_name[real_tool_name] = mapped_name
-            logger.info("[TOOL CALL] → %s (mapped: %s)", real_tool_name, mapped_name)
-            await websocket.send_json({"type": "TOOL_TRIGGER", "tool": mapped_name})
+            tool_name: str = getattr(fn_call, "name", "unknown")
+            logger.info("[TOOL CALL] → %s", tool_name)
+            await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
 
         # ── Tool response (Tool → LLM) ────────────────────────────────────
         for fn_resp in (event.get_function_responses() or []):
-            real_tool_name = getattr(fn_resp, "name", "")
-            mapped_name = last_mapped_name.get(real_tool_name, real_tool_name)
-            
+            tool_name = getattr(fn_resp, "name", "")
             text_content = extract_tool_text(fn_resp)
-            logger.info("[TOOL RESULT] %s → %d chars", mapped_name, len(text_content))
-            await handle_tool_result(mapped_name, text_content, session_id, websocket, state)
+            logger.info("[TOOL RESULT] %s → %d chars", tool_name, len(text_content))
+            await handle_tool_result(tool_name, text_content, session_id, websocket, state)
 
         # ── Final text reply ──────────────────────────────────────────────
         if event.is_final_response() and event.content:

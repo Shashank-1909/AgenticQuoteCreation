@@ -4,12 +4,12 @@ app/lifespan.py
 FastAPI lifespan context manager — wires all components together.
 
 This is the composition root of the application. On startup it:
-  1. Creates two isolated MCP subprocess toolsets (one per agent)
-  2. Builds all three agents
-  3. Creates two runners (root and quote)
+  1. Creates three isolated MCP subprocess toolsets (one per agent)
+  2. Builds all four agents
+  3. Creates three runners (root, quote, update)
   4. Wraps them in AppState and injects it into the WebSocket module
 
-On shutdown it cleanly closes both MCP subprocesses.
+On shutdown it cleanly closes all three MCP subprocesses.
 
 Nothing else in the codebase knows how the pieces fit together — only this module.
 """
@@ -25,6 +25,7 @@ from app.core.state import AppState
 from app.tools.mcp_factory import build_mcp_toolset
 from app.agents.catalog_scout import build_catalog_scout
 from app.agents.quote_architect import build_quote_architect
+from app.agents.quote_updator import build_quote_updator
 from app.agents.deal_manager import build_deal_manager
 from app.services.session import session_service
 from app.api import websocket as ws_module
@@ -44,14 +45,17 @@ async def lifespan(app: FastAPI):
     # Each sub-agent gets its own isolated MCP subprocess to avoid shared state.
     mcp_scout     = build_mcp_toolset()
     mcp_architect = build_mcp_toolset()
+    mcp_updator   = build_mcp_toolset()
 
     catalog_scout   = build_catalog_scout(mcp_scout)
     quote_architect = build_quote_architect(mcp_architect)
-    deal_manager    = build_deal_manager(catalog_scout, quote_architect)
+    quote_updator   = build_quote_updator(mcp_updator)
+    deal_manager    = build_deal_manager(catalog_scout, quote_architect, quote_updator)
 
-    # _root_runner  — Deal_Manager as root (initial routing, product search)
-    # _quote_runner — Quote_Architect as root (direct, skips Deal_Manager)
-    # Both share the same session_service so conversation history is preserved
+    # _root_runner   — Deal_Manager as root (initial routing, product search)
+    # _quote_runner  — Quote_Architect as root (direct, skips Deal_Manager)
+    # _update_runner — Quote_Updator as root (direct, skips Deal_Manager)
+    # All share the same session_service so conversation history is preserved
     # when the active runner switches mid-conversation.
     root_runner = Runner(
         app_name=APP_NAME,
@@ -63,21 +67,32 @@ async def lifespan(app: FastAPI):
         agent=quote_architect,
         session_service=session_service,
     )
+    update_runner = Runner(
+        app_name=APP_NAME,      # SAME app_name = shared session history!
+        agent=quote_updator,
+        session_service=session_service,
+    )
 
-    state = AppState(root_runner=root_runner, quote_runner=quote_runner)
+    state = AppState(
+        root_runner=root_runner,
+        quote_runner=quote_runner,
+        update_runner=update_runner,
+    )
     ws_module.set_app_state(state)
 
     logger.info("✅ Deal_Manager coordinator initialized")
     logger.info("✅ Catalog_Scout ready (MCP subprocess #1)")
     logger.info("✅ Quote_Architect ready (MCP subprocess #2)")
+    logger.info("✅ Quote_Updator ready (MCP subprocess #3)")
     logger.info("✅ Quote_Architect direct runner ready (bypasses Deal_Manager)")
+    logger.info("✅ Quote_Updator direct runner ready (bypasses Deal_Manager)")
     logger.info("✅ Runner configured — stable ADK 1.28.0")
 
     yield  # Application runs here
 
-    # ── Shutdown: release MCP subprocess connections ──────────────────────
+    # ── Shutdown: release all MCP subprocess connections ──────────────────
     logger.info("Closing MCP connections...")
-    for toolset in [mcp_scout, mcp_architect]:
+    for toolset in [mcp_scout, mcp_architect, mcp_updator]:
         try:
             result = toolset.close()
             if hasattr(result, "__await__"):
@@ -85,3 +100,4 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("MCP toolset close warning: %s", exc)
     logger.info("Shutdown complete.")
+
