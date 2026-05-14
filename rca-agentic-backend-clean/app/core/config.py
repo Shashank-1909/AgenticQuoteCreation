@@ -22,7 +22,7 @@ _AUTH_PATH:    str = os.path.join(_BACKEND_ROOT, "auth.json")
 # ---------------------------------------------------------------------------
 APP_NAME:          str   = "deal_manager_v2"
 USER_ID:           str   = "dev"
-MODEL_NAME:        str   = "gemini-2.5-pro"
+MODEL_NAME:        str   = "gemini-3.1-flash-lite"
 SERVER_PORT:       int   = 8001
 MCP_TIMEOUT:       float = 600.0
 MCP_SERVER_SCRIPT: str   = os.path.join(_BACKEND_ROOT, "server.py")
