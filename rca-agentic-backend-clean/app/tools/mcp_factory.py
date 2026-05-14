@@ -9,6 +9,7 @@ the MCP configuration (timeout, script path) lives in one place.
 """
 
 import sys
+import os
 
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
@@ -17,13 +18,17 @@ from mcp import StdioServerParameters
 from app.core.config import MCP_TIMEOUT, MCP_SERVER_SCRIPT
 
 
-def build_mcp_toolset() -> McpToolset:
+def build_mcp_toolset(agent_type: str = "all") -> McpToolset:
     """Creates a new isolated MCP subprocess toolset for one agent."""
+    env = os.environ.copy()
+    env["MCP_AGENT_TYPE"] = agent_type
+    
     return McpToolset(
         connection_params=StdioConnectionParams(
             server_params=StdioServerParameters(
                 command=sys.executable,
                 args=["-u", MCP_SERVER_SCRIPT],
+                env=env
             ),
             timeout=MCP_TIMEOUT,
         )
