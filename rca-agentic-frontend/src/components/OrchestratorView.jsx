@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings,
   ExternalLink, ArrowRight, Database,
   Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp,
-  Sparkles, ClipboardList
+  Sparkles, ClipboardList, Sun, Moon
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -15,7 +15,7 @@ import {
   GW, INIT_ORCH, SUGGESTIONS
 } from '../constants';
 
-const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
   const [messages, setMessages] = useState([
     { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
@@ -588,13 +588,28 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <span className="text-slate-400 dark:text-white/40 font-bold">Flow</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-3 bg-slate-500/5 dark:bg-black/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5 shadow-inner hover:bg-slate-500/10 transition-all">
                     <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Minimap</span>
                     <button onClick={() => setShowMinimap(!showMinimap)} className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700'}`}>
                       <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all duration-300 ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
+
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10" />
+
+                  <button 
+                    onClick={() => setIsDark(!isDark)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-500/5 dark:bg-black/5 border border-slate-200 dark:border-white/5 hover:bg-slate-500/10 transition-all shadow-sm"
+                    title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  >
+                    {isDark ? (
+                      <Sun size={14} className="text-amber-500" />
+                    ) : (
+                      <Moon size={14} className="text-indigo-500" />
+                    )}
+                    <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Theme</span>
+                  </button>
                 </div>
               </div>
 
@@ -622,8 +637,19 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 )} */}
               </div>
             </section>
-            <div onMouseDown={startResizingRight} className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
-              <div className={`w-1 h-24 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/40 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-40' : ''}`} />
+            {/* RESIZER HANDLE — RIGHT PANEL */}
+            <div 
+              onMouseDown={startResizingRight} 
+              className={`w-6 hover:w-6 transition-all cursor-col-resize h-full bg-transparent flex items-center justify-center relative z-40 group/resizer -mx-3`}
+            >
+              <div className={`w-[2px] h-32 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 group-hover/resizer:w-1 group-hover/resizer:h-48 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] !w-1 !h-full' : ''}`} />
+              
+              {/* Visual "Move" handle dots */}
+              <div className="absolute flex flex-col gap-1.5 opacity-0 group-hover/resizer:opacity-100 transition-opacity">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="w-1 h-1 rounded-full bg-indigo-500/60" />
+                ))}
+              </div>
             </div>
           </>
         )}

@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut
+  ZoomIn, ZoomOut, Sun, Moon
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -14,7 +14,9 @@ import ProductConfigModal from './ProductConfigModal';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
 import './AgentforceView.css';
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
+  const [rightWidth, setRightWidth] = useState(500);
+  const [isResizingRight, setIsResizingRight] = useState(false);
   const [messages, setMessages] = useState([
     { 
       id: 1, 
@@ -57,6 +59,38 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
+
+  const startResizingRight = useCallback((e) => {
+    e.preventDefault();
+    setIsResizingRight(true);
+  }, []);
+
+  const stopResizingRight = useCallback(() => {
+    setIsResizingRight(false);
+  }, []);
+
+  const resizeRight = useCallback((e) => {
+    if (isResizingRight) {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 350 && newWidth < 800) {
+        setRightWidth(newWidth);
+      }
+    }
+  }, [isResizingRight]);
+
+  useEffect(() => {
+    if (isResizingRight) {
+      window.addEventListener('mousemove', resizeRight);
+      window.addEventListener('mouseup', stopResizingRight);
+    } else {
+      window.removeEventListener('mousemove', resizeRight);
+      window.removeEventListener('mouseup', stopResizingRight);
+    }
+    return () => {
+      window.removeEventListener('mousemove', resizeRight);
+      window.removeEventListener('mouseup', stopResizingRight);
+    };
+  }, [isResizingRight, resizeRight, stopResizingRight]);
 
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
@@ -472,19 +506,33 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+          <div className="flex items-center gap-3">
             <button 
-              onClick={() => setWorkspaceView('graph')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              onClick={() => setIsDark(!isDark)}
+              className={`p-2 rounded-xl transition-all shadow-sm border ${
+                isDark 
+                  ? 'bg-white/5 border-white/10 text-amber-500 hover:bg-white/10' 
+                  : 'bg-black/5 border-black/10 text-indigo-500 hover:bg-black/10'
+              }`}
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
-              Orchestration Flow
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <button 
-              onClick={() => setWorkspaceView('preview')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Record Preview
-            </button>
+
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+              <button 
+                onClick={() => setWorkspaceView('graph')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Orchestration Flow
+              </button>
+              <button 
+                onClick={() => setWorkspaceView('preview')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Record Preview
+              </button>
+            </div>
           </div>
         </div>
 
@@ -611,7 +659,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       </section>
 
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
-      <section className="af-sidebar">
+      {/* RESIZER HANDLE */}
+      <div 
+        onMouseDown={startResizingRight} 
+        className={`w-6 cursor-col-resize h-full bg-transparent flex items-center justify-center relative z-[60] group/resizer -mx-3`}
+      >
+        <div className={`w-[2px] h-32 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 group-hover/resizer:w-1 group-hover/resizer:h-48 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] !w-1 !h-full' : ''}`} />
+        <div className="absolute flex flex-col gap-1.5 opacity-0 group-hover/resizer:opacity-100 transition-opacity">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="w-1 h-1 rounded-full bg-indigo-500/60" />
+          ))}
+        </div>
+      </div>
+
+      <section className="af-sidebar" style={{ width: rightWidth }}>
         <div className="af-sidebar-header">
            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
               {config.theme === 'Meta' ? (
