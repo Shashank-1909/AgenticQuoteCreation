@@ -52,16 +52,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
 
-  const handleWsMessageRef = useRef(null);
-
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
     ws.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (handleWsMessageRef.current) {
-          handleWsMessageRef.current(data);
-        }
+        handleWsMessage(data);
       } catch (err) {
         console.error('[WS] parse error', err);
       }
@@ -69,7 +65,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     return () => ws.current?.close();
   }, []);
 
-  const handleWsMessage = useCallback((data) => {
+  const handleWsMessage = (data) => {
     switch (data.type) {
       case 'STATE':
         setWorkflowState(data.state);
@@ -198,26 +194,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
             setTimeout(() => handleOpenConfig(), 100);
           } else {
-            let content = data.data;
-            let actions = null;
-            const actionStartIndex = content.indexOf('[ACTIONS:');
-            if (actionStartIndex !== -1) {
-              const actionEndIndex = content.lastIndexOf(']');
-              if (actionEndIndex > actionStartIndex) {
-                const actionStr = content.substring(actionStartIndex + 9, actionEndIndex).trim();
-                try {
-                  let cleanStr = actionStr;
-                  if (cleanStr.startsWith('```json')) cleanStr = cleanStr.substring(7);
-                  if (cleanStr.startsWith('```')) cleanStr = cleanStr.substring(3);
-                  if (cleanStr.endsWith('```')) cleanStr = cleanStr.substring(0, cleanStr.length - 3);
-                  actions = JSON.parse(cleanStr.trim());
-                } catch (e) {
-                  console.error("Failed to parse actions:", actionStr, e);
-                }
-                content = content.substring(0, actionStartIndex).trim();
-              }
-            }
-            addMessage({ type: 'text', content, actions });
+            addMessage({ type: 'text', content: data.data });
           }
         }
         break;
@@ -235,27 +212,23 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setReasoning(null);
         break;
     }
-  }, [quotes, messages]); // add deps to useCallback
-
-  useEffect(() => {
-    handleWsMessageRef.current = handleWsMessage;
-  }, [handleWsMessage]);
+  };
 
   const addMessage = (msg) => {
     const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
     setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
   };
 
-  const handleSend = (e, overrideText = null) => {
+  const handleSend = (e) => {
     e?.preventDefault();
-    const text = overrideText || inputValue.trim();
+    const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
     
-    // Support dynamic preview commands (exclude summary/overview to let AI handle them)
-    const isPreviewCmd = cmd.includes('preview') && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    // Support dynamic preview/summary/overview commands
+    const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
       const latestFromState = quotes[quotes.length - 1]?.id;
@@ -610,24 +583,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   </span>
                 </div>
               )}
-              <div className="af-bubble whitespace-pre-wrap">
+              <div className="af-bubble">
                 {msg.content}
               </div>
-              
-              {msg.actions && (
-                <div className="flex flex-col gap-2 mt-3 px-2">
-                  {Object.entries(msg.actions).map(([label, desc], idx) => (
-                    <button 
-                      key={idx}
-                      onClick={() => handleSend(null, label)}
-                      className="bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 p-2.5 rounded-lg text-left transition-all group"
-                    >
-                       <span className="block text-xs font-black tracking-tight group-hover:text-indigo-300 transition-colors">{label}</span>
-                       <span className="block text-[10px] text-slate-400 mt-0.5">{desc}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
               
               {msg.type === 'card' && msg.cardType === 'products' && (
                 <div className="af-card">
