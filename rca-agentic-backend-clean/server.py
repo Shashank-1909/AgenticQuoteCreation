@@ -627,11 +627,22 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
     if response.status_code not in [200, 201]:
         return f"SALESFORCE VALIDATION ERROR - Analyze this payload rejection and retry:\nStatus Code: {response.status_code}\nResponse: {response.text}"
 
+    resp_json = response.json()
+    quote_id = ""
+    try:
+        # Extract the Quote ID from the Graph API response
+        for res in resp_json.get("graph", {}).get("records", []):
+            if res.get("referenceId") == "refQuote":
+                quote_id = res.get("recordId")
+    except:
+        pass
+
     return json.dumps({
         "status": "success",
         "message": "Salesforce successfully validated the Quote Graph!",
+        "quote_id": quote_id,
         "opportunity_id": clean_opp_id or "not linked",
-        "salesforce_response": response.json()
+        "salesforce_response": resp_json
     }, indent=2)
 
 

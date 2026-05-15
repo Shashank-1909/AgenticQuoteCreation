@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings,
   ExternalLink, ArrowRight, Database,
   Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp,
-  Sparkles, ClipboardList
+  Sparkles, ClipboardList, Sun, Moon
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -15,12 +15,29 @@ import {
   GW, INIT_ORCH, SUGGESTIONS
 } from '../constants';
 
-const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
   const [messages, setMessages] = useState([
     { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
+  const [activeRecommendations, setActiveRecommendations] = useState([]);
+
+  const executeRecommendation = (rec) => {
+    if (!rec) return;
+    const { action, params } = rec;
+    if (action === 'PREVIEW_QUOTE') {
+      const text = `Previewing quote ${params.quote_id}...`;
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
+      handlePreview(params.quote_id);
+    } else if (action === 'UPDATE_QUOTE') {
+      const prompt = params.prompt || `I'd like to adjust the quantities and discounts for this quote.`;
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: prompt }]);
+      if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(prompt);
+    }
+    setInputValue(''); // Always clear input
+    setActiveRecommendations([]);
+  };
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
   const [results, setResults] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -269,11 +286,35 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
             }
             setComposingReply(false);
             if (data.data?.trim()) {
-              if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
-                // Agent requested UI config. pop modal!
-                setTimeout(() => handleOpenConfig(), 100);
-              } else {
-                setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: data.data }]);
+              // Parse Recommendation Tags: [RECOMMENDATION: ACTION | {params}]
+              const recRegex = /\[RECOMMENDATION:\s*(\w+)\s*\|\s*({.*?})\]/g;
+              let match;
+              let cleanedText = data.data;
+              const newRecs = [];
+
+              while ((match = recRegex.exec(data.data)) !== null) {
+                const action = match[1];
+                try {
+                  const params = JSON.parse(match[2]);
+                  cleanedText = cleanedText.replace(match[0], '').trim();
+                  
+                  newRecs.push({ 
+                    action, 
+                    params, 
+                    label: params.label || (action === 'OPEN_CONFIG_MODAL' ? 'Create a Quote' : 'Next Step')
+                  });
+                } catch (e) {
+                  console.error('Failed to parse recommendation params', e);
+                }
+              }
+
+              if (newRecs.length > 0) {
+                console.log('[DEBUG] Setting Recommendations:', newRecs);
+                setActiveRecommendations(newRecs);
+              }
+
+              if (cleanedText) {
+                setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: cleanedText }]);
               }
             }
             // Auto-refresh & open Record Preview after a quote update
@@ -323,6 +364,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   const handleSend = (e) => {
     e.preventDefault();
+    setActiveRecommendations([]);
     const text = inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
     const cmd = text.toLowerCase();
@@ -350,16 +392,6 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
       }
     }
 
-    // Support dynamic "create a quote" command
-    const isCreateCmd = (cmd.includes('create') || cmd.includes('generate') || cmd.includes('finalize') || cmd.includes('submit')) && cmd.includes('quote');
-    if (isCreateCmd) {
-      if (selectedProducts.size > 0) {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-        handleOpenConfig();
-        setInputValue('');
-        return;
-      }
-    }
 
     let finalMessage = text;
     // If they have products selected in the UI, capture them NOW (before any state resets)
@@ -453,10 +485,6 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
     const list = configuredItems.map(p => `${p.name} (ID: ${p.id}, Quantity: ${p.quantity}, Discount: ${p.discount}%)`).join(', ');
     const text = configuredItems.length === 1 ? `Create a quote for ${list}` : `Create a quote for the following products: ${list}`;
 
-    // Add record to Vault History
-    const configItem = { type: 'configured_products', data: configuredItems, id: Date.now() };
-    setVaultHistory(prev => [...prev, configItem]);
-
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
     setIsConfigOpen(false);
@@ -465,9 +493,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
 
   const handleCardSelect = (option, selectionType) => {
     if (selectionType === 'account') setConfirmedAccount(option.name);
-    const confirmedItem = { type: 'confirmed', data: { ...option, selectionType }, id: Date.now() };
     setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
-    setVaultHistory(prev => [...prev, confirmedItem]);
     setSelectionPanel(null);
     const text = `${option.name} (ID: ${option.id})`;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
@@ -537,6 +563,21 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
               </div>
             ))}
+            
+            {activeRecommendations.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-start mt-2 mb-6 animate-in fade-in slide-in-from-bottom-2">
+                 {activeRecommendations.map((rec, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => executeRecommendation(rec)}
+                      className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                    >
+                      ✨ {rec.label}
+                    </button>
+                 ))}
+              </div>
+            )}
+
             {composingReply && <TypingIndicator />}
             {leftWidth > 110 && messages.length === 1 && (
               <div className="pt-2 pb-6 space-y-4">
@@ -588,13 +629,28 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                     <span className="text-slate-400 dark:text-white/40 font-bold">Flow</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-3 bg-slate-500/5 dark:bg-black/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5 shadow-inner hover:bg-slate-500/10 transition-all">
                     <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Minimap</span>
                     <button onClick={() => setShowMinimap(!showMinimap)} className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700'}`}>
                       <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all duration-300 ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
+
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10" />
+
+                  <button 
+                    onClick={() => setIsDark(!isDark)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-500/5 dark:bg-black/5 border border-slate-200 dark:border-white/5 hover:bg-slate-500/10 transition-all shadow-sm"
+                    title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  >
+                    {isDark ? (
+                      <Sun size={14} className="text-amber-500" />
+                    ) : (
+                      <Moon size={14} className="text-indigo-500" />
+                    )}
+                    <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Theme</span>
+                  </button>
                 </div>
               </div>
 
@@ -622,8 +678,19 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false }) => {
                 )} */}
               </div>
             </section>
-            <div onMouseDown={startResizingRight} className="w-4 hover:w-4 transition-all cursor-col-resize h-full bg-transparent hover:bg-indigo-500/5 flex items-center justify-center relative z-40 group/resizer">
-              <div className={`w-1 h-24 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/40 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] h-40' : ''}`} />
+            {/* RESIZER HANDLE — RIGHT PANEL */}
+            <div 
+              onMouseDown={startResizingRight} 
+              className={`w-6 hover:w-6 transition-all cursor-col-resize h-full bg-transparent flex items-center justify-center relative z-40 group/resizer -mx-3`}
+            >
+              <div className={`w-[2px] h-32 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 group-hover/resizer:w-1 group-hover/resizer:h-48 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] !w-1 !h-full' : ''}`} />
+              
+              {/* Visual "Move" handle dots */}
+              <div className="absolute flex flex-col gap-1.5 opacity-0 group-hover/resizer:opacity-100 transition-opacity">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="w-1 h-1 rounded-full bg-indigo-500/60" />
+                ))}
+              </div>
             </div>
           </>
         )}

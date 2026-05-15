@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, CheckCircle2, Database, ArrowRight, Bot, Sparkles, ChevronRight } from 'lucide-react';
+import { Settings, CheckCircle2, Database, ArrowRight, Bot, Sparkles, ChevronRight, Sun, Moon } from 'lucide-react';
 import { config } from '../config';
 
 const modules = [
@@ -32,7 +32,7 @@ const stats = [
   { value: '95%', label: 'Risk Reduction' },
 ];
 
-const SelectionHub = ({ onSelect }) => (
+const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
   <div className={`h-screen w-full overflow-hidden flex flex-col bg-[var(--site-bg)] text-[var(--text-main)] transition-colors duration-500 relative ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
 
     {/* ─── Gradient mesh ─── */}
@@ -46,22 +46,35 @@ const SelectionHub = ({ onSelect }) => (
       {/* ─── Top bar ─── */}
       <nav className="flex items-center justify-between mb-8">
         {/* Brand */}
-        <div className="flex items-center gap-3">
-          {config.theme === 'Meta' ? (
-            <>
-              <img src={config.META_LOGO_URL} alt="Meta" className="h-7 object-contain" />
-              <div className="h-5 w-[1px] bg-slate-200 mx-2" />
-              <div className="flex flex-col">
-                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-7 object-contain" />
-              <div className="h-5 w-[1px] bg-slate-200 mx-2" />
-            
-            </>
-          )}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {config.theme === 'Meta' ? (
+              <>
+                <img src={config.META_LOGO_URL} alt="Meta" className="h-7 object-contain" />
+                <div className="h-5 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+                <div className="flex flex-col">
+                  <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-7 object-contain" />
+                <div className="h-5 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+              </>
+            )}
+          </div>
+
+          <button 
+            onClick={() => setIsDark(!isDark)}
+            className={`p-2 rounded-xl transition-all shadow-sm border ${
+              isDark 
+                ? 'bg-white/5 border-white/10 text-amber-500 hover:bg-white/10' 
+                : 'bg-black/5 border-black/10 text-indigo-500 hover:bg-black/10'
+            }`}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
         </div>
 
         {/* Stats bar */}

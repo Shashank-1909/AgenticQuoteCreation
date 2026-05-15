@@ -46,12 +46,11 @@ const App = () => {
         <div className="mesh-circle-2" />
       </div>
 
-      <ThemeToggle isDark={isDark} setIsDark={setIsDark} />
 
       {/* Main View Router */}
       <main className="relative z-10">
         {view === 'selection' && (
-          <SelectionHub onSelect={handleSelect} />
+          <SelectionHub onSelect={handleSelect} isDark={isDark} setIsDark={setIsDark} />
         )}
         
         {view === 'dashboard' && (
@@ -68,6 +67,7 @@ const App = () => {
             onBack={() => setView('dashboard')} 
             selectedModule={selectedModule} 
             isDark={isDark} 
+            setIsDark={setIsDark}
           />
         )}
 
@@ -76,6 +76,7 @@ const App = () => {
             onBack={() => setView('dashboard')} 
             selectedModule={selectedModule} 
             isDark={isDark} 
+            setIsDark={setIsDark}
           />
         )}
       </main>

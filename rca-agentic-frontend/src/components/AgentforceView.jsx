@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut
+  ZoomIn, ZoomOut, Sun, Moon
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -14,7 +14,7 @@ import ProductConfigModal from './ProductConfigModal';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
 import './AgentforceView.css';
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
   const [messages, setMessages] = useState([
     { 
       id: 1, 
@@ -43,9 +43,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [zoomLevel, setZoomLevel] = useState(0.75);
   const [quotes, setQuotes] = useState([]);
   const [quoteNumberMap, setQuoteNumberMap] = useState({}); // { id: number }
-  const [showPreviewSuggestion, setShowPreviewSuggestion] = useState(false);
-  const [showUpdateSuggestion, setShowUpdateSuggestion] = useState(false);
   const [showUpdateAllSuggestion, setShowUpdateAllSuggestion] = useState(false);
+  const [activeRecommendations, setActiveRecommendations] = useState([]);
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
@@ -210,42 +209,53 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           });
           pendingSelectionRef.current = null;
         }
-        if (pendingUpdateRef.current || pendingCreationRef.current) {
-          setShowPreviewSuggestion(true);
-          pendingUpdateRef.current = false;
-          pendingCreationRef.current = false;
-        }
+        // Recommendation logic is now handled in FINAL_REPLY via regex
         if (data.data?.trim()) {
-          if (data.data.includes('[ACTION: OPEN_CONFIG_MODAL]')) {
-            setTimeout(() => handleOpenConfig(), 100);
-          } else {
-            let processedText = data.data;
-            // Replace any Quote IDs with their Numbers if we have them
-            Object.entries(quoteNumberMap).forEach(([id, num]) => {
-              processedText = processedText.replace(new RegExp(id, 'g'), num);
-            });
-            // Also handle any potential 0Q0 matches that might have just arrived
-            const idMatch = processedText.match(/0Q0[a-zA-Z0-9]{12,15}/);
-            if (idMatch && quoteNumberMap[idMatch[0]]) {
-              processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
-            }
+          // Parse Recommendation Tags: [RECOMMENDATION: ACTION | {params}]
+          const recRegex = /\[RECOMMENDATION:\s*(\w+)\s*\|\s*({.*?})\]/g;
+          let match;
+          let cleanedText = data.data;
+          const newRecs = [];
 
+          while ((match = recRegex.exec(data.data)) !== null) {
+            const action = match[1];
+            try {
+              const params = JSON.parse(match[2]);
+              cleanedText = cleanedText.replace(match[0], '').trim();
+              
+              newRecs.push({ 
+                action, 
+                params, 
+                label: params.label || (action === 'OPEN_CONFIG_MODAL' ? 'Create a Quote' : 'Next Step')
+              });
+            } catch (e) {
+              console.error('Failed to parse recommendation params', e);
+            }
+          }
+
+          if (newRecs.length > 0) {
+            setActiveRecommendations(newRecs);
+          }
+
+          // Replace any Quote IDs with their Numbers if we have them
+          let processedText = cleanedText;
+          Object.entries(quoteNumberMap).forEach(([id, num]) => {
+            processedText = processedText.replace(new RegExp(id, 'g'), num);
+          });
+          
+          const idMatch = processedText.match(/0Q0[a-zA-Z0-9]{12,15}/);
+          if (idMatch && quoteNumberMap[idMatch[0]]) {
+            processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
+          }
+
+          if (processedText) {
             addMessage({ type: 'text', content: processedText });
-
-            // If AI asks which one to update or offers to update all, show "Update All" suggestion
-            const lcText = processedText.toLowerCase();
-            if (lcText.includes('update') && (lcText.includes('which one') || lcText.includes('all of them') || lcText.includes('specific ones'))) {
-              setShowUpdateAllSuggestion(true);
-            }
           }
         }
         break;
 
       case 'QUOTE_UPDATED':
-        // Quote modification complete — set flag to show preview recommendation after the final reply
-        if (data.quote_id) {
-          pendingUpdateRef.current = true;
-        }
+        // Metadata is now used by the AI to form the recommendation
         break;
 
       case 'ERROR':
@@ -313,10 +323,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       module: selectedModule?.id || 'sales'
     }));
 
-    // Reset suggestions unless specifically triggered
-    setShowUpdateSuggestion(false);
-    setShowPreviewSuggestion(false);
+    // Reset recommendations unless specifically triggered
     setShowUpdateAllSuggestion(false);
+    setActiveRecommendations([]);
 
     // Clear selections and configs after sending to prevent stale context and hide recommendations
     setSelectedProducts(new Set());
@@ -328,6 +337,22 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const extractQuoteId = (dataStr) => {
     const match = dataStr.match(/0Q0[a-zA-Z0-9]{12,15}/);
     return match ? match[0] : 'Generated';
+  };
+
+  const executeRecommendation = (rec) => {
+    if (!rec) return;
+    const { action, params } = rec;
+    if (action === 'PREVIEW_QUOTE') {
+      const text = `Previewing quote ${params.quote_id}...`;
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+      handlePreview(params.quote_id);
+    } else if (action === 'UPDATE_QUOTE') {
+      const prompt = params.prompt || `I'd like to adjust the quantities and discounts for this quote.`;
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: prompt, type: 'text' }]);
+      if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(prompt);
+    }
+    setInputValue('');
+    setActiveRecommendations([]);
   };
 
   const handleOpenConfig = () => {
@@ -357,9 +382,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       if (data.status === 'success') {
         setPreviewData(data);
         setWorkspaceView('preview');
-        // Show update suggestion ONLY after preview is successfully displayed
-        setShowUpdateSuggestion(true);
-        setShowPreviewSuggestion(false);
       }
     } catch (err) {
       console.error(err);
@@ -456,6 +478,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     }
   };
 
+
   return (
     <div className={`agentforce-container ${isDark ? 'dark' : ''} ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
       
@@ -472,7 +495,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsDark(!isDark)}
+              className={`p-2 rounded-xl transition-all shadow-sm border ${
+                isDark 
+                  ? 'bg-white/5 border-white/10 text-amber-500 hover:bg-white/10' 
+                  : 'bg-black/5 border-black/10 text-indigo-500 hover:bg-black/10'
+              }`}
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
             <button 
               onClick={() => setWorkspaceView('graph')}
               className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
@@ -487,6 +523,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </button>
           </div>
         </div>
+      </div>
 
         <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
           {workspaceView === 'graph' && (
@@ -781,58 +818,22 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           {workflowState === 'orchestrating' && <TypingIndicator />}
 
           <div className="flex flex-col gap-2 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-2">
-             {selectedProducts.size > 0 && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => setInputValue('Create a quote for the selected products')}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Create a Quote
-                   </button>
+
+             {activeRecommendations.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-start">
+                   {activeRecommendations.map((rec, i) => (
+                      <button 
+                        key={i}
+                        onClick={() => executeRecommendation(rec)}
+                        className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                      >
+                        ✨ {rec.label}
+                      </button>
+                   ))}
                 </div>
              )}
 
-             {showPreviewSuggestion && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => {
-                       setInputValue('Preview the quote');
-                       setShowPreviewSuggestion(false);
-                     }}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Preview Quote
-                   </button>
-                </div>
-             )}
-
-             {showUpdateSuggestion && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => {
-                       setInputValue('Can you update the quantity to 10 and discount to 10% in this quote');
-                       setShowUpdateSuggestion(false);
-                     }}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Update Quote
-                   </button>
-                </div>
-             )}
-
-             {showUpdateAllSuggestion && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => {
-                       setInputValue('Update all the quote line items with quantity 10 and discount 10%');
-                       setShowUpdateAllSuggestion(false);
-                     }}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Update All Items
-                   </button>
-                </div>
-             )}
+             {/* showUpdateAllSuggestion removed: AI will now recommend this explicitly if needed */}
           </div>
           
           <div ref={chatEndRef} />
