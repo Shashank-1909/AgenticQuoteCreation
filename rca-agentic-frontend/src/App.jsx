@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import ThemeToggle from './components/ThemeToggle';
 import OrchestratorView from './components/OrchestratorView';
 import AgentforceView from './components/AgentforceView';
+import MigrationView from './components/MigrationView';
 import './MetaTheme.css';
 import './App.css';
 
@@ -54,6 +55,7 @@ const App = () => {
         
         {view === 'dashboard' && (
           <Dashboard
+            selectedModule={selectedModule}
             onLaunchChat={handleLaunchChat}
             onLaunchAgentforce={handleLaunchAgentforce}
             onBack={() => setView('selection')}
@@ -70,8 +72,17 @@ const App = () => {
           />
         )}
 
-        {view === 'agentforce' && (
+        {view === 'agentforce' && selectedModule?.id !== 'migration' && (
           <AgentforceView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+            setIsDark={setIsDark}
+          />
+        )}
+
+        {view === 'agentforce' && selectedModule?.id === 'migration' && (
+          <MigrationView 
             onBack={() => setView('dashboard')} 
             selectedModule={selectedModule} 
             isDark={isDark} 

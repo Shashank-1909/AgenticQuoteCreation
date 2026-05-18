@@ -1,7 +1,7 @@
 import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles, ArrowLeft, BrainCircuit } from 'lucide-react';
 import { config } from '../config';
 
-const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
+const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule }) => {
   const stats = [
     { 
       label: 'Accounts',     
@@ -201,7 +201,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
           <span className="relative z-10 flex items-center gap-2">
             <BrainCircuit size={16} className="group-hover:animate-pulse" />
             
-            Quoting Accelerator 
+            {selectedModule?.id === 'migration' ? 'Migration Accelerator' : 'Quoting Accelerator'} 
             <Sparkles size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
           </span>
         </button>

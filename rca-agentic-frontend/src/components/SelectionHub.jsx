@@ -24,6 +24,13 @@ const modules = [
     accent: config.theme === 'Meta' ? '#F7B928' : '#f59e0b',
     gradient: config.theme === 'Meta' ? 'from-yellow-600/10 via-yellow-600/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent',
   },
+  {
+    id: 'migration',
+    title: 'CPQ to RCA Migration',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+    accent: config.theme === 'Meta' ? '#6B21A8' : '#8b5cf6',
+    gradient: config.theme === 'Meta' ? 'from-purple-700/10 via-purple-700/5 to-transparent' : 'from-violet-500/10 via-violet-500/5 to-transparent',
+  },
 ];
 
 const stats = [
@@ -41,7 +48,7 @@ const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
       <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-emerald-500/8 dark:bg-emerald-500/5 blur-[100px]" />
     </div>
 
-    <div className="relative z-10 flex flex-col h-full px-10 lg:px-20 py-6 lg:py-8 max-w-[1600px] mx-auto w-full">
+    <div className="relative z-10 flex flex-col h-full overflow-y-auto px-10 lg:px-20 py-6 lg:py-8 max-w-[1600px] mx-auto w-full">
 
       {/* ─── Top bar ─── */}
       <nav className="flex items-center justify-between mb-8">

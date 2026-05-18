@@ -627,11 +627,35 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
     if response.status_code not in [200, 201]:
         return f"SALESFORCE VALIDATION ERROR - Analyze this payload rejection and retry:\nStatus Code: {response.status_code}\nResponse: {response.text}"
 
+    salesforce_resp = response.json()
+    quote_id = ""
+    quote_number = "Unknown"
+    
+    try:
+        for rec in salesforce_resp.get("records", []):
+            if rec.get("referenceId") == "refQuote":
+                quote_id = rec.get("record", {}).get("id", "")
+                break
+                
+        if quote_id:
+            from urllib.parse import quote
+            query = f"SELECT QuoteNumber FROM Quote WHERE Id = '{quote_id}'"
+            q_url = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
+            q_res = requests.get(q_url, headers=headers)
+            if q_res.status_code == 200:
+                q_data = q_res.json()
+                if q_data.get("records"):
+                    quote_number = q_data["records"][0].get("QuoteNumber", "Unknown")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching QuoteNumber: {str(e)}")
+
     return json.dumps({
         "status": "success",
         "message": "Salesforce successfully validated the Quote Graph!",
         "opportunity_id": clean_opp_id or "not linked",
-        "salesforce_response": response.json()
+        "quote_id": quote_id,
+        "quote_number": quote_number,
+        "salesforce_response": salesforce_resp
     }, indent=2)
 
 
