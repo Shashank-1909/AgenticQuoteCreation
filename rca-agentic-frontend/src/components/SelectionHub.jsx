@@ -17,6 +17,13 @@ const modules = [
     accent: config.theme === 'Meta' ? '#31A24C' : '#10b981',
     gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent',
   },
+   {
+    id: 'migration',
+    title: 'CPQ to RCA Migration',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+    accent: config.theme === 'Meta' ? '#6B21A8' : '#8b5cf6',
+    gradient: config.theme === 'Meta' ? 'from-purple-700/10 via-purple-700/5 to-transparent' : 'from-violet-500/10 via-violet-500/5 to-transparent',
+  },
   {
     id: 'oracle',
     title: 'Oracle CPQ',
@@ -24,13 +31,7 @@ const modules = [
     accent: config.theme === 'Meta' ? '#F7B928' : '#f59e0b',
     gradient: config.theme === 'Meta' ? 'from-yellow-600/10 via-yellow-600/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent',
   },
-  {
-    id: 'migration',
-    title: 'CPQ to RCA Migration',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
-    accent: config.theme === 'Meta' ? '#6B21A8' : '#8b5cf6',
-    gradient: config.theme === 'Meta' ? 'from-purple-700/10 via-purple-700/5 to-transparent' : 'from-violet-500/10 via-violet-500/5 to-transparent',
-  },
+ 
 ];
 
 const stats = [
