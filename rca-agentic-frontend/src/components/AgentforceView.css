@@ -98,6 +98,7 @@
   font-size: 0.875rem;
   line-height: 1.5;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  white-space: pre-wrap;
 }
 
 .user .af-bubble {
@@ -208,6 +209,7 @@
 .af-chat-area::-webkit-scrollbar,
 .af-workspace::-webkit-scrollbar {
   width: 4px;
+  height: 2px;
 }
 .af-chat-area::-webkit-scrollbar-track,
 .af-workspace::-webkit-scrollbar-track {
@@ -215,8 +217,12 @@
 }
 .af-chat-area::-webkit-scrollbar-thumb,
 .af-workspace::-webkit-scrollbar-thumb {
-  background: var(--indigo-500);
+  background: rgba(99, 102, 241, 0.15);
   border-radius: 10px;
+}
+.af-chat-area:hover::-webkit-scrollbar-thumb,
+.af-workspace:hover::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
 }
 
 /* Dynamic Suggested Actions */

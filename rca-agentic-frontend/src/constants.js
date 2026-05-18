@@ -60,13 +60,13 @@ export const makeToolPath = (agentCx, agentBot, tp) =>
 // Short display names for tools
 export const TOOL_LABELS = {
   check_field_values: 'Field Check',
-  search_catalog:     'Product Search',
+  search_catalog: 'Product Search',
   resolve_pricebook_entries: 'Pricebook',
   evaluate_quote_graph: 'CPQ Quote',
   get_my_accounts: 'Accounts',
   get_opportunities_for_account: 'Opportunity',
   transfer_to_agent: 'Route',
-  get_quote_line_items:    'Line Items',
+  get_quote_line_items: 'Line Items',
   manage_quote_line_items: 'Update Lines',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
@@ -76,9 +76,9 @@ export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0,
 // ─────────────────────────────────────────────────────────────
 export const INIT_ORCH = {
   coordinator: 'idle',
-  Catalog_Scout:   { state: 'idle', tools: [], routedByDm: false },
+  Catalog_Scout: { state: 'idle', tools: [], routedByDm: false },
   Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
-  Quote_Updator:   { state: 'idle', tools: [], routedByDm: false },
+  Quote_Updator: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -86,16 +86,16 @@ export const SUGGESTIONS = [
   {
     label: 'DEAL HISTORY',
     text: 'Provide the detailed view of previous quotes for Edge Communication.',
-    color: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.08)',
-    border: 'rgba(245, 158, 11, 0.3)'
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
   },
   {
     label: 'PRODUCT DISCOVERY',
     text: 'Find Vertex AI platform bundles in the catalog.',
-    color: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.08)',
-    border: 'rgba(16, 185, 129, 0.3)'
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
   },
   {
     label: 'QUOTE CREATION',

@@ -123,9 +123,10 @@ STEP 5 — CREATE QUOTE:
 
 DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - At the end of your response, you MUST ALWAYS append a dynamic block containing exactly 4 recommended next steps/actions for the user, separated by "|" characters.
-- These suggestions must be directly relevant to the current quote status, creation step, or conversation context.
+- These suggestions must be directly relevant to the current conversation context, and MUST BE ACTIONS YOU OR THE OTHER AGENTS CAN ACTUALLY PERFORM (e.g. updating the quote, previewing the quote, summarizing deals).
+- NEVER repeat the user's exact original request as a suggestion. Always suggest DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
-- Example: `[ACTIONS: Preview Quote | View Deal Analytics | Adjust Quantities | Submit for Approval]`
+- Example: `[ACTIONS: Preview Quote | Update Quantities | Change Discounts | Summarize all deals]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

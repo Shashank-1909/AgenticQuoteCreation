@@ -3,60 +3,60 @@ import { config } from '../config';
 
 const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
   const stats = [
-    { 
-      label: 'Accounts',     
-      value: '128',  
-      sub: '+12 this month',  
-      icon: Users,       
-      color: config.theme === 'Meta' ? '#0064E0' : '#6366f1', 
-      gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent' 
+    {
+      label: 'Accounts',
+      value: '128',
+      sub: '+12 this month',
+      icon: Users,
+      color: config.theme === 'Meta' ? '#0064E0' : '#6366f1',
+      gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent'
     },
-    { 
+    {
       label: 'Opportunities',
-      value: '47',   
-      sub: '8 closing soon',  
-      icon: Network,     
-      color: config.theme === 'Meta' ? '#0081FB' : '#0ea5e9', 
-      gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent' 
+      value: '47',
+      sub: '8 closing soon',
+      icon: Network,
+      color: config.theme === 'Meta' ? '#0081FB' : '#0ea5e9',
+      gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent'
     },
-    { 
-      label: 'Quotes',       
-      value: '38',   
+    {
+      label: 'Quotes',
+      value: '38',
       sub: '5 pending review',
-      icon: FileText,    
-      color: config.theme === 'Meta' ? '#31A24C' : '#10b981', 
-      gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent' 
+      icon: FileText,
+      color: config.theme === 'Meta' ? '#31A24C' : '#10b981',
+      gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent'
     },
-    { 
-      label: 'Approvals',    
-      value: '14',   
-      sub: '3 need actions',   
-      icon: ShieldCheck, 
-      color: config.theme === 'Meta' ? '#f7b928' : '#f59e0b', 
-      gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent' 
+    {
+      label: 'Approvals',
+      value: '14',
+      sub: '3 need actions',
+      icon: ShieldCheck,
+      color: config.theme === 'Meta' ? '#f7b928' : '#f59e0b',
+      gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent'
     },
   ];
 
   const quotes = [
-    { id: 'Q-9210', opp: 'Quantum Tech Expansion',  account: 'Quantum Tech Ltd',    status: 'DRAFT',    date: '2026-04-22' },
-    { id: 'Q-9188', opp: 'Neon Dynamics Core',       account: 'Neon Dynamics Inc',   status: 'APPROVED',     date: '2026-04-21' },
-    { id: 'Q-9150', opp: 'Aether Logistics Hub',     account: 'Aether Logistics',    status: 'APPROVED', date: '2026-04-20' },
-    { id: 'Q-9142', opp: 'Stellar Systems Launch',   account: 'Stellar Systems Inc', status: 'DRAFT',    date: '2026-04-19' },
-    { id: 'Q-9130', opp: 'BluePeak Cloud Suite',     account: 'BluePeak plc',        status: 'APPROVED',     date: '2026-04-18' },
-    { id: 'Q-9102', opp: 'Global Freight Config',    account: 'Atlas Logistics',     status: 'DRAFT',  date: '2026-04-12' },
-    { id: 'Q-9095', opp: 'Healthcare AI Core',       account: 'MediTech Gen',        status: 'DRAFT',    date: '2026-04-10' },
+    { id: 'Q-9210', opp: 'Quantum Tech Expansion', account: 'Quantum Tech Ltd', status: 'DRAFT', date: '2026-04-22' },
+    { id: 'Q-9188', opp: 'Neon Dynamics Core', account: 'Neon Dynamics Inc', status: 'APPROVED', date: '2026-04-21' },
+    { id: 'Q-9150', opp: 'Aether Logistics Hub', account: 'Aether Logistics', status: 'APPROVED', date: '2026-04-20' },
+    { id: 'Q-9142', opp: 'Stellar Systems Launch', account: 'Stellar Systems Inc', status: 'DRAFT', date: '2026-04-19' },
+    { id: 'Q-9130', opp: 'BluePeak Cloud Suite', account: 'BluePeak plc', status: 'APPROVED', date: '2026-04-18' },
+    { id: 'Q-9102', opp: 'Global Freight Config', account: 'Atlas Logistics', status: 'DRAFT', date: '2026-04-12' },
+    { id: 'Q-9095', opp: 'Healthcare AI Core', account: 'MediTech Gen', status: 'DRAFT', date: '2026-04-10' },
   ];
 
   const statusStyle = (s) => ({
-    DRAFT:    'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
-    SENT:     'bg-amber-50  dark:bg-amber-500/10  text-amber-600  dark:text-amber-400 border border-amber-200 dark:border-amber-500/20',
+    DRAFT: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
+    SENT: 'bg-amber-50  dark:bg-amber-500/10  text-amber-600  dark:text-amber-400 border border-amber-200 dark:border-amber-500/20',
     APPROVED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20',
-    EXPIRED:  'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20',
+    EXPIRED: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20',
   }[s] || 'bg-slate-100 text-slate-400');
 
   return (
     <div className={`h-screen w-full flex flex-col overflow-hidden bg-[var(--site-bg)] text-[var(--text-main)] transition-colors duration-500 ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
-      
+
       {/* ─── Gradient mesh ─── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-indigo-500/8 dark:bg-indigo-500/5 blur-[120px]" />
@@ -69,7 +69,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             {onBack && (
-              <button 
+              <button
                 onClick={onBack}
                 className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 dark:hover:text-white transition-all mr-2"
               >
@@ -94,7 +94,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
             )}
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-            Salesforce Instance: 
+            Salesforce Instance:
             <span className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Production-01
@@ -121,8 +121,8 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
               <div className="absolute top-0 left-6 right-6 h-[1.5px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-300" style={{ color: s.color }} />
 
               <div className="relative z-10 flex items-center gap-4 w-full">
-                <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" 
-                     style={{ background: s.color + '15', border: `1.5px solid ${s.color}30` }}>
+                <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+                  style={{ background: s.color + '15', border: `1.5px solid ${s.color}30` }}>
                   <s.icon size={22} style={{ color: s.color }} />
                 </div>
                 <div className="flex-1">
@@ -137,7 +137,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
 
         {/* ── Recently Added Quotes Table ── */}
         <div className="flex-1 flex flex-col rounded-[24px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-lg relative overflow-hidden" style={{ animation: 'float-up 0.5s ease-out 250ms both' }}>
-          
+
           <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
 
           {/* Table Header */}
@@ -200,22 +200,12 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           <span className="relative z-10 flex items-center gap-2">
             <BrainCircuit size={16} className="group-hover:animate-pulse" />
-            
-            Quoting Accelerator 
+
+            Quoting Accelerator
             <Sparkles size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
           </span>
         </button>
-        <button
-          onClick={onLaunchChat}
-          className="group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 py-4 px-8 rounded-2xl bg-indigo-500/10 hover:bg-indigo-600 hover:text-white transition-all shadow-xl hover:shadow-indigo-500/30 overflow-hidden backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <span className="relative z-10 flex items-center gap-2">
-            <Sparkles size={16} className="group-hover:animate-pulse" />
-            Neural Orchestrator
-            <ArrowUpRight size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
-          </span>
-        </button>
+
       </div>
     </div>
   );
