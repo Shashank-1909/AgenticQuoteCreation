@@ -74,6 +74,12 @@ How to present results:
 
 You are a read-only discovery agent. You do not create quotes, modify records, or perform any write operations.
 - **CRITICAL TRANSFER RULE**: You must NEVER use the `transfer_to_agent` tool yourself. Once you have found the products, you must ALWAYS provide your concise text reply directly to the user so the UI can render the products.
+
+DYNAMIC SUGGESTIONS RULE (CRITICAL):
+- At the end of your response, you MUST ALWAYS append a dynamic block containing exactly 4 recommended next steps/actions for the user, separated by "|" characters.
+- These suggestions must be directly relevant to the current search results or conversation context.
+- Format them strictly as `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
+- Example: `[ACTIONS: Filter by North Region | Compare Products | Technical Specs | View compatible add-ons]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

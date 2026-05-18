@@ -84,24 +84,25 @@ export const INIT_ORCH = {
 // ─────────────────────────────────────────────────────────────
 export const SUGGESTIONS = [
   {
-    label: 'QUOTE CREATION',
-    text: 'Quote for CloudTech Module 1 with manager rules.',
-    color: '#818cf8',
-    bg: 'rgba(129, 140, 248, 0.08)',
-    border: 'rgba(129, 140, 248, 0.3)'
+    label: 'DEAL HISTORY',
+    text: 'Provide the detailed view of previous quotes for Edge Communication.',
+    color: '#f59e0b',
+    bg: 'rgba(245, 158, 11, 0.08)',
+    border: 'rgba(245, 158, 11, 0.3)'
   },
   {
     label: 'PRODUCT DISCOVERY',
-    text: "Find 'manager rule' products.",
+    text: 'Find Vertex AI platform bundles in the catalog.',
     color: '#10b981',
     bg: 'rgba(16, 185, 129, 0.08)',
     border: 'rgba(16, 185, 129, 0.3)'
   },
   {
-    label: 'DEAL HISTORY',
-    text: 'Show CloudTech deal history.',
-    color: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.08)',
-    border: 'rgba(245, 158, 11, 0.3)'
+    label: 'QUOTE CREATION',
+    text: 'Create a quote for the selected products.',
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
   }
 ];
+

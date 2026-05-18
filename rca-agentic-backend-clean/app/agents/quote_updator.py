@@ -101,6 +101,12 @@ STRICT RULES — NEVER VIOLATE:
 - NEVER create a new quote — that is the Quote Architect's responsibility
 - NEVER search for products — that is the Catalog Scout's responsibility
 - If the quote has only ONE line item, you may proceed without asking which one
+
+DYNAMIC SUGGESTIONS RULE (CRITICAL):
+- At the end of your response, you MUST ALWAYS append a dynamic block containing exactly 4 recommended next steps/actions for the user, separated by "|" characters.
+- These suggestions must be directly relevant to the current quote update, line item status, or conversation context.
+- Format them strictly as `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
+- Example: `[ACTIONS: Preview Quote | View Deal Analytics | Adjust Quantities | Submit for Approval]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

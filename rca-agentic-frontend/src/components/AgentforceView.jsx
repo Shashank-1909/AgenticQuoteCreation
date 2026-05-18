@@ -1,16 +1,38 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
+  Send, Loader2, Zap, Settings, ArrowLeft, ArrowRight, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut
+  ZoomIn, ZoomOut, MapPin, Layers, ShieldCheck, PlusCircle
 } from 'lucide-react';
 import { config } from '../config';
+
+const getActionIcon = (label) => {
+  const lc = label.toLowerCase();
+  if (lc.includes('filter') || lc.includes('region') || lc.includes('north') || lc.includes('south') || lc.includes('east') || lc.includes('west')) {
+    return <MapPin size={14} className="text-indigo-500 flex-shrink-0" />;
+  }
+  if (lc.includes('compare') || lc.includes('analytics') || lc.includes('history')) {
+    return <Layers size={14} className="text-indigo-500 flex-shrink-0" />;
+  }
+  if (lc.includes('spec') || lc.includes('technical') || lc.includes('detail') || lc.includes('feature')) {
+    return <ShieldCheck size={14} className="text-indigo-500 flex-shrink-0" />;
+  }
+  if (lc.includes('add-on') || lc.includes('addon') || lc.includes('compatible') || lc.includes('extra')) {
+    return <Package size={14} className="text-indigo-500 flex-shrink-0" />;
+  }
+  if (lc.includes('create') || lc.includes('new') || lc.includes('generate')) {
+    return <PlusCircle size={14} className="text-indigo-500 flex-shrink-0" />;
+  }
+  return <Sparkles size={14} className="text-indigo-500 flex-shrink-0" />;
+};
+
 import SelectionPanel from './SelectionPanel';
 import AgentGraph from './AgentGraph';
 import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
+import DealHistoryPanel from './DealHistoryPanel';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
 import './AgentforceView.css';
 
@@ -21,7 +43,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       role: 'assistant', 
       aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
       content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
-      type: 'text'
+      type: 'text',
+      isGreeting: true
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -47,16 +70,24 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [showUpdateSuggestion, setShowUpdateSuggestion] = useState(false);
   const [showUpdateAllSuggestion, setShowUpdateAllSuggestion] = useState(false);
 
+  // Deal History States
+  const [dealHistoryData, setDealHistoryData] = useState(null);
+  const [dealHistoryAccount, setDealHistoryAccount] = useState('Edge Communications');
+  const [dealHistoryLoading, setDealHistoryLoading] = useState(false);
+
   const chatEndRef = useRef(null);
   const ws = useRef(null);
   const pendingResultsRef = useRef(null);
   const pendingSelectionRef = useRef(null);
   const pendingUpdateRef = useRef(false);
   const pendingCreationRef = useRef(false);
+  const dealHistoryLoadingRef = useRef(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
+
+
 
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
@@ -220,6 +251,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             setTimeout(() => handleOpenConfig(), 100);
           } else {
             let processedText = data.data;
+            let actions = [];
+
+            // Parse [ACTIONS: Action 1 | Action 2 | ...]
+            const actionsMatch = processedText.match(/\[ACTIONS:\s*([^\]]+)\]/);
+            if (actionsMatch) {
+              actions = actionsMatch[1].split('|').map(act => act.trim()).filter(Boolean);
+              processedText = processedText.replace(/\[ACTIONS:\s*[^\]]+\]/, '').trim();
+            }
+
             // Replace any Quote IDs with their Numbers if we have them
             Object.entries(quoteNumberMap).forEach(([id, num]) => {
               processedText = processedText.replace(new RegExp(id, 'g'), num);
@@ -230,7 +270,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
             }
 
-            addMessage({ type: 'text', content: processedText });
+            addMessage({ type: 'text', content: processedText, actions });
 
             // If AI asks which one to update or offers to update all, show "Update All" suggestion
             const lcText = processedText.toLowerCase();
@@ -257,19 +297,85 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
   const addMessage = (msg) => {
     const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
-    setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
+    setMessages(prev => {
+      // Prevent any duplicate dealHistorySummary messages for the same account
+      if (msg.type === 'dealHistorySummary') {
+        const alreadyExists = prev.some(
+          m => m.type === 'dealHistorySummary' && m.accountName === msg.accountName
+        );
+        if (alreadyExists) return prev;
+      }
+      return [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }];
+    });
   };
 
-  const handleSend = (e, overrideText = null) => {
+  const handleSuggestionClick = (text) => {
+    setInputValue(text);
+  };
+
+  const handleSend = async (e, overrideText = null) => {
     e?.preventDefault();
     const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
+
+    // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
+    const isSummarizeOrPrioritize = cmd.includes('summarize') || cmd.includes('prioritize') || cmd.includes('which deal');
+    const isDealHistoryRequest = !isSummarizeOrPrioritize && (
+      cmd.includes('deal history') || cmd.includes('previous quotes') || cmd.includes('historical quotes') || cmd.includes('detailed view of')
+    );
+
+    // Lazy load deal history for summarization/prioritization if not loaded yet
+    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+      setInputValue('');
+      setDealHistoryAccount('Edge Communications');
+      setDealHistoryLoading(true);
+      dealHistoryLoadingRef.current = true;
+      try {
+        const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=Edge%20Communications`);
+        const data = await resp.json();
+        if (data.status === 'success') {
+          setDealHistoryData(data.quotes);
+          const quotesText = data.quotes.map(q => {
+            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+          }).join('\n');
+          
+          ws.current?.send(JSON.stringify({
+            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+            module: selectedModule?.id || 'sales'
+          }));
+        } else {
+          ws.current?.send(JSON.stringify({
+            text: text,
+            module: selectedModule?.id || 'sales'
+          }));
+        }
+      } catch (err) {
+        console.error("Error lazy-loading deal history:", err);
+        ws.current?.send(JSON.stringify({
+          text: text,
+          module: selectedModule?.id || 'sales'
+        }));
+      } finally {
+        setDealHistoryLoading(false);
+        dealHistoryLoadingRef.current = false;
+      }
+      return;
+    }
+
+    if (isDealHistoryRequest && (cmd.includes('edge') || cmd.includes('communications') || cmd.includes('account') || cmd.includes('cloudtech'))) {
+      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+      handleDealHistory('Edge Communications');
+      setInputValue('');
+      return;
+    }
     
     // Support dynamic preview/summary/overview commands
-    const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
       const latestFromState = quotes[quotes.length - 1]?.id;
@@ -293,6 +399,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
 
     let finalMessage = text;
+    if (isSummarizeOrPrioritize) {
+      if (dealHistoryData && dealHistoryData.length > 0) {
+        const quotesText = dealHistoryData.map(q => {
+          const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+          return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+        }).join('\n');
+        finalMessage += `\n\n[Historical Quotes in context:\n${quotesText}]`;
+      }
+    }
+
     if (selectedProducts.size > 0) {
       const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
       const allProds = productMessages.flatMap(m => m.data);
@@ -365,6 +481,40 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       console.error(err);
     } finally {
       setLoadingPreview(false);
+    }
+  };
+
+  const handleDealHistory = async (accountName = 'Edge Communications', switchView = true) => {
+    // Guard: prevent concurrent/duplicate calls
+    if (dealHistoryLoadingRef.current) return;
+    dealHistoryLoadingRef.current = true;
+    setDealHistoryAccount(accountName);
+    setDealHistoryLoading(true);
+    if (switchView) {
+      setWorkspaceView('preview');
+    }
+    try {
+      const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(accountName)}`);
+      const data = await resp.json();
+      if (data.status === 'success') {
+        setDealHistoryData(data.quotes);
+        // Inject AI message about the results — addMessage guards against duplicates
+        const count = data.quoteCount || data.quotes?.length || 0;
+        addMessage({
+          type: 'dealHistorySummary',
+          content: `Pulled up ${count} historical quote${count !== 1 ? 's' : ''} for ${data.accountName}. Each has been fetched with full line item detail — you can view the breakdown on the left or ask me to summarize the patterns across all of them.`,
+          accountName: data.accountName,
+          quoteCount: count,
+        });
+      } else {
+        addMessage({ type: 'text', content: `❌ Could not fetch deal history: ${data.message}` });
+      }
+    } catch (err) {
+      console.error(err);
+      addMessage({ type: 'text', content: '❌ Failed to fetch deal history. Please try again.' });
+    } finally {
+      setDealHistoryLoading(false);
+      dealHistoryLoadingRef.current = false;
     }
   };
 
@@ -521,91 +671,101 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
              </div>
           )}
           {workspaceView === 'preview' && (
-            <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-               {previewData ? (
-                 <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex items-center justify-between mb-2">
-                       <div className="flex items-center gap-3">
-                          <div className="p-2 bg-emerald-500/10 rounded-xl">
-                             <FileText size={20} className="text-emerald-500" />
-                          </div>
-                          <div>
-                             <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
-                             <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
-                          </div>
-                       </div>
-                       <button 
-                        onClick={() => {
-                          const qId = previewData.records?.[0]?.Id;
-                          const inst = previewData.instance_url || 'https://login.salesforce.com';
-                          if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
-                        }}
-                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
-                       >
-                         Open in Salesforce <ExternalLink size={14} />
-                       </button>
-                    </div>
+            (dealHistoryLoading || dealHistoryData) ? (
+              <div className="w-full h-full bg-slate-50 overflow-hidden">
+                <DealHistoryPanel
+                  data={dealHistoryData}
+                  accountName={dealHistoryAccount}
+                  isLoading={dealHistoryLoading}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
+                 {previewData ? (
+                   <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                      <div className="flex items-center justify-between mb-2">
+                         <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-500/10 rounded-xl">
+                               <FileText size={20} className="text-emerald-500" />
+                            </div>
+                            <div>
+                               <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
+                               <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
+                            </div>
+                         </div>
+                         <button 
+                          onClick={() => {
+                            const qId = previewData.records?.[0]?.Id;
+                            const inst = previewData.instance_url || 'https://login.salesforce.com';
+                            if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
+                          }}
+                          className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
+                         >
+                           Open in Salesforce <ExternalLink size={14} />
+                         </button>
+                      </div>
 
-                    {/* Rich Details Table */}
-                    <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
-                       <div className="p-6 border-b border-white/5 bg-white/[0.02]">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
-                       </div>
-                       <div className="p-0">
-                          <table className="w-full text-left">
-                             <thead className="bg-white/[0.01] border-b border-white/5">
-                                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                   <th className="px-6 py-4">Account</th>
-                                   <th className="px-6 py-4">Opportunity</th>
-                                   <th className="px-6 py-4 text-right">Grand Total</th>
-                                </tr>
-                             </thead>
-                             <tbody>
-                                <tr className="text-sm font-bold border-b border-white/5">
-                                   <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
-                                   <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                                   <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
-                                </tr>
-                             </tbody>
-                          </table>
-                       </div>
+                      {/* Rich Details Table */}
+                      <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
+                         <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
+                         </div>
+                         <div className="p-0">
+                            <table className="w-full text-left">
+                               <thead className="bg-white/[0.01] border-b border-white/5">
+                                  <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                     <th className="px-6 py-4">Account</th>
+                                     <th className="px-6 py-4">Opportunity</th>
+                                     <th className="px-6 py-4 text-right">Grand Total</th>
+                                  </tr>
+                               </thead>
+                               <tbody>
+                                  <tr className="text-sm font-bold border-b border-white/5">
+                                     <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
+                                     <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
+                                     <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                                  </tr>
+                               </tbody>
+                            </table>
+                         </div>
 
-                       <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
-                       </div>
-                       <div className="p-0">
-                          <table className="w-full text-left">
-                             <thead className="bg-white/[0.01] border-b border-white/5">
-                                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                   <th className="px-6 py-4">Product</th>
-                                   <th className="px-6 py-4 text-center">Qty</th>
-                                   <th className="px-6 py-4 text-right">Sales Price</th>
-                                   <th className="px-6 py-4 text-center">Discount</th>
-                                   <th className="px-6 py-4 text-right">Total</th>
-                                </tr>
-                             </thead>
-                             <tbody className="divide-y divide-white/5">
-                                {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
-                                   <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                                      <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
-                                      <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                                      <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                       </div>
-                    </div>
-                 </div>
-               ) : (
-                 <div className="flex flex-col items-center opacity-20 py-40">
-                    <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
-                    <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
-                 </div>
-               )}
-            </div>
+                         <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
+                         </div>
+                         <div className="p-0">
+                            <table className="w-full text-left">
+                               <thead className="bg-white/[0.01] border-b border-white/5">
+                                  <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                     <th className="px-6 py-4">Product</th>
+                                     <th className="px-6 py-4 text-center">Qty</th>
+                                     <th className="px-6 py-4 text-right">Sales Price</th>
+                                     <th className="px-6 py-4 text-center">Discount</th>
+                                     <th className="px-6 py-4 text-right">Total</th>
+                                  </tr>
+                               </thead>
+                               <tbody className="divide-y divide-white/5">
+                                  {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
+                                     <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                        <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
+                                        <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                                     </tr>
+                                  ))}
+                               </tbody>
+                            </table>
+                         </div>
+                      </div>
+                   </div>
+                 ) : (
+                   <div className="flex flex-col items-center opacity-20 py-40">
+                      <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
+                      <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
+                   </div>
+                 )}
+              </div>
+            )
           )}
         </div>
       </section>
@@ -640,9 +800,51 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   </span>
                 </div>
               )}
-              <div className="af-bubble">
-                {msg.content}
-              </div>
+              {msg.type === 'dealHistorySummary' ? (
+                <div className="w-full animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center gap-1.5 mb-2 mt-1">
+                    <Sparkles size={9} className="text-indigo-500" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500">Solution Advisor</span>
+                  </div>
+                  <div className="af-bubble mb-3">{msg.content}</div>
+                  <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Quick Replies</div>
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { label: 'Summarize all quotes', text: `Summarize all quotes for ${msg.accountName}` },
+                      { label: 'Which deal should I prioritize?', text: `Which deal should I prioritize for ${msg.accountName}?` },
+                    ].map((qr, qi) => (
+                      <button
+                        key={qi}
+                        onClick={() => handleSend(null, qr.text)}
+                        className="flex items-center justify-between w-full px-4 py-2.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-[11px] font-bold text-indigo-600 hover:bg-indigo-500/15 transition-all text-left"
+                      >
+                        {qr.label}
+                        <ArrowRight size={12} className="text-indigo-400 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="af-bubble">
+                    {msg.content}
+                  </div>
+                  {msg.isGreeting && (
+                    <div className="mt-4 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <h4 className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Try a Scenario</h4>
+                      <div className="flex flex-col gap-3">
+                        <button
+                          onClick={() => handleSend(null, "Provide the detailed view of previous quotes for Edge Communication.")}
+                          className="w-full p-4 rounded-[18px] border border-amber-500/15 bg-amber-500/[0.03] hover:bg-amber-500/[0.08] transition-all text-left block"
+                        >
+                          <span className="block text-[8.5px] font-black uppercase tracking-widest text-amber-500 mb-1">Deal History</span>
+                          <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Provide the detailed view of previous quotes for Edge Communication.</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
               
               {msg.type === 'card' && msg.cardType === 'products' && (
                 <div className="af-card">
@@ -768,8 +970,57 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                    </div>
                 </div>
               )}
+              
+              {msg.actions && msg.actions.length > 0 && (
+                <div className="suggested-actions-container">
+                   <div className="suggested-actions-header">
+                      <span className="suggested-actions-title">Suggested Actions</span>
+                      <div className="suggested-actions-line" />
+                   </div>
+                   <div className="suggested-actions-grid">
+                      {msg.actions.map((act, idx) => (
+                         <button
+                           key={idx}
+                           onClick={() => handleSend(null, act)}
+                           className="suggested-action-btn"
+                         >
+                            {getActionIcon(act)}
+                            <span className="truncate">{act}</span>
+                         </button>
+                      ))}
+                    </div>
+                 </div>
+              )}
             </div>
           ))}
+
+          {messages.length === 1 && (
+             <div className="pt-2 pb-6 space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2 mb-4 px-1">
+                   <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                   <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">Suggestions</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                   {SUGGESTIONS.map((s, i) => (
+                      <div 
+                        key={i} 
+                        onClick={() => handleSuggestionClick(s.text)} 
+                        className="p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group shadow-sm flex flex-col gap-1.5 backdrop-blur-md"
+                        style={{ 
+                          background: isDark ? 'rgba(255,255,255,0.02)' : s.bg, 
+                          borderColor: isDark ? 'rgba(255,255,255,0.05)' : s.border 
+                        }}
+                      >
+                         <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ background: s.color }} />
+                            <span className="text-[8.5px] font-black uppercase tracking-widest" style={{ color: s.color }}>{s.label}</span>
+                         </div>
+                         <div className="text-[11px] leading-relaxed text-[var(--text-main)] opacity-70 group-hover:opacity-100 font-medium">{s.text}</div>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          )}
           
           {reasoning && (
             <div className="af-reasoning">
@@ -852,23 +1103,29 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 <Send size={20} />
              </button>
           </form>
-          {/* <div className="mt-4 flex flex-wrap gap-2">
-             <div className="flex items-center gap-2 mb-2 w-full">
+          <div className="mt-4 flex flex-wrap gap-2 animate-in fade-in slide-in-from-bottom-2">
+             <div className="flex items-center gap-2 mb-1.5 w-full">
                <div className="h-[1px] flex-1 bg-white/5"></div>
-               <span className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">Quick Actions</span>
+               <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Quick Suggestions</span>
                <div className="h-[1px] flex-1 bg-white/5"></div>
              </div>
              
-             {SUGGESTIONS.slice(0, 3).map((s, i) => (
+             {SUGGESTIONS.map((s, i) => (
                <button 
                 key={i} 
-                onClick={() => setInputValue(s.text)}
-                className="px-3 py-1.5 rounded-full border border-white/5 bg-white/5 text-[9px] font-bold uppercase text-slate-400 hover:bg-white/10 transition-all"
+                type="button"
+                onClick={() => handleSuggestionClick(s.text)}
+                className="px-3 py-1.5 rounded-full border text-[9px] font-bold uppercase transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                style={{ 
+                  background: isDark ? 'rgba(255, 255, 255, 0.02)' : s.bg, 
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : s.border,
+                  color: s.color
+                }}
                >
                  {s.label}
                </button>
              ))}
-          </div> */}
+          </div>
         </div>
       </section>
 

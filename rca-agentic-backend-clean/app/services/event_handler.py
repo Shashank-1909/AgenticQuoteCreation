@@ -165,6 +165,7 @@ async def process_events(
     Delegates all tool-result side effects to handle_tool_result.
     """
     current_agent: Optional[str] = None
+    sent_replies = set()
 
     async for event in runner.run_async(
         user_id=USER_ID,
@@ -195,5 +196,8 @@ async def process_events(
         if event.is_final_response() and event.content:
             for part in event.content.parts or []:
                 if hasattr(part, "text") and part.text:
-                    logger.info("[REPLY] %s...", part.text[:120])
-                    await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
+                    reply_text = part.text.strip()
+                    if reply_text and reply_text not in sent_replies:
+                        sent_replies.add(reply_text)
+                        logger.info("[REPLY] %s...", reply_text[:120])
+                        await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})

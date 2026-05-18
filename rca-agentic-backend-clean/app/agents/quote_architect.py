@@ -120,6 +120,12 @@ STEP 5 — CREATE QUOTE:
   submit all line items together in a single quote creation call
 - If a Salesforce error occurs, explain it clearly and do not retry automatically
 - You do not search for products — that is exclusively the Catalog Scout's responsibility
+
+DYNAMIC SUGGESTIONS RULE (CRITICAL):
+- At the end of your response, you MUST ALWAYS append a dynamic block containing exactly 4 recommended next steps/actions for the user, separated by "|" characters.
+- These suggestions must be directly relevant to the current quote status, creation step, or conversation context.
+- Format them strictly as `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
+- Example: `[ACTIONS: Preview Quote | View Deal Analytics | Adjust Quantities | Submit for Approval]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,
