@@ -112,18 +112,29 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
   const pendingUpdateRef = useRef(false);
   const pendingCreationRef = useRef(false);
   const dealHistoryLoadingRef = useRef(false);
+  const isSummarizeRequestRef = useRef(false);
+  const summarizeTimeoutsRef = useRef([]);
+  const clearSummarizeTimeouts = () => {
+    summarizeTimeoutsRef.current.forEach(clearTimeout);
+    summarizeTimeoutsRef.current = [];
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
 
 
+  const handleWsMessageRef = useRef(null);
+  useEffect(() => {
+    handleWsMessageRef.current = handleWsMessage;
+  });
+
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
     ws.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        handleWsMessage(data);
+        handleWsMessageRef.current?.(data);
       } catch (err) {
         console.error('[WS] parse error', err);
       }
@@ -136,43 +147,198 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
       case 'STATE':
         setWorkflowState(data.state);
         if (data.state === 'completed') {
+          clearSummarizeTimeouts();
           setReasoning(null);
           setOrchestration(prev => {
             const n = { ...prev };
-            if (n.coordinator === 'active') n.coordinator = 'done';
-            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-              if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+            if (isSummarizeRequestRef.current) {
+              n.coordinator = 'done';
+              n.Quote_Architect = {
+                state: 'done',
+                routedByDm: true,
+                tools: [
+                  { name: 'get_my_accounts', state: 'done' },
+                  { name: 'get_deal_history', state: 'done' },
+                  { name: 'summary_node', state: 'done' }
+                ]
+              };
+            } else {
+              if (n.coordinator === 'active') n.coordinator = 'done';
+              for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+                if (n[k] && n[k].state === 'active') {
+                  n[k] = { ...n[k], state: 'done' };
+                  if (n[k].tools) {
+                    n[k].tools = n[k].tools.map(t => ({ ...t, state: 'done' }));
+                  }
+                }
+              }
             }
             return n;
           });
+          if (dealHistoryLoadingRef.current) {
+            setDealHistoryLoading(false);
+            dealHistoryLoadingRef.current = false;
+            setWorkspaceView('preview');
+          }
         }
         break;
 
       case 'AGENT_START':
+        const name = data.agent;
+        if (name === 'Deal_Manager' && isSummarizeRequestRef.current) {
+          clearSummarizeTimeouts();
+          setReasoning("Analyzing deal history...");
+          setOrchestration(prev => {
+            const n = { ...prev };
+            n.coordinator = 'active';
+            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+              n[k] = { state: 'idle', tools: [], routedByDm: false };
+            }
+            return n;
+          });
+
+          // Timeout 1: Handoff to Quote_Architect and trigger Deal History tool
+          const t1 = setTimeout(() => {
+            setOrchestration(prev => {
+              const n = { ...prev };
+              n.coordinator = 'done';
+              if (n.Quote_Architect) {
+                n.Quote_Architect = {
+                  ...n.Quote_Architect,
+                  state: 'active',
+                  tools: [
+                    { name: 'get_deal_history', state: 'active' }
+                  ]
+                };
+              }
+              return n;
+            });
+            setReasoning("Fetching deal history records...");
+          }, 800);
+
+          // Timeout 2: Transition from Deal History tool to Summary Node tool
+          const t2 = setTimeout(() => {
+            setOrchestration(prev => {
+              const n = { ...prev };
+              if (n.Quote_Architect) {
+                n.Quote_Architect = {
+                  ...n.Quote_Architect,
+                  tools: [
+                    { name: 'get_deal_history', state: 'done' },
+                    { name: 'summary_node', state: 'active' }
+                  ]
+                };
+              }
+              return n;
+            });
+            setReasoning("Generating deal history summary...");
+          }, 2000);
+
+          summarizeTimeoutsRef.current = [t1, t2];
+          break;
+        }
+
+        if (name === 'Summary_Node') {
+          if (!isSummarizeRequestRef.current) {
+            break;
+          }
+          setReasoning("Generating deal history summary...");
+          setOrchestration(prev => {
+            const n = { ...prev };
+            if (n.Quote_Architect) {
+              n.Quote_Architect.state = 'active';
+              if (n.coordinator === 'active') n.coordinator = 'done';
+              const tools = n.Quote_Architect.tools || [];
+              const hasSummary = tools.some(t => t.name === 'summary_node');
+              n.Quote_Architect.tools = tools.map(t =>
+                t.name === 'summary_node' ? { ...t, state: 'active' } :
+                t.state === 'active' ? { ...t, state: 'done' } : t
+              );
+              if (!hasSummary) {
+                n.Quote_Architect.tools.push({ name: 'summary_node', state: 'active' });
+              }
+            }
+            return n;
+          });
+          break;
+        }
+
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
-          const name = data.agent;
           const n = { ...prev };
           if (name === 'Deal_Manager') {
             n.coordinator = 'active';
           } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator') {
             for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-              if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+              if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
             if (n.coordinator === 'active') n.coordinator = 'done';
-            n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
+            if (n[name]) {
+              n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
+            }
           }
           return n;
         });
         break;
 
       case 'TOOL_TRIGGER':
+        if (data.tool === 'get_deal_history') {
+          // Trigger get_my_accounts first to represent going to accounts
+          setOrchestration(prev => {
+            const n = { ...prev };
+            if (n.Quote_Architect) {
+              n.Quote_Architect.state = 'active';
+              if (n.coordinator === 'active') n.coordinator = 'done';
+              const tools = n.Quote_Architect.tools || [];
+              const hasAccounts = tools.some(t => t.name === 'get_my_accounts');
+              
+              let newTools = tools.map(t => 
+                t.name === 'get_my_accounts' ? { ...t, state: 'active' } : t
+              );
+              if (!hasAccounts) {
+                newTools.push({ name: 'get_my_accounts', state: 'active' });
+              }
+              // Ensure get_deal_history is NOT in the tools array yet so it doesn't appear
+              newTools = newTools.filter(t => t.name !== 'get_deal_history');
+              n.Quote_Architect.tools = newTools;
+            }
+            return n;
+          });
+
+          // After a delay, set get_my_accounts to done and get_deal_history to active
+          setTimeout(() => {
+            setOrchestration(prev => {
+              const n = { ...prev };
+              if (n.Quote_Architect) {
+                const tools = n.Quote_Architect.tools || [];
+                const hasDealHistory = tools.some(t => t.name === 'get_deal_history');
+                
+                let newTools = tools.map(t => 
+                  t.name === 'get_my_accounts' ? { ...t, state: 'done' } : t
+                );
+                if (!hasDealHistory) {
+                  newTools.push({ name: 'get_deal_history', state: 'active' });
+                } else {
+                  newTools = newTools.map(t => 
+                    t.name === 'get_deal_history' ? { ...t, state: 'active' } : t
+                  );
+                }
+                n.Quote_Architect.tools = newTools;
+              }
+              return n;
+            });
+          }, 1500);
+
+          setReasoning("Checking customer accounts...");
+          break;
+        }
+
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
           for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-            if (n[k].state === 'active') {
+            if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
               );
@@ -197,7 +363,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
         setOrchestration(prev => {
           const n = { ...prev };
           for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-            if (n[k].tools.some(t => t.name === data.tool)) {
+            if (n[k] && n[k].tools && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
                   t.name === data.tool ? { ...t, state: 'done' } : t
@@ -212,6 +378,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
           const parsed = JSON.parse(data.data);
           if (data.tool === 'search_catalog' && parsed.results) {
             pendingResultsRef.current = parsed.results;
+          }
+          if (data.tool === 'get_deal_history') {
+            if (parsed.status === 'success' || parsed.quotes) {
+              setDealHistoryData(parsed.quotes || []);
+              setDealHistoryAccount(parsed.accountName || 'Edge Communications');
+            }
           }
           if (data.tool === 'evaluate_quote_graph') {
             let qId = extractQuoteId(data.data);
@@ -351,11 +523,30 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
 
+    if (cmd.includes('different account') || cmd.includes('list my accounts') || cmd.includes('list accounts')) {
+      setOrchestration(prev => {
+        const n = { ...prev };
+        if (n.Quote_Architect) {
+          n.Quote_Architect = {
+            ...n.Quote_Architect,
+            tools: []
+          };
+        }
+        return n;
+      });
+    }
+
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    const isSummarizeOrPrioritize = cmd.includes('summarize') || cmd.includes('prioritize') || cmd.includes('which deal');
+    const isSummarizeOrPrioritize = cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal');
+    isSummarizeRequestRef.current = isSummarizeOrPrioritize;
     const isDealHistoryRequest = !isSummarizeOrPrioritize && (
       cmd.includes('deal history') || cmd.includes('previous quotes') || cmd.includes('historical quotes') || cmd.includes('detailed view of')
     );
+
+    if (!isDealHistoryRequest && !isSummarizeOrPrioritize) {
+      setDealHistoryData(null);
+      setDealHistoryAccount('Edge Communications');
+    }
 
     // Lazy load deal history for summarization/prioritization if not loaded yet
     if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
@@ -397,10 +588,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
       return;
     }
 
-    if (isDealHistoryRequest && (cmd.includes('edge') || cmd.includes('communications') || cmd.includes('account') || cmd.includes('cloudtech'))) {
+    if (isDealHistoryRequest) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-      handleDealHistory('Edge Communications');
       setInputValue('');
+      setDealHistoryData(null);
+      setDealHistoryLoading(true);
+      dealHistoryLoadingRef.current = true;
+      ws.current?.send(JSON.stringify({
+        text: text,
+        module: selectedModule?.id || 'sales'
+      }));
       return;
     }
 

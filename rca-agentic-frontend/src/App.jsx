@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import ThemeToggle from './components/ThemeToggle';
 import OrchestratorView from './components/OrchestratorView';
 import AgentforceView from './components/AgentforceView';
+import MigrationView from './components/MigrationView';
 import './MetaTheme.css';
 import './App.css';
 

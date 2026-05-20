@@ -68,6 +68,8 @@ export const TOOL_LABELS = {
   transfer_to_agent: 'Route',
   get_quote_line_items: 'Line Items',
   manage_quote_line_items: 'Update Lines',
+  get_deal_history: 'Deal History',
+  summary_node: 'Summary Node',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 

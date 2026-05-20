@@ -627,11 +627,35 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
     if response.status_code not in [200, 201]:
         return f"SALESFORCE VALIDATION ERROR - Analyze this payload rejection and retry:\nStatus Code: {response.status_code}\nResponse: {response.text}"
 
+    salesforce_resp = response.json()
+    quote_id = ""
+    quote_number = "Unknown"
+    
+    try:
+        for rec in salesforce_resp.get("records", []):
+            if rec.get("referenceId") == "refQuote":
+                quote_id = rec.get("record", {}).get("id", "")
+                break
+                
+        if quote_id:
+            from urllib.parse import quote
+            query = f"SELECT QuoteNumber FROM Quote WHERE Id = '{quote_id}'"
+            q_url = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
+            q_res = requests.get(q_url, headers=headers)
+            if q_res.status_code == 200:
+                q_data = q_res.json()
+                if q_data.get("records"):
+                    quote_number = q_data["records"][0].get("QuoteNumber", "Unknown")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching QuoteNumber: {str(e)}")
+
     return json.dumps({
         "status": "success",
         "message": "Salesforce successfully validated the Quote Graph!",
         "opportunity_id": clean_opp_id or "not linked",
-        "salesforce_response": response.json()
+        "quote_id": quote_id,
+        "quote_number": quote_number,
+        "salesforce_response": salesforce_resp
     }, indent=2)
 
 
@@ -708,6 +732,96 @@ def get_quote_preview(quote_id: str) -> str:
     except Exception as e:
         print(f"[DEBUG] Unexpected error: {str(e)}")
         return json.dumps({"status": "error", "message": str(e)})
+
+
+def get_deal_history(account_name: str = "Edge Communications") -> str:
+    """
+    Fetches all quotes across all opportunities for a given account name.
+
+    WHEN TO CALL: Call this tool when you need to fetch the deal history (past quotes, stage, products, etc.) for a specific account name.
+
+    Args:
+        account_name: The name of the account to fetch deal history for.
+    """
+    import json, requests as _req
+    
+    try:
+        headers, instance_url = get_salesforce_auth()
+
+        # 1. Find account by name
+        q_acc = f"SELECT Id, Name FROM Account WHERE Name LIKE '%{account_name}%' LIMIT 5"
+        acc_resp = _req.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_acc})
+        accounts = acc_resp.json().get("records", [])
+        if not accounts:
+            return json.dumps({"status": "empty", "message": f"No account found matching '{account_name}'", "quotes": []}, indent=2)
+
+        account = accounts[0]
+        account_id = account["Id"]
+        display_name = account["Name"]
+
+        # 2. Get all quotes across all opportunities for this account in a single query
+        q_quotes = (
+            f"SELECT Id, Name, Status, GrandTotal, Discount, QuoteNumber, CreatedDate, Opportunity.Name, "
+            f"(SELECT Id, Product2.Name, Quantity, UnitPrice, TotalPrice, Discount FROM QuoteLineItems) "
+            f"FROM Quote WHERE AccountId = '{account_id}' ORDER BY CreatedDate DESC LIMIT 100"
+        )
+        qt_resp = _req.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_quotes})
+        quotes = qt_resp.json().get("records", [])
+
+        all_quotes = []
+
+        for quote in quotes:
+            quote_id = quote["Id"]
+            opp_name = quote.get("Opportunity", {}).get("Name", "Direct Quote") if quote.get("Opportunity") else "Direct Quote"
+
+            line_items = []
+            q_li_list = quote.get("QuoteLineItems", {}).get("records", []) if quote.get("QuoteLineItems") else []
+            for li in q_li_list:
+                prod_name = li.get("Product2", {}).get("Name", "Unknown Product") if li.get("Product2") else "Unknown Product"
+                line_items.append({
+                    "name": prod_name,
+                    "quantity": li.get("Quantity", 1),
+                    "unitPrice": li.get("UnitPrice", 0),
+                    "totalPrice": li.get("TotalPrice", 0),
+                    "discount": li.get("Discount", 0),
+                })
+
+            total = quote.get("GrandTotal") or 0
+            discount_val = quote.get("Discount") or 0
+
+            # Build tags from quote status and discount
+            tags = []
+            if discount_val and discount_val > 0:
+                tags.append(f"{discount_val}% discount applied")
+            if quote.get("Status") in ("Closed Won",):
+                tags.append("Won deal")
+            elif quote.get("Status") in ("Closed Lost",):
+                tags.append("Lost  competitor")
+
+            all_quotes.append({
+                "id": quote_id,
+                "name": quote.get("Name", "Unnamed Quote"),
+                "quoteNumber": quote.get("QuoteNumber", ""),
+                "status": quote.get("Status", "Draft"),
+                "grandTotal": total,
+                "discount": discount_val,
+                "createdDate": quote.get("CreatedDate", ""),
+                "opportunityName": opp_name,
+                "lineItems": line_items,
+                "analysis": None,
+                "tags": tags,
+            })
+
+        return json.dumps({
+            "status": "success",
+            "accountName": display_name,
+            "accountId": account_id,
+            "quoteCount": len(all_quotes),
+            "quotes": all_quotes,
+        }, indent=2)
+
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e), "quotes": []}, indent=2)
 
 
 def get_quote_line_items(quote_id: str) -> str:
@@ -899,6 +1013,7 @@ if agent_type in ["architect", "all"]:
     mcp.add_tool(get_opportunities_for_account)
     mcp.add_tool(evaluate_quote_graph)
     mcp.add_tool(get_quote_preview)
+    mcp.add_tool(get_deal_history)
 
 if agent_type in ["updator", "all"]:
     mcp.add_tool(get_quote_preview)
@@ -910,4 +1025,3 @@ if agent_type in ["updator", "all"]:
 if __name__ == "__main__":
     # Start the standard MCP stdio server
     mcp.run()
-

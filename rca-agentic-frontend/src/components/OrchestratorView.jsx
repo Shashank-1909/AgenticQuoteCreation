@@ -22,6 +22,13 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
   const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
+
+  const isSummarizeRequestRef = useRef(false);
+  const summarizeTimeoutsRef = useRef([]);
+  const clearSummarizeTimeouts = () => {
+    summarizeTimeoutsRef.current.forEach(clearTimeout);
+    summarizeTimeoutsRef.current = [];
+  };
   const [results, setResults] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [selectionPanel, setSelectionPanel] = useState(null);
@@ -144,45 +151,160 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
           case 'STATE':
             setWorkflowState(data.state);
             if (data.state === 'completed') {
+              clearSummarizeTimeouts();
               setOrchestration(prev => {
                 const n = { ...prev };
                 if (n.coordinator === 'active') n.coordinator = 'done';
                 for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-                  if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+                  if (n[k] && n[k].state === 'active') {
+                    n[k] = { ...n[k], state: 'done' };
+                    if (n[k].tools) {
+                      n[k].tools = n[k].tools.map(t => ({ ...t, state: 'done' }));
+                    }
+                  }
                 }
                 return n;
               });
             }
             break;
-
+ 
           case 'USER_SELECTION_NEEDED':
             pendingSelectionRef.current = { type: data.selection_for, options: data.options || [] };
             setComposingReply(true);
             break;
-
+ 
           case 'AGENT_START':
+            const name = data.agent;
+            if (name === 'Deal_Manager' && isSummarizeRequestRef.current) {
+              clearSummarizeTimeouts();
+              setOrchestration(prev => {
+                const n = { ...prev };
+                n.coordinator = 'active';
+                for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+                  n[k] = { state: 'idle', tools: [], routedByDm: false };
+                }
+                return n;
+              });
+
+              // Timeout 1: Handoff to Quote_Architect and trigger Deal History tool
+              const t1 = setTimeout(() => {
+                setOrchestration(prev => {
+                  const n = { ...prev };
+                  n.coordinator = 'done';
+                  if (n.Quote_Architect) {
+                    n.Quote_Architect.state = 'active';
+                    n.Quote_Architect.tools = [
+                      { name: 'get_deal_history', state: 'active' }
+                    ];
+                  }
+                  return n;
+                });
+              }, 800);
+
+              // Timeout 2: Transition from Deal History tool to Summary Node tool
+              const t2 = setTimeout(() => {
+                setOrchestration(prev => {
+                  const n = { ...prev };
+                  if (n.Quote_Architect) {
+                    n.Quote_Architect.tools = [
+                      { name: 'get_deal_history', state: 'done' },
+                      { name: 'summary_node', state: 'active' }
+                    ];
+                  }
+                  return n;
+                });
+              }, 2000);
+
+              summarizeTimeoutsRef.current = [t1, t2];
+              break;
+            }
+
+            if (name === 'Summary_Node') {
+              setOrchestration(prev => {
+                const n = { ...prev };
+                if (n.Quote_Architect) {
+                  n.Quote_Architect.state = 'active';
+                  if (n.coordinator === 'active') n.coordinator = 'done';
+                  const tools = n.Quote_Architect.tools || [];
+                  const hasSummary = tools.some(t => t.name === 'summary_node');
+                  n.Quote_Architect.tools = tools.map(t =>
+                    t.name === 'summary_node' ? { ...t, state: 'active' } :
+                    t.state === 'active' ? { ...t, state: 'done' } : t
+                  );
+                  if (!hasSummary) {
+                    n.Quote_Architect.tools.push({ name: 'summary_node', state: 'active' });
+                  }
+                }
+                return n;
+              });
+              break;
+            }
+
             setOrchestration(prev => {
-              const name = data.agent;
               const n = { ...prev };
               if (name === 'Deal_Manager') {
                 n.coordinator = 'active';
               } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator') {
                 for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-                  if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+                  if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
                 }
                 const dmWasActive = n.coordinator === 'active';
                 if (n.coordinator === 'active') n.coordinator = 'done';
-                n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
+                if (n[name]) {
+                  n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
+                }
               }
               return n;
             });
             break;
-
+ 
           case 'TOOL_TRIGGER':
+            if (data.tool === 'get_deal_history') {
+              // Trigger get_my_accounts first to represent going to accounts
+              setOrchestration(prev => {
+                const n = { ...prev };
+                if (n.Quote_Architect) {
+                  n.Quote_Architect.state = 'active';
+                  if (n.coordinator === 'active') n.coordinator = 'done';
+                  const tools = n.Quote_Architect.tools || [];
+                  const hasAccounts = tools.some(t => t.name === 'get_my_accounts');
+                  const hasDealHistory = tools.some(t => t.name === 'get_deal_history');
+                  
+                  let newTools = tools.map(t => 
+                    t.name === 'get_my_accounts' ? { ...t, state: 'active' } : 
+                    t.name === 'get_deal_history' ? { ...t, state: 'idle' } : t
+                  );
+                  if (!hasAccounts) {
+                    newTools.push({ name: 'get_my_accounts', state: 'active' });
+                  }
+                  if (!hasDealHistory) {
+                    newTools.push({ name: 'get_deal_history', state: 'idle' });
+                  }
+                  n.Quote_Architect.tools = newTools;
+                }
+                return n;
+              });
+
+              // After a delay, set get_my_accounts to done and get_deal_history to active
+              setTimeout(() => {
+                setOrchestration(prev => {
+                  const n = { ...prev };
+                  if (n.Quote_Architect) {
+                    n.Quote_Architect.tools = n.Quote_Architect.tools.map(t => 
+                      t.name === 'get_my_accounts' ? { ...t, state: 'done' } :
+                      t.name === 'get_deal_history' ? { ...t, state: 'active' } : t
+                    );
+                  }
+                  return n;
+                });
+              }, 1500);
+              break;
+            }
+
             setOrchestration(prev => {
               const n = { ...prev };
               for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-                if (n[k].state === 'active') {
+                if (n[k] && n[k].state === 'active') {
                   const settled = n[k].tools.map(t =>
                     t.state === 'active' ? { ...t, state: 'done' } : t
                   );
@@ -202,12 +324,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
               return n;
             });
             break;
-
+ 
           case 'TOOL_RESULT':
             setOrchestration(prev => {
               const n = { ...prev };
               for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-                if (n[k].tools.some(t => t.name === data.tool)) {
+                if (n[k] && n[k].tools && n[k].tools.some(t => t.name === data.tool)) {
                   n[k] = {
                     ...n[k], tools: n[k].tools.map(t =>
                       t.name === data.tool ? { ...t, state: 'done' } : t
@@ -327,8 +449,11 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
     const cmd = text.toLowerCase();
 
+    const isSummarizeOrPrioritize = cmd.includes('summarize') || cmd.includes('prioritize') || cmd.includes('which deal');
+    isSummarizeRequestRef.current = isSummarizeOrPrioritize;
+
     // Support dynamic preview/summary/overview commands
-    const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
       const latestFromState = quotes[quotes.length - 1]?.id;

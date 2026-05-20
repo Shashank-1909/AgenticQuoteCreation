@@ -139,6 +139,19 @@ async def handle_tool_result(
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse manage_quote_line_items response: %s", exc)
 
+    # ── Deal history retrieval complete ───────────────────────────────
+    if tool_name == "get_deal_history":
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                await websocket.send_json({
+                    "type": "AGENT_START",
+                    "agent": "Summary_Node"
+                })
+                logger.info("Session %s → get_deal_history complete, transitioning to Summary_Node", session_id)
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse get_deal_history response: %s", exc)
+
     # ── Build and send TOOL_RESULT payload ────────────────────────────────
     payload: dict = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
     if tool_name == TOOL_QUOTE:

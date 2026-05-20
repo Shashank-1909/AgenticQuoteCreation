@@ -61,84 +61,12 @@ async def quote_preview(quote_id: str):
 @app.get("/api/deal-history")
 async def deal_history(account_name: str = "Edge Communications"):
     """Fetches all quotes across all opportunities for a given account name."""
-    import json, requests as _req
-    from server import get_salesforce_auth
+    import json
+    from server import get_deal_history
 
     try:
-        headers, instance_url = get_salesforce_auth()
-
-        # 1. Find account by name
-        q_acc = f"SELECT Id, Name FROM Account WHERE Name LIKE '%{account_name}%' LIMIT 5"
-        acc_resp = _req.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_acc})
-        accounts = acc_resp.json().get("records", [])
-        if not accounts:
-            return {"status": "empty", "message": f"No account found matching '{account_name}'", "quotes": []}
-
-        account = accounts[0]
-        account_id = account["Id"]
-        display_name = account["Name"]
-
-        # 2. Get all quotes across all opportunities for this account in a single query (fully optimized!)
-        q_quotes = (
-            f"SELECT Id, Name, Status, GrandTotal, Discount, QuoteNumber, CreatedDate, Opportunity.Name, "
-            f"(SELECT Id, Product2.Name, Quantity, UnitPrice, TotalPrice, Discount FROM QuoteLineItems) "
-            f"FROM Quote WHERE AccountId = '{account_id}' ORDER BY CreatedDate DESC LIMIT 100"
-        )
-        qt_resp = _req.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_quotes})
-        quotes = qt_resp.json().get("records", [])
-
-        all_quotes = []
-
-        for quote in quotes:
-            quote_id = quote["Id"]
-            opp_name = quote.get("Opportunity", {}).get("Name", "Direct Quote") if quote.get("Opportunity") else "Direct Quote"
-
-            line_items = []
-            q_li_list = quote.get("QuoteLineItems", {}).get("records", []) if quote.get("QuoteLineItems") else []
-            for li in q_li_list:
-                prod_name = li.get("Product2", {}).get("Name", "Unknown Product") if li.get("Product2") else "Unknown Product"
-                line_items.append({
-                    "name": prod_name,
-                    "quantity": li.get("Quantity", 1),
-                    "unitPrice": li.get("UnitPrice", 0),
-                    "totalPrice": li.get("TotalPrice", 0),
-                    "discount": li.get("Discount", 0),
-                })
-
-            total = quote.get("GrandTotal") or 0
-            discount_val = quote.get("Discount") or 0
-
-            # Build tags from quote status and discount
-            tags = []
-            if discount_val and discount_val > 0:
-                tags.append(f"{discount_val}% discount applied")
-            if quote.get("Status") in ("Closed Won",):
-                tags.append("Won deal")
-            elif quote.get("Status") in ("Closed Lost",):
-                tags.append("Lost  competitor")
-
-            all_quotes.append({
-                "id": quote_id,
-                "name": quote.get("Name", "Unnamed Quote"),
-                "quoteNumber": quote.get("QuoteNumber", ""),
-                "status": quote.get("Status", "Draft"),
-                "grandTotal": total,
-                "discount": discount_val,
-                "createdDate": quote.get("CreatedDate", ""),
-                "opportunityName": opp_name,
-                "lineItems": line_items,
-                "analysis": None,  # AI-generated analysis populated by agent on summarize
-                "tags": tags,
-            })
-
-        return {
-            "status": "success",
-            "accountName": display_name,
-            "accountId": account_id,
-            "quoteCount": len(all_quotes),
-            "quotes": all_quotes,
-        }
-
+        res_str = get_deal_history(account_name)
+        return json.loads(res_str)
     except Exception as e:
         return {"status": "error", "message": str(e), "quotes": []}
 

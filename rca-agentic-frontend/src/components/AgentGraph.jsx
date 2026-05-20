@@ -1,5 +1,5 @@
 import React from 'react';
-import { Network, Search, FileText, Pencil } from 'lucide-react';
+import { Network, Search, FileText, Pencil, ClipboardList } from 'lucide-react';
 import { config } from '../config';
 import NodeCard from './NodeCard';
 import ToolNode from './ToolNode';
@@ -101,7 +101,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         overflow: 'visible', pointerEvents: 'none',
       }}>
         <defs>
-          {[['cyan', '2.5'], ['amber', '2.5'], ['violet', '2.5']].map(([n, s]) => (
+          {[['cyan', '2.5'], ['amber', '2.5'], ['violet', '2.5'], ['green', '2.5']].map(([n, s]) => (
             <filter key={n} id={`glow-${n}`}>
               <feGaussianBlur stdDeviation={s} result="b" />
               <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -143,6 +143,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'} />
           </linearGradient>
+
+
         </defs>
 
         {graphReady && (
@@ -246,6 +248,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               </>
             )}
 
+
+
             {/* Scout → tool curves — Circuit Trace style */}
             {scout.tools.slice(0, 4).map((tool, i) => {
               const tp = scoutToolPos[i];
@@ -287,24 +291,26 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               const d = makeToolPath(archCx, NODE_BOT, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
+              const strokeColor = '#fbbf24';
+              const glowFilter = 'url(#glow-amber)';
               return (
                 <React.Fragment key={tool.name}>
                   {/* L1: Ghost channel — dims once tool is done */}
                   <path id={pid} d={d}
-                    stroke="#fbbf24" strokeWidth={tsw} fill="none"
+                    stroke={strokeColor} strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
                     style={{ transition: pathTransition }}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
-                      stroke="#fbbf24" strokeWidth={tdsw} fill="none"
+                      stroke={strokeColor} strokeWidth={tdsw} fill="none"
                       style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
                   {toolActive && (
-                    <circle r={tdr} fill="#fbbf24" filter="url(#glow-amber)">
+                    <circle r={tdr} fill={strokeColor} filter={glowFilter}>
                       <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
                         <mpath href={`#${pid}`} />
                       </animateMotion>
@@ -347,6 +353,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                 </React.Fragment>
               );
             })}
+
+
           </>
         )}
       </svg>
@@ -442,6 +450,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         </div>
       )}
 
+
+
       {/* Tool circles — per-tool active/done state */}
       {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
         const tp = scoutToolPos[i];
@@ -475,6 +485,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           />
         );
       })}
+
+
     </div>
   );
 };

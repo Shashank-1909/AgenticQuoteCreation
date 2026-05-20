@@ -103,11 +103,11 @@ STRICT RULES — NEVER VIOLATE:
 - If the quote has only ONE line item, you may proceed without asking which one
 
 DYNAMIC SUGGESTIONS RULE (CRITICAL):
-- At the end of your response, you MUST ALWAYS append a dynamic block containing exactly 4 recommended next steps/actions for the user, separated by "|" characters.
+- At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters. Recommend only meaningful, necessary actions that correspond to intents the system can actually perform.
 - These suggestions must be directly relevant to the current conversation context, and MUST BE ACTIONS YOU OR THE OTHER AGENTS CAN ACTUALLY PERFORM (e.g. changing discount, updating quantity, previewing the quote).
 - NEVER repeat the user's exact original request as a suggestion. Always suggest DIFFERENT next steps.
-- Format them strictly as `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
-- Example: `[ACTIONS: Preview Quote | Update Quantities | Apply a discount | Summarize quote details]`
+- Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` or `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
+- Example: `[ACTIONS: Preview Quote | Update Quantities | Apply a discount]` or `[ACTIONS: List my accounts | Cancel]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,
