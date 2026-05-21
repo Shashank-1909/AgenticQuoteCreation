@@ -12,7 +12,6 @@ These functions are deliberately isolated from FastAPI so they can be
 unit-tested without starting a server.
 """
 
-# pyrefly: ignore [missing-import]
 import json
 import logging
 from typing import Optional
@@ -26,8 +25,6 @@ from app.core.config import (
     TOOL_ACCOUNTS,
     TOOL_OPPORTUNITIES,
     TOOL_QUOTE,
-    TOOL_PARSER_TRANSCRIPT,
-    TOOL_PARSER_DOC,
     TOOL_LINE_ITEMS,
     TOOL_MANAGE_LINES,
     USER_ID,
@@ -185,19 +182,27 @@ async def process_events(
         # ── Tool call (LLM → Tool) ────────────────────────────────────────
         for fn_call in (event.get_function_calls() or []):
             tool_name: str = getattr(fn_call, "name", "unknown")
-            logger.info("[TOOL CALL] → %s", tool_name)
+            logger.info("[TOOL CALL] %s → %s", current_agent, tool_name)
             await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
 
         # ── Tool response (Tool → LLM) ────────────────────────────────────
         for fn_resp in (event.get_function_responses() or []):
             tool_name = getattr(fn_resp, "name", "")
             text_content = extract_tool_text(fn_resp)
-            logger.info("[TOOL RESULT] %s → %d chars", tool_name, len(text_content))
+            logger.info("[TOOL RESULT] %s → %s (%d chars)", current_agent, tool_name, len(text_content))
             await handle_tool_result(tool_name, text_content, session_id, websocket, state)
 
         # ── Final text reply ──────────────────────────────────────────────
-        if event.is_final_response() and event.content:
-            for part in event.content.parts or []:
-                if hasattr(part, "text") and part.text:
-                    logger.info("[REPLY] %s...", part.text[:120])
-                    await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
+        if event.is_final_response():
+            replied = False
+            if event.content:
+                for part in event.content.parts or []:
+                    if hasattr(part, "text") and part.text:
+                        logger.info("[REPLY] %s: %s...", current_agent, part.text[:120])
+                        await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
+                        replied = True
+            
+            # Fallback if the model is silent but turn is over
+            if not replied:
+                logger.info("[REPLY] %s: <silent response>", current_agent)
+                await websocket.send_json({"type": "FINAL_REPLY", "data": ""})

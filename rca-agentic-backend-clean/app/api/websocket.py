@@ -12,6 +12,7 @@ This module is deliberately thin. Its only responsibilities are:
 All event processing and business logic lives in app.services.event_handler.
 """
 
+import json
 import logging
 import uuid
 from typing import Optional
@@ -67,6 +68,32 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             if not user_input.strip():
                 continue
 
+            # Parse JSON if possible to extract the text content early
+            text_content = user_input
+            try:
+                data = json.loads(user_input)
+                if isinstance(data, dict):
+                    text_content = data.get("text", user_input)
+            except Exception:
+                pass
+
+            # Detect document upload to reset session and flow
+            if "Document uploaded:" in text_content:
+                logger.info("New document upload detected. Clearing session history and resetting active flows.")
+                _app_state.quote_flow.pop(session_id, None)
+                _app_state.update_flow.pop(session_id, None)
+                try:
+                    await session_service.delete_session(
+                        app_name=APP_NAME, user_id=USER_ID, session_id=session_id,
+                    )
+                    await session_service.create_session(
+                        app_name=APP_NAME,
+                        user_id=USER_ID,
+                        session_id=session_id,
+                    )
+                except Exception as exc:
+                    logger.warning("Failed to reset session for %s: %s", session_id, exc)
+
             # Choose runner based on active flow.
             # Priority: update_flow > quote_flow > root (Deal_Manager).
             # update_runner → Quote_Updator directly (mid-update bypass)
@@ -86,11 +113,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             else:
                 active_runner = _app_state.root_runner
 
-
             logger.info("Message received: %s", user_input)
+
             await websocket.send_json({"type": "STATE", "state": "orchestrating"})
 
-            message = types.Content(role="user", parts=[types.Part(text=user_input)])
+            message = types.Content(role="user", parts=[types.Part(text=text_content)])
             await process_events(active_runner, message, session_id, websocket, _app_state)
             await websocket.send_json({"type": "STATE", "state": "completed"})
 
