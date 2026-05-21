@@ -53,7 +53,7 @@ const App = () => {
         {view === 'selection' && (
           <SelectionHub onSelect={handleSelect} />
         )}
-
+        
         {view === 'dashboard' && (
           <Dashboard
             onLaunchChat={handleLaunchChat}
@@ -62,20 +62,20 @@ const App = () => {
             onEditQuote={(id) => console.log('Edit quote', id)}
           />
         )}
-
+        
         {view === 'chat' && (
-          <OrchestratorView
-            onBack={() => setView('dashboard')}
-            selectedModule={selectedModule}
-            isDark={isDark}
+          <OrchestratorView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
           />
         )}
 
         {view === 'agentforce' && (
-          <AgentforceView
-            onBack={() => setView('dashboard')}
-            selectedModule={selectedModule}
-            isDark={isDark}
+          <AgentforceView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
           />
         )}
       </main>
