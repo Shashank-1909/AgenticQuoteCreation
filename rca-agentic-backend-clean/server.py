@@ -21,8 +21,26 @@ mcp = FastMCP("Salesforce RCA Deal Management MCP Server")
 FIELD_VALUE_INDEX: dict = {}
 _INDEX_BUILT = False
 
+# Global GenAI Client Initialization
+def _get_genai_client():
+    use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true"
+    if use_vertex:
+        return genai.Client(
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        )
+    return genai.Client()
+
+_genai_client = _get_genai_client()
+
+_AUTH_CACHE = None
 def get_salesforce_auth():
-    """Helper function to load auth state written by auth.py"""
+    """Helper function to load auth state written by auth.py with simple caching."""
+    global _AUTH_CACHE
+    if _AUTH_CACHE:
+        return _AUTH_CACHE
+
     import json
     token_file = "auth.json"
     if not os.path.exists(token_file):
@@ -35,9 +53,10 @@ def get_salesforce_auth():
         "Authorization": f"Bearer {auth_data['access_token']}",
         "Content-Type": "application/json"
     }
-    return headers, auth_data['instance_url']
+    _AUTH_CACHE = (headers, auth_data['instance_url'])
+    return _AUTH_CACHE
 
-@mcp.tool()
+
 def search_catalog(
         search_term: str = None,
         filters: dict = None,
@@ -87,7 +106,7 @@ def search_catalog(
         payload["searchTerm"] = search_term
         
     try:
-        response = requests.post(endpoint, headers=headers, json=payload)
+        response = requests.post(endpoint, headers=headers, json=payload, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -133,7 +152,7 @@ def search_catalog(
         "results": results
     }, indent=2)
 
-@mcp.tool()
+
 def get_searchable_custom_fields() -> str:
     """
     Discovers the API names of all custom fields available for product attribute filtering.
@@ -149,7 +168,7 @@ def get_searchable_custom_fields() -> str:
     endpoint = f"{instance_url}/services/data/v66.0/connect/pcm/index/configurations?includeMetadata=false&fieldTypes=Custom"
     
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -177,7 +196,7 @@ def get_searchable_custom_fields() -> str:
         "custom_fields": results
     }, indent=2)
 
-@mcp.tool()
+
 def get_picklist_values(field_api_name: str) -> str:
     """
     Retrieves all valid picklist options for a specific Salesforce custom field.
@@ -197,7 +216,7 @@ def get_picklist_values(field_api_name: str) -> str:
     endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA/{field_api_name}"
     
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -225,7 +244,7 @@ def get_picklist_values(field_api_name: str) -> str:
         "valid_options": valid_options
     }, indent=2)
 
-@mcp.tool()
+
 def check_field_values(candidates: list[str]) -> str:
     """
     FIELD CLASSIFICATION TOOL — must be the FIRST tool called for any product search,
@@ -273,7 +292,7 @@ def check_field_values(candidates: list[str]) -> str:
             
             # Step 1: Get custom field API names from the index configuration
             cfg_endpoint = f"{instance_url}/services/data/v66.0/connect/pcm/index/configurations?includeMetadata=false&fieldTypes=Custom"
-            cfg_resp = requests.get(cfg_endpoint, headers=headers)
+            cfg_resp = requests.get(cfg_endpoint, headers=headers, timeout=30)
             valid_fields = set()
             if cfg_resp.status_code == 200:
                 for config in cfg_resp.json().get("indexConfigurations", []):
@@ -283,7 +302,7 @@ def check_field_values(candidates: list[str]) -> str:
             
             # Step 2: Query the UI API strictly for all Picklist values on Product2
             ui_endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA"
-            ui_resp = requests.get(ui_endpoint, headers=headers)
+            ui_resp = requests.get(ui_endpoint, headers=headers, timeout=30)
             if ui_resp.status_code == 200:
                 picklist_field_values = ui_resp.json().get("picklistFieldValues", {})
                 for field_api_name, field_data in picklist_field_values.items():
@@ -330,7 +349,7 @@ def check_field_values(candidates: list[str]) -> str:
     }, indent=2)
 
 
-@mcp.tool()
+
 def resolve_pricebook_entries(product_ids: list[str]) -> str:
     """
     Resolves Salesforce Product2 IDs to their active PricebookEntry IDs and unit prices.
@@ -362,7 +381,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
     
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -392,7 +411,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         "resolved_entries": results
     }, indent=2)
 
-@mcp.tool()
+
 def get_my_accounts() -> str:
     """
     Fetches the Salesforce accounts owned by the currently authenticated user.
@@ -453,7 +472,7 @@ def get_my_accounts() -> str:
     })
 
 
-@mcp.tool()
+
 def get_opportunities_for_account(account_id: str) -> str:
     """
     Fetches open Opportunities linked to a specific Salesforce Account.
@@ -510,6 +529,8 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
+
+
 @mcp.tool()
 def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportunity_id: str = "") -> str:
     """
@@ -533,6 +554,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
                     - UnitPrice (from pricebook resolution tool)
                     - Discount (numeric percentage, e.g., 10 for 10%)
                     - StartDate / EndDate (optional, defaults applied automatically)
+                    - BillingFrequency (REQUIRED if SellingModelType from pricebook resolution is 'Evergreen' or 'Term-Defined'. Set to 'Monthly')
 
     After calling: Return the Quote ID from the response to the user. If the response
                    includes a record ID, the quote was successfully created in Salesforce.
@@ -638,7 +660,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
 
     import json
     try:
-        response = requests.post(endpoint, headers=headers, json=payload)
+        response = requests.post(endpoint, headers=headers, json=payload, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
 
@@ -651,6 +673,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
         "opportunity_id": clean_opp_id or "not linked",
             "salesforce_response": response.json()
     }, indent=2)
+
 
 
 @mcp.tool()
@@ -728,7 +751,7 @@ def get_quote_preview(quote_id: str) -> str:
         print(f"[DEBUG] Unexpected error: {str(e)}")
         return json.dumps({"status": "error", "message": str(e)})
 
-@mcp.tool()
+
 def get_quote_line_items(quote_id: str) -> str:
     """
     Fetches all line items for a specific Salesforce Quote, including each
@@ -794,7 +817,7 @@ def get_quote_line_items(quote_id: str) -> str:
     }, indent=2)
 
 
-@mcp.tool()
+
 def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
     """
     Applies targeted add / update / delete operations to quote line items
@@ -904,6 +927,27 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         "salesforce_response": resp.json(),
     }, indent=2)
 
+agent_type = os.environ.get("MCP_AGENT_TYPE", "all")
+
+if agent_type in ["scout", "all"]:
+    mcp.add_tool(search_catalog)
+    mcp.add_tool(get_searchable_custom_fields)
+    mcp.add_tool(get_picklist_values)
+    mcp.add_tool(check_field_values)
+
+if agent_type in ["architect", "all"]:
+    mcp.add_tool(resolve_pricebook_entries)
+    mcp.add_tool(get_my_accounts)
+    mcp.add_tool(get_opportunities_for_account)
+    mcp.add_tool(evaluate_quote_graph)
+    mcp.add_tool(get_quote_preview)
+
+if agent_type in ["updator", "all"]:
+    mcp.add_tool(get_quote_preview)
+    mcp.add_tool(get_quote_line_items)
+    mcp.add_tool(manage_quote_line_items)
+    mcp.add_tool(get_my_accounts)
+    mcp.add_tool(get_opportunities_for_account)
 
 
 @mcp.tool()
@@ -949,12 +993,12 @@ def search_products(search_term: str, region: str = None, page_size: int = 15) -
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={url_quote(query)}"
 
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
-        return f"Request Error: {str(e)}"
+        return json.dumps({"status": "error", "message": f"Request Error: {str(e)}"})
 
     if response.status_code not in [200, 201]:
-        return f"Error: {response.status_code}\n{response.text}"
+        return json.dumps({"status": "error", "message": f"Salesforce Error {response.status_code}: {response.text}"})
 
     data = response.json()
     results = []
@@ -983,247 +1027,246 @@ def search_products(search_term: str, region: str = None, page_size: int = 15) -
 def parse_transcript_to_requirements(transcript_text: str) -> str:
     """
     Extracts product requirements and customer intent from a call transcript or meeting notes.
-    Maps explicit product mentions to catalog SKUs automatically, then presents them for
-    user selection before proceeding to account → opportunity → quote creation.
-
-    When to call: When the user provides a raw call transcript or meeting notes and wants
-    to extract requirements and create a quote. After calling this tool, follow the
-    next_steps instructions exactly — do NOT skip product selection or account selection.
     """
-    # Initialize client based on environment
-    use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true"
-    if use_vertex:
-        client = genai.Client(
-            vertexai=True,
-            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-        )
-    else:
-        client = genai.Client()
+    sys.stderr.write(f"\n[DEBUG] Parsing transcript ({len(transcript_text)} chars)...\n")
+    
+    # Slice if too long to prevent LLM hang
+    if len(transcript_text) > 15000:
+        transcript_text = transcript_text[:15000] + "... [truncated]"
 
     prompt = f"""
     Analyze the following call transcript and extract the customer's requirements.
-    Return a JSON array of objects, where each object has:
-    - "product_name": The core product or category mentioned (keep it concise, e.g. "Tablet" or "Laptop")
-    - "quantity": The quantity requested (integer, use 1 if unspecified)
-    - "context": Brief pain points or reasons
+
+    Return a JSON array of objects:
+    [
+      {{
+        "product_name": "...",
+        "quantity": 1,
+        "discount": 0,
+        "context": "..."
+      }}
+    ]
 
     Transcript:
     {transcript_text}
     """
 
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
+    def _call_gemini():
+        return _genai_client.models.generate_content(
+            model='gemini-2.5-flash',
             contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
-        requirements = json.loads(response.text)
+
+    try:
+        # FIX: Directly call gemini instead of using ThreadPoolExecutor
+        sys.stderr.write("[DEBUG] Calling Gemini directly (no thread pool)...\n")
+        response = _call_gemini()
+        
+        # Robust JSON extraction
+        raw_text = response.text.strip()
+        if "```json" in raw_text:
+            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+        requirements = json.loads(raw_text)
+        sys.stderr.write(f"[DEBUG] LLM extraction complete: {len(requirements)} items.\n")
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error analyzing transcript with LLM: {str(e)}"})
-
-    # Map each extracted requirement to catalog products via SOQL search sequentially for stability.
-    all_catalog_products = []
-    mapped_requirements = []
-
-    sys.stderr.write(f"\n[DEBUG] Starting transcript mapping for {len(requirements)} requirements...\n")
-
-    for i, req in enumerate(requirements):
-        prod_name = req.get("product_name", "").strip()
-        if not prod_name: continue
-        
-        sys.stderr.write(f"[DEBUG] ({i+1}/{len(requirements)}) Searching for: {prod_name}\n")
-        
-        try:
-            search_result_json = search_products(search_term=prod_name, page_size=5)
-            search_data = json.loads(search_result_json)
-            products_found = search_data.get("results", [])
-        except Exception as e:
-            sys.stderr.write(f"[DEBUG] Error searching for {prod_name}: {str(e)}\n")
-            products_found = []
-
-        mapped_requirements.append({
-            "extracted_need": req,
-            "mapped_catalog_products": products_found,
-            "confidence": "High" if len(products_found) == 1 else "Medium" if len(products_found) > 1 else "Low"
+        sys.stderr.write(f"[DEBUG] LLM extraction error: {str(e)}\n")
+        return json.dumps({
+            "status": "error",
+            "message": f"Error analyzing transcript: {str(e)}"
         })
 
-        seen_ids = {p["id"] for p in all_catalog_products}
-        for p in products_found:
-            if p["id"] not in seen_ids:
-                all_catalog_products.append(p)
-                seen_ids.add(p["id"])
-
-    sys.stderr.write(f"[DEBUG] Mapping complete. Found {len(all_catalog_products)} unique products.\n")
-
-    return json.dumps({
-        "status": "success",
-        "message": f"Extracted {len(requirements)} requirements and mapped to {len(all_catalog_products)} catalog products.",
-        "requirements": mapped_requirements,
-        "results": all_catalog_products,
-        "count": len(all_catalog_products),
-        "next_steps": (
-            "IMPORTANT — follow these steps in order, do not skip any:\n"
-            "1. Present the mapped catalog products to the user as a selectable list. Ask them to confirm which products they want to include in the quote.\n"
-            "2. Once the user confirms the products, call get_my_accounts to fetch their Salesforce accounts.\n"
-            "3. After the user selects an account, call get_opportunities_for_account.\n"
-            "4. Finally, call evaluate_quote_graph to create the quote.\n"
-        )
-    }, indent=2)
+    return map_requirements_to_catalog(requirements)
 
 
 @mcp.tool()
 def parse_requirements_doc(document_content: str) -> str:
     """
-    Accepts raw text from a requirements document (RFP, SOW, etc.) and extracts individual
-    requirements. Maps each requirement to the best-fit catalog product, then presents them
-    for user selection before proceeding to account → opportunity → quote creation.
-
-    When to call: When the user uploads or pastes an RFP, SOW, or requirements document.
-    After calling this tool, follow the next_steps instructions exactly — do NOT skip
-    product selection or account/opportunity selection.
+    Extracts requirements from RFP/SOW documents and maps them to the catalog.
     """
-    # Initialize client based on environment
-    use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true"
-    if use_vertex:
-        client = genai.Client(
-            vertexai=True,
-            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-        )
-    else:
-        client = genai.Client()
+    sys.stderr.write(f"\n[DEBUG] parse_requirements_doc: Processing {len(document_content)} characters...\n")
 
-    prompt = f"""
-    Analyze the following requirements document text.
-    Return a JSON array of objects, where each object has:
-    - "requirement": The specific functional or technical requirement
-    - "type": functional, technical, commercial, or SLA
-    - "suggested_product": A brief keyword of what product or category would solve this (e.g. "Tablet")
-    - "quantity": The requested quantity as an integer. Use 1 if not specified.
-
-    Document Text:
-    {document_content}
-    """
+    # FIX: Removed ThreadPoolExecutor — spawning nested threads inside an MCP tool
+    # causes a deadlock because the MCP thread context blocks inner Gemini calls.
+    # A single direct Gemini call is faster and more reliable for documents this size.
+    prompt = (
+        "You are a requirements analyst. Extract ALL product/service needs from this document.\n"
+        "Return ONLY a JSON array with no explanation: [{\"product_name\": \"...\", \"quantity\": 1}]\n"
+        "Include every product mentioned. Use the exact product names as written.\n"
+        f"Document:\n{document_content[:20000]}"
+    )
 
     try:
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
+        sys.stderr.write("[DEBUG] Calling Gemini directly (no thread pool)...\n")
+        response = _genai_client.models.generate_content(
+            model="gemini-2.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
+            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0)
         )
-        requirements = json.loads(response.text)
+        raw = response.text.strip()
+        if "```json" in raw:
+            raw = raw.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw:
+            raw = raw.split("```")[1].strip()
+
+        all_requirements = json.loads(raw)
+        sys.stderr.write(f"[DEBUG] Gemini extracted {len(all_requirements)} items.\n")
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error analyzing document with LLM: {str(e)}"})
+        sys.stderr.write(f"[DEBUG] Gemini extraction error: {str(e)}\n")
+        return json.dumps({"status": "error", "message": f"Error analyzing document: {str(e)}"})
 
-    all_catalog_products = []
-    mapped_requirements = []
+    # Deduplicate
+    unique_reqs = {}
+    for r in all_requirements:
+        name = r.get("product_name", "").strip()
+        if name and name.lower() not in unique_reqs:
+            unique_reqs[name.lower()] = {"product_name": name, "quantity": r.get("quantity", 1)}
 
-    sys.stderr.write(f"\n[DEBUG] Starting document mapping for {len(requirements)} requirements...\n")
+    transformed = list(unique_reqs.values())
+    sys.stderr.write(f"[DEBUG] Extraction complete. Total unique requirements: {len(transformed)}\n")
 
-    for i, req in enumerate(requirements):
-        suggested = req.get("suggested_product", "").strip()
-        if not suggested: continue
+    if not transformed:
+        return json.dumps({"status": "empty", "message": "No product requirements detected."})
+
+    return _map_requirements_to_catalog(transformed)
+   
+
+def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
+    """
+    Internal helper — searches Salesforce Product2 via SOQL directly (no MCP overhead).
+    Returns a list of product dicts (name, id, code, category).
+    Must NOT be decorated with @mcp.tool().
+    """
+    try:
+        headers, instance_url = get_salesforce_auth()
+        terms = [t for t in prod_name.replace('"', '').replace("'", "").split() if len(t) > 2]
+        if not terms:
+            terms = [prod_name]
+        # Escape single quotes for SOQL safety
+        safe_terms = [t.replace("'", "\\'") for t in terms[:3]]
         
-        sys.stderr.write(f"[DEBUG] ({i+1}/{len(requirements)}) Mapping requirement to: {suggested}\n")
+        from urllib.parse import quote as url_quote
         
-        try:
-            search_result_json = search_products(search_term=suggested, page_size=5)
-            search_data = json.loads(search_result_json)
-            products_found = search_data.get("results", [])
-        except Exception as e:
-            sys.stderr.write(f"[DEBUG] Error searching for {suggested}: {str(e)}\n")
-            products_found = []
-
-        req["mapped_products"] = products_found
-        req["confidence"] = "High" if len(products_found) == 1 else "Medium" if len(products_found) > 1 else "Low"
-        mapped_requirements.append(req)
-
-        seen_ids = {p["id"] for p in all_catalog_products}
-        for p in products_found:
-            if p["id"] not in seen_ids:
-                all_catalog_products.append(p)
-                seen_ids.add(p["id"])
-
-    sys.stderr.write(f"[DEBUG] Document mapping complete. Found {len(all_catalog_products)} unique products.\n")
-
-    return json.dumps({
-        "status": "success",
-        "message": f"Successfully extracted {len(requirements)} requirements and mapped them to the catalog.",
-        "requirements": mapped_requirements,
-        "results": all_catalog_products,
-        "count": len(all_catalog_products),
-        "next_steps": (
-            "IMPORTANT — follow these steps in order, do not skip any:\n"
-            "1. Summarize the requirements concisely, then present the mapped catalog products to the user as a selectable list. Ask them to confirm which products they want to include.\n"
-            "2. Once the user confirms, call get_my_accounts.\n"
-            "3. After account selection, call get_opportunities_for_account.\n"
-            "4. Finally, call evaluate_quote_graph.\n"
+        # Try STRICT search first (AND)
+        where_clause = " AND ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
+        query = (
+            f"SELECT Id, Name, ProductCode, Family FROM Product2 "
+            f"WHERE ({where_clause}) AND IsActive = true LIMIT {page_size}"
         )
-    }, indent=2)
+        sys.stderr.write(f"[DEBUG] _search_product_direct: Querying '{prod_name}' (STRICT) -> {query}\n")
+        
+        resp = requests.get(
+            f"{instance_url}/services/data/v65.0/query/?q={url_quote(query)}",
+            headers=headers,
+            timeout=20,
+        )
+        
+        recs = []
+        if resp.status_code == 200:
+            recs = resp.json().get("records", [])
+            
+        # Fallback to LOOSE search (OR) if strict yields no results and we have multiple terms
+        if not recs and len(safe_terms) > 1:
+            where_clause_loose = " OR ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
+            query_loose = (
+                f"SELECT Id, Name, ProductCode, Family FROM Product2 "
+                f"WHERE ({where_clause_loose}) AND IsActive = true LIMIT {page_size}"
+            )
+            sys.stderr.write(f"[DEBUG] _search_product_direct: Fallback Querying '{prod_name}' (LOOSE) -> {query_loose}\n")
+            resp_loose = requests.get(
+                f"{instance_url}/services/data/v65.0/query/?q={url_quote(query_loose)}",
+                headers=headers,
+                timeout=20,
+            )
+            if resp_loose.status_code == 200:
+                recs = resp_loose.json().get("records", [])
+
+        sys.stderr.write(f"[DEBUG] _search_product_direct: Found {len(recs)} matches for '{prod_name}'\n")
+        return [
+            {"name": r.get("Name", ""), "id": r.get("Id", ""), "code": r.get("ProductCode", ""), "category": r.get("Family", "General")}
+            for r in recs
+        ]
+    except Exception as e:
+        sys.stderr.write(f"[DEBUG] _search_product_direct exception for '{prod_name}': {str(e)}\n")
+        return []
 
 
 @mcp.tool()
-def map_requirements_to_catalog(requirements: list[dict]) -> str:
+def map_requirements_to_catalog(requirements: list) -> str:
     """
-    Takes a list of extracted product requirements and maps them to actual Salesforce
-    catalog products via parallel SOQL searches.
+    Maps a list of extracted product requirements to actual Salesforce catalog products.
+    Each requirement must have a 'product_name' key and optionally a 'quantity' key.
+
+    When to call: After manually extracting requirements when you already have a list
+    of product names to search for. For automatic document/transcript analysis,
+    use parse_requirements_doc or parse_transcript_to_requirements instead.
 
     Args:
-        requirements: List of dicts, each with 'product_name' and optionally 'quantity'.
-                      Example: [{"product_name": "Tablet", "quantity": 5}]
+        requirements: List of dicts with 'product_name' and optional 'quantity'.
+                      Example: [{"product_name": "Laptop", "quantity": 2}]
     """
+    if not isinstance(requirements, list):
+        return json.dumps({"status": "error", "message": "requirements must be a list."})
+    return _map_requirements_to_catalog(requirements)
+
+
+def _map_requirements_to_catalog(requirements: list) -> str:
+    """
+    Internal implementation — shared by parse_requirements_doc, parse_transcript_to_requirements,
+    and the public map_requirements_to_catalog tool.
+    Uses _search_product_direct (plain function, no MCP) to avoid deadlocks.
+    """
+    valid_reqs = []
+    for r in requirements:
+        if isinstance(r, dict) and r.get("product_name", "").strip():
+            valid_reqs.append(r)
+        elif isinstance(r, str) and r.strip():
+            valid_reqs.append({"product_name": r.strip()})
+    
+    requirements = valid_reqs[:12]
+
+    if not requirements:
+        return json.dumps({"status": "empty", "message": "No valid product names to search."})
+
+    sys.stderr.write(f"[DEBUG] _map_requirements_to_catalog: mapping {len(requirements)} items\n")
+
     all_catalog_products = []
     mapped_requirements = []
-
-    sys.stderr.write(f"\n[DEBUG] Parallel mapping for {len(requirements)} items...\n")
+    seen_ids = set()
 
     def _search_one(req):
-        prod_name = req.get("product_name", "").strip()
-        if not prod_name:
-            return req, []
-        try:
-            # Call the existing search_products tool function directly
-            result_json = search_products(search_term=prod_name, page_size=5)
-            return req, json.loads(result_json).get("results", [])
-        except Exception as e:
-            sys.stderr.write(f"[DEBUG] Error searching for {prod_name}: {str(e)}\n")
-            return req, []
+        name = req.get("product_name", "").strip()
+        return req, _search_product_direct(name, page_size=5)
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        search_results = list(executor.map(_search_one, requirements))
+    # FIX: Run sequentially to prevent deadlocks in MCP execution
+    results = [_search_one(req) for req in requirements]
 
-    for req, products_found in search_results:
+    for req, products_found in results:
         mapped_requirements.append({
             "extracted_need": req,
             "mapped_catalog_products": products_found,
-            "confidence": "High" if len(products_found) == 1 else "Medium" if len(products_found) > 1 else "Low"
+            "confidence": "High" if len(products_found) == 1 else "Medium" if products_found else "Low",
         })
-
-        seen_ids = {p["id"] for p in all_catalog_products}
         for p in products_found:
             if p["id"] not in seen_ids:
                 all_catalog_products.append(p)
                 seen_ids.add(p["id"])
 
-    sys.stderr.write(f"[DEBUG] Parallel mapping complete. Found {len(all_catalog_products)} unique products.\n")
+    sys.stderr.write(f"[DEBUG] Mapping complete — {len(all_catalog_products)} unique products found\n")
 
+    status = "success" if all_catalog_products else "empty"
     return json.dumps({
-        "status": "success",
-        "message": f"Mapped {len(requirements)} requirements to {len(all_catalog_products)} products.",
+        "status": status,
+        "message": f"Mapped {len(requirements)} requirements to {len(all_catalog_products)} catalog products.",
         "requirements": mapped_requirements,
         "results": all_catalog_products,
         "count": len(all_catalog_products),
         "next_steps": (
-            "1. Present the mapped catalog products to the user for confirmation.\n"
-            "2. Once confirmed, proceed with account and opportunity selection.\n"
-        )
+            "Present the mapped products to the user and ask them to confirm which ones to quote."
+            if all_catalog_products else
+            "No catalog matches found. Ask the user to describe the products differently or search manually."
+        ),
     }, indent=2)
-
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

@@ -59,8 +59,8 @@ IMPORTANT: Before starting, check the conversation history! If the user has ALRE
 STEP 1 — VERIFY CONFIGURATION:
   Identify the products the user wants to quote from the System Context or conversation history.
   Look for 'Quantity' and 'Discount' values in the user's message (e.g., "Quantity: 5, Discount: 10%"). 
-  - If the user asks to quote or configure products but DOES NOT specify quantities or discounts, ask them: "Could you please specify the quantities and discounts for these products? Or would you like to use the defaults (Quantity: 1, No Discount)?"
-  - Do not proceed to Account or Opportunity selection until you have these details or a confirmation to use defaults.
+  - If the user DOES NOT specify quantities or discounts, proceed immediately using the defaults (Quantity: 1, No Discount). 
+  - Do NOT ask for confirmation. Move directly to Step 2 (Account Selection).
 
 STEP 2 — ACCOUNT SELECTION:
   Use the account retrieval tool (described as fetching the authenticated user's accounts).
