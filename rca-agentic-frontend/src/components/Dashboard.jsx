@@ -1,18 +1,20 @@
 import { Users, Network, FileText, ShieldCheck, TrendingUp, ArrowUpRight, Sparkles, ArrowLeft, BrainCircuit } from 'lucide-react';
 import { config } from '../config';
+import { translations } from '../translations';
 
-const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
+const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, language = 'en' }) => {
+  const t = translations[language];
   const stats = [
     { 
-      label: 'Accounts',     
-      value: '128',  
-      sub: '+12 this month',  
-      icon: Users,       
-      color: config.theme === 'Meta' ? '#0064E0' : '#6366f1', 
-      gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent' 
+      label: t?.stats?.accounts || 'Accounts',
+      value: '128',
+      sub: '+12 this month',
+      icon: Users,
+      color: config.theme === 'Meta' ? '#0064E0' : '#6366f1',
+      gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent'
     },
     { 
-      label: 'Opportunities',
+      label: t?.stats?.opportunities || 'Opportunities',
       value: '47',   
       sub: '8 closing soon',  
       icon: Network,     
@@ -20,20 +22,20 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
       gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent' 
     },
     { 
-      label: 'Quotes',       
-      value: '38',   
+      label: t?.stats?.quotes || 'Quotes',
+      value: '38',
       sub: '5 pending review',
-      icon: FileText,    
-      color: config.theme === 'Meta' ? '#31A24C' : '#10b981', 
-      gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent' 
+      icon: FileText,
+      color: config.theme === 'Meta' ? '#31A24C' : '#10b981',
+      gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent'
     },
     { 
-      label: 'Approvals',    
-      value: '14',   
-      sub: '3 need actions',   
-      icon: ShieldCheck, 
-      color: config.theme === 'Meta' ? '#f7b928' : '#f59e0b', 
-      gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent' 
+      label: t?.stats?.approvals || 'Approvals',
+      value: '14',
+      sub: '3 need actions',
+      icon: ShieldCheck,
+      color: config.theme === 'Meta' ? '#f7b928' : '#f59e0b',
+      gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent'
     },
   ];
 
@@ -87,8 +89,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
                 <div className="h-8 w-[1px] bg-slate-200 mx-2" />
                 <div>
                   <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
-                    Deal Intelligence
-                  </h1>
+                    {t?.dashboard?.header || 'Deal Intelligence'}                  </h1>
                 </div>
               </>
             )}
@@ -201,7 +202,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce }) => {
           <span className="relative z-10 flex items-center gap-2">
             <BrainCircuit size={16} className="group-hover:animate-pulse" />
             
-            Quoting Accelerator 
+            {selectedModule?.id === 'migration' ? 'Migration Accelerator' : 'Quoting Accelerator'} 
             <Sparkles size={14} className="ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
           </span>
         </button>

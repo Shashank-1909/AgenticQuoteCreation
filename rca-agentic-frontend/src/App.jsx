@@ -3,6 +3,9 @@ import SelectionHub from './components/SelectionHub';
 import Dashboard from './components/Dashboard';
 import ThemeToggle from './components/ThemeToggle';
 import { config } from './config';
+import OrchestratorView from './components/OrchestratorView';
+import AgentforceView from './components/AgentforceView';
+import MigrationView from './components/MigrationView';
 import './MetaTheme.css';
 import {
   Send, CheckCircle2, Loader2, Zap, Settings,
@@ -1897,6 +1900,7 @@ const App = () => {
   const [view, setView] = useState('selection'); // selection, dashboard, chat, agentforce
   const [selectedModule, setSelectedModule] = useState(null);
   const [isDark, setIsDark] = useState(false);
+  const [language, setLanguage] = useState('en');
 
   // Sync theme with document class
   useEffect(() => {
@@ -1928,18 +1932,59 @@ const App = () => {
         <div className="mesh-circle-2" />
       </div>
 
-      <ThemeToggle isDark={isDark} setIsDark={setIsDark} />
-      {view === 'selection' && <SelectionHub onSelect={handleSelect} />}
-      {view === 'dashboard' && (
-        <Dashboard
-          onLaunchChat={handleLaunchChat}
-          onBack={() => setView('selection')}
-          onEditQuote={(id) => console.log('Edit quote', id)}
-        />
-      )}
-      {view === 'chat' && (
-        <OrchestratorView onBack={() => setView('dashboard')} selectedModule={selectedModule} isDark={isDark} />
-      )}
+      {/* Main View Router */}
+      <main className="relative z-10">
+        {view === 'selection' && (
+          <SelectionHub onSelect={handleSelect} isDark={isDark} setIsDark={setIsDark} language={language} setLanguage={setLanguage} />
+        )}
+        
+        {view === 'dashboard' && (
+          <Dashboard
+            selectedModule={selectedModule}
+            onLaunchChat={handleLaunchChat}
+            onLaunchAgentforce={handleLaunchAgentforce}
+            onBack={() => setView('selection')}
+            onEditQuote={(id) => console.log('Edit quote', id)}
+            isDark={isDark}
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
+        )}
+        
+        {view === 'chat' && (
+          <OrchestratorView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
+        )}
+
+        {view === 'agentforce' && selectedModule?.id !== 'migration' && (
+          <AgentforceView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
+        )}
+
+        {view === 'agentforce' && selectedModule?.id === 'migration' && (
+          <MigrationView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
+        )}
+      </main>
     </div>
   );
 };

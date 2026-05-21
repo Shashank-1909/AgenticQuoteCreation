@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut
+  ZoomIn, ZoomOut, Sun, Moon, Globe
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -11,19 +11,46 @@ import AgentGraph from './AgentGraph';
 import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
+import LanguageToggle from './LanguageToggle';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
+import { translations } from '../translations';
 import './AgentforceView.css';
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, language, setLanguage }) => {
+  const t = translations[language];
+  const translatedModuleTitle = selectedModule ? (t.modules?.[selectedModule.id] || selectedModule.title) : 'Salesforce';
+
+  const [rightWidth, setRightWidth] = useState(500);
+  const [isResizingRight, setIsResizingRight] = useState(false);
   const [messages, setMessages] = useState([
     { 
       id: 1, 
       role: 'assistant', 
       aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      content: language === 'es' ? `¡Hola! Soy tu asistente de ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} para ${translatedModuleTitle}. ¿Cómo puedo ayudarte hoy?` :
+               language === 'ta' ? `வணக்கம்! நான் உங்கள் ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} உதவியாளர் ${translatedModuleTitle} க்கு. இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?` :
+               language === 'te' ? `నమస్కారం! నేను మీ ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} అసిస్టెంట్ ${translatedModuleTitle} కోసం. ఈ రోజు నేను మీకు ఎలా సహాయం చేయగలను?` :
+               `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} Assistant for ${translatedModuleTitle}. How can I help you today?`,
       type: 'text'
     }
   ]);
+
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id === 1) {
+      setMessages([
+        { 
+          id: 1, 
+          role: 'assistant', 
+          aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
+          content: language === 'es' ? `¡Hola! Soy tu asistente de ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} para ${translatedModuleTitle}. ¿Cómo puedo ayudarte hoy?` :
+                   language === 'ta' ? `வணக்கம்! நான் உங்கள் ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} உதவியாளர் ${translatedModuleTitle} க்கு. இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?` :
+                   language === 'te' ? `నమస్కారం! నేను మీ ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} అసిస్టెంట్ ${translatedModuleTitle} కోసం. ఈ రోజు నేను మీకు ఎలా సహాయం చేయగలను?` :
+                   `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} Assistant for ${translatedModuleTitle}. How can I help you today?`,
+          type: 'text'
+        }
+      ]);
+    }
+  }, [language, selectedModule]);
   const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
@@ -58,12 +85,51 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
 
+  const startResizingRight = useCallback((e) => {
+    e.preventDefault();
+    setIsResizingRight(true);
+  }, []);
+
+  const stopResizingRight = useCallback(() => {
+    setIsResizingRight(false);
+  }, []);
+
+  const resizeRight = useCallback((e) => {
+    if (isResizingRight) {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 350 && newWidth < 800) {
+        setRightWidth(newWidth);
+      }
+    }
+  }, [isResizingRight]);
+
+  useEffect(() => {
+    if (isResizingRight) {
+      window.addEventListener('mousemove', resizeRight);
+      window.addEventListener('mouseup', stopResizingRight);
+    } else {
+      window.removeEventListener('mousemove', resizeRight);
+      window.removeEventListener('mouseup', stopResizingRight);
+    }
+    return () => {
+      window.removeEventListener('mousemove', resizeRight);
+      window.removeEventListener('mouseup', stopResizingRight);
+    };
+  }, [isResizingRight, resizeRight, stopResizingRight]);
+
+  const handleWsMessageRef = useRef(null);
+  useEffect(() => {
+    handleWsMessageRef.current = handleWsMessage;
+  });
+
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
     ws.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        handleWsMessage(data);
+        if (handleWsMessageRef.current) {
+          handleWsMessageRef.current(data);
+        }
       } catch (err) {
         console.error('[WS] parse error', err);
       }
@@ -197,7 +263,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             type: 'card',
             cardType: 'products',
             data: pendingResultsRef.current,
-            content: "I've searched the catalog and found these products:"
+            content: t.searchedCatalog
           });
           pendingResultsRef.current = null;
         }
@@ -206,7 +272,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             type: 'card',
             cardType: 'selection',
             data: pendingSelectionRef.current,
-            content: `Please select an ${pendingSelectionRef.current.type}:`
+            content: `${t.pleaseSelectAn}${pendingSelectionRef.current.type}:`
           });
           pendingSelectionRef.current = null;
         }
@@ -308,8 +374,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
+    
+    const payloadText = language !== 'en' ? `${finalMessage} [System Context: ${t.languageContext}]` : finalMessage;
+    
     ws.current?.send(JSON.stringify({
-      text: finalMessage,
+      text: payloadText,
       module: selectedModule?.id || 'sales'
     }));
 
@@ -407,7 +476,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-    ws.current?.send(text);
+    const payloadText = language !== 'en' ? `${text} [System Context: ${t.languageContext}]` : text;
+    ws.current?.send(payloadText);
     
     // Clear selections after confirm
     setSelectedProducts(new Set());
@@ -468,23 +538,39 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? 'Meta Workspace' : t.quotingAccelerator}
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+          <div className="flex items-center gap-3">
             <button 
-              onClick={() => setWorkspaceView('graph')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              onClick={() => setIsDark(!isDark)}
+              className={`p-2 rounded-xl transition-all shadow-sm border ${
+                isDark 
+                  ? 'bg-white/5 border-white/10 text-amber-500 hover:bg-white/10' 
+                  : 'bg-black/5 border-black/10 text-indigo-500 hover:bg-black/10'
+              }`}
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
-              Orchestration Flow
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <button 
-              onClick={() => setWorkspaceView('preview')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Record Preview
-            </button>
+
+            <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
+
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+              <button 
+                onClick={() => setWorkspaceView('graph')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                {t.orchestrationFlow}
+              </button>
+              <button 
+                onClick={() => setWorkspaceView('preview')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                {t.recordPreview}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -516,7 +602,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   </button>
                 </div>
                 <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease-out' }} className="origin-center">
-                  <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+                  <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} t={t} />
                 </div>
              </div>
           )}
@@ -611,7 +697,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       </section>
 
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
-      <section className="af-sidebar">
+      {/* RESIZER HANDLE */}
+      <div 
+        onMouseDown={startResizingRight} 
+        className={`w-6 cursor-col-resize h-full bg-transparent flex items-center justify-center relative z-[60] group/resizer -mx-3`}
+      >
+        <div className={`w-[2px] h-32 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 group-hover/resizer:w-1 group-hover/resizer:h-48 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] !w-1 !h-full' : ''}`} />
+        <div className="absolute flex flex-col gap-1.5 opacity-0 group-hover/resizer:opacity-100 transition-opacity">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="w-1 h-1 rounded-full bg-indigo-500/60" />
+          ))}
+        </div>
+      </div>
+
+      <section className="af-sidebar" style={{ width: rightWidth }}>
         <div className="af-sidebar-header">
            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
               {config.theme === 'Meta' ? (
@@ -622,9 +721,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
            </div>
            <div className="flex flex-col">
               <h3 className="text-xs font-black uppercase tracking-tighter">
-                {config.theme === 'Meta' ? 'Meta Assistant' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? 'Meta Assistant' : t.quotingAccelerator}
               </h3>
-              <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
+              <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">{t.activeThinking}</span>
            </div>
            <Settings size={14} className="ml-auto text-slate-500 cursor-pointer" />
         </div>
@@ -649,11 +748,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   <div className="af-card-header flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Package size={14} className="text-indigo-500" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Product Catalog</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">{t.productCatalog}</span>
                     </div>
                     <button 
                       onClick={() => toggleSelectAll(msg.data)}
-                      title="Select All"
+                      title={t.selectAll}
                       className={`p-1.5 rounded-lg transition-all ${msg.data.every(p => selectedProducts.has(p.id)) ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-slate-500'}`}
                     >
                       <CheckCircle2 size={12} />
@@ -663,7 +762,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   {selectedProducts.size > 1 && (
                     <div className="px-4 py-3 bg-indigo-500/[0.03] border-b border-white/5 flex items-center gap-4 animate-in fade-in">
                        <div className="flex-1">
-                          <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">Bulk Qty</label>
+                          <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">{t.bulkQty}</label>
                           <div className="flex gap-1">
                              <input 
                               type="number" 
@@ -673,14 +772,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                                 setBulkQty(v);
                                 if (v !== '') applyBulk('qty', v);
                               }}
-                              placeholder="All"
+                              placeholder={t.all}
                               className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
                              />
                           
                           </div>
                        </div>
                        <div className="flex-1">
-                          <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">Bulk Disc %</label>
+                          <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">{t.bulkDiscPercent}</label>
                           <div className="flex gap-1">
                              <input 
                               type="number" 
@@ -690,7 +789,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                                 setBulkDiscount(v);
                                 if (v !== '') applyBulk('discount', v);
                               }}
-                              placeholder="All"
+                              placeholder={t.all}
                               className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
                              />
                          
@@ -703,30 +802,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                     {msg.data.map(p => {
                       const isSelected = selectedProducts.has(p.id);
                       return (
-                        <div key={p.id} className={`p-3 mb-2 rounded-2xl border transition-all ${isSelected ? 'bg-indigo-500/[0.04] border-indigo-500/30 shadow-inner' : 'border-white/5 hover:bg-white/5'}`}>
-                           <div onClick={() => toggleProduct(p)} className="flex items-center gap-2 cursor-pointer mb-2">
-                              {isSelected && <CheckCircle2 size={14} className="text-indigo-500" />}
-                              <span className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-500' : 'text-slate-600'}`}>{p.name}</span>
+                        <div key={p.id} onClick={() => toggleProduct(p)} className={`flex flex-col p-2.5 mb-2 min-h-[46px] justify-center rounded-xl cursor-pointer transition-all border group ${isSelected ? 'bg-indigo-500/[0.08] border-indigo-500/40 shadow-inner' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/10'}`}>
+                           <div className="flex items-center gap-3.5 min-w-0">
+                              <div style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${isSelected ? '#6366f1' : '#94a3b8'}`, background: isSelected ? '#6366f1' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isSelected ? '0 0 10px rgba(99,102,241,0.4)' : 'none', transition: 'all 0.3s' }}>
+                                {isSelected && <CheckCircle2 size={10} color="white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-[11px] font-bold uppercase tracking-tight leading-tight transition-colors ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 group-hover:text-indigo-500'}`}>{p.name}</div>
+                              </div>
                            </div>
                            
                            {isSelected && (
-                             <div className="flex items-center gap-3 pl-7 animate-in fade-in slide-in-from-left-2">
+                             <div className="flex items-center gap-3 pl-8 mt-3 animate-in fade-in slide-in-from-top-2" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex-1">
-                                   <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">Quantity</label>
+                                   <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">{t.quantity}</label>
                                    <input 
                                     type="number" 
                                     value={productConfigs[p.id]?.qty || 1}
                                     onChange={(e) => updateConfig(p.id, 'qty', parseFloat(e.target.value))}
-                                    className="w-full bg-black/20 border border-white/5 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30"
+                                    className="w-full bg-black/5 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30 transition-colors"
                                    />
                                 </div>
                                 <div className="flex-1">
-                                   <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">Discount %</label>
+                                   <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">{t.discountPercent}</label>
                                    <input 
                                     type="number" 
                                     value={productConfigs[p.id]?.discount || 0}
                                     onChange={(e) => updateConfig(p.id, 'discount', parseFloat(e.target.value))}
-                                    className="w-full bg-black/20 border border-white/5 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30"
+                                    className="w-full bg-black/5 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30 transition-colors"
                                    />
                                 </div>
                              </div>
@@ -845,7 +948,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               type="text" 
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : `Ask ${t.quotingAccelerator}...`}
               className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
              />
              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">

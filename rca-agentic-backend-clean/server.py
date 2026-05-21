@@ -37,7 +37,7 @@ def get_salesforce_auth():
     }
     return headers, auth_data['instance_url']
 
-@mcp.tool()
+
 def search_catalog(
         search_term: str = None,
         filters: dict = None,
@@ -133,7 +133,7 @@ def search_catalog(
         "results": results
     }, indent=2)
 
-@mcp.tool()
+
 def get_searchable_custom_fields() -> str:
     """
     Discovers the API names of all custom fields available for product attribute filtering.
@@ -177,7 +177,7 @@ def get_searchable_custom_fields() -> str:
         "custom_fields": results
     }, indent=2)
 
-@mcp.tool()
+
 def get_picklist_values(field_api_name: str) -> str:
     """
     Retrieves all valid picklist options for a specific Salesforce custom field.
@@ -225,7 +225,7 @@ def get_picklist_values(field_api_name: str) -> str:
         "valid_options": valid_options
     }, indent=2)
 
-@mcp.tool()
+
 def check_field_values(candidates: list[str]) -> str:
     """
     FIELD CLASSIFICATION TOOL — must be the FIRST tool called for any product search,
@@ -330,7 +330,7 @@ def check_field_values(candidates: list[str]) -> str:
     }, indent=2)
 
 
-@mcp.tool()
+
 def resolve_pricebook_entries(product_ids: list[str]) -> str:
     """
     Resolves Salesforce Product2 IDs to their active PricebookEntry IDs and unit prices.
@@ -392,7 +392,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
         "resolved_entries": results
     }, indent=2)
 
-@mcp.tool()
+
 def get_my_accounts() -> str:
     """
     Fetches the Salesforce accounts owned by the currently authenticated user.
@@ -453,7 +453,7 @@ def get_my_accounts() -> str:
     })
 
 
-@mcp.tool()
+
 def get_opportunities_for_account(account_id: str) -> str:
     """
     Fetches open Opportunities linked to a specific Salesforce Account.
@@ -510,8 +510,7 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
-@mcp.tool()
-def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportunity_id: str = "") -> str:
+def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -645,15 +644,36 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str = "", opportu
     if response.status_code not in [200, 201]:
         return f"SALESFORCE VALIDATION ERROR - Analyze this payload rejection and retry:\nStatus Code: {response.status_code}\nResponse: {response.text}"
 
+    salesforce_resp = response.json()
+    quote_id = ""
+    quote_number = "Unknown"
+    
+    try:
+        for rec in salesforce_resp.get("records", []):
+            if rec.get("referenceId") == "refQuote":
+                quote_id = rec.get("record", {}).get("id", "")
+                break
+                
+        if quote_id:
+            from urllib.parse import quote
+            query = f"SELECT QuoteNumber FROM Quote WHERE Id = '{quote_id}'"
+            q_url = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
+            q_res = requests.get(q_url, headers=headers)
+            if q_res.status_code == 200:
+                q_data = q_res.json()
+                if q_data.get("records"):
+                    quote_number = q_data["records"][0].get("QuoteNumber", "Unknown")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching QuoteNumber: {str(e)}")
+
     return json.dumps({
         "status": "success",
         "message": "Salesforce successfully validated the Quote Graph!",
         "opportunity_id": clean_opp_id or "not linked",
-            "salesforce_response": response.json()
+        "quote_id": quote_id,
+        "quote_number": quote_number,
+        "salesforce_response": salesforce_resp
     }, indent=2)
-
-
-@mcp.tool()
 def get_quote_preview(quote_id: str) -> str:
     """
     Fetches detailed preview data for a specific Salesforce Quote, 
@@ -728,7 +748,7 @@ def get_quote_preview(quote_id: str) -> str:
         print(f"[DEBUG] Unexpected error: {str(e)}")
         return json.dumps({"status": "error", "message": str(e)})
 
-@mcp.tool()
+
 def get_quote_line_items(quote_id: str) -> str:
     """
     Fetches all line items for a specific Salesforce Quote, including each
@@ -794,7 +814,7 @@ def get_quote_line_items(quote_id: str) -> str:
     }, indent=2)
 
 
-@mcp.tool()
+
 def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
     """
     Applies targeted add / update / delete operations to quote line items
@@ -904,6 +924,27 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         "salesforce_response": resp.json(),
     }, indent=2)
 
+agent_type = os.environ.get("MCP_AGENT_TYPE", "all")
+
+if agent_type in ["scout", "all"]:
+    mcp.add_tool(search_catalog)
+    mcp.add_tool(get_searchable_custom_fields)
+    mcp.add_tool(get_picklist_values)
+    mcp.add_tool(check_field_values)
+
+if agent_type in ["architect", "all"]:
+    mcp.add_tool(resolve_pricebook_entries)
+    mcp.add_tool(get_my_accounts)
+    mcp.add_tool(get_opportunities_for_account)
+    mcp.add_tool(evaluate_quote_graph)
+    mcp.add_tool(get_quote_preview)
+
+if agent_type in ["updator", "all"]:
+    mcp.add_tool(get_quote_preview)
+    mcp.add_tool(get_quote_line_items)
+    mcp.add_tool(manage_quote_line_items)
+    mcp.add_tool(get_my_accounts)
+    mcp.add_tool(get_opportunities_for_account)
 
 
 @mcp.tool()
