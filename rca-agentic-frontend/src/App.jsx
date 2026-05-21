@@ -16,6 +16,7 @@ const App = () => {
   const [view, setView] = useState('selection'); // selection, dashboard, chat, agentforce
   const [selectedModule, setSelectedModule] = useState(null);
   const [isDark, setIsDark] = useState(false);
+  const [language, setLanguage] = useState('en');
 
   // Sync theme with document class
   useEffect(() => {
@@ -50,7 +51,7 @@ const App = () => {
       {/* Main View Router */}
       <main className="relative z-10">
         {view === 'selection' && (
-          <SelectionHub onSelect={handleSelect} isDark={isDark} setIsDark={setIsDark} />
+          <SelectionHub onSelect={handleSelect} isDark={isDark} setIsDark={setIsDark} language={language} setLanguage={setLanguage} />
         )}
         
         {view === 'dashboard' && (
@@ -60,6 +61,10 @@ const App = () => {
             onLaunchAgentforce={handleLaunchAgentforce}
             onBack={() => setView('selection')}
             onEditQuote={(id) => console.log('Edit quote', id)}
+            isDark={isDark}
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
           />
         )}
         
@@ -69,6 +74,8 @@ const App = () => {
             selectedModule={selectedModule} 
             isDark={isDark} 
             setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
           />
         )}
 
@@ -78,6 +85,8 @@ const App = () => {
             selectedModule={selectedModule} 
             isDark={isDark} 
             setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
           />
         )}
 
@@ -87,6 +96,8 @@ const App = () => {
             selectedModule={selectedModule} 
             isDark={isDark} 
             setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
           />
         )}
       </main>

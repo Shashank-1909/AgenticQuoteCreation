@@ -12,7 +12,7 @@ import {
 // ─────────────────────────────────────────────────────────────
 // ORCHESTRATION GRAPH
 // ─────────────────────────────────────────────────────────────
-const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) => {
+const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }) => {
   // Theme-aware SVG opacity + stroke helpers — light mode needs higher values to be visible
   const ch = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
   const cq = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
@@ -362,7 +362,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         zIndex: 10,
       }}>
         <NodeCard
-          label="Deal Manager" subLabel={cActive ? 'Routing…' : cDone ? 'Dispatched' : 'Coordinator'}
+          label={t?.nodes?.dealManager || "Deal Manager"} subLabel={cActive ? (t?.nodes?.routing || 'Routing…') : cDone ? (t?.nodes?.dispatched || 'Dispatched') : (t?.nodes?.coordinator || 'Coordinator')}
           icon={Network} w={DM_W} h={DM_H} borderRadius={16}
           accentColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} 
           glowColor={config.theme === 'Meta' ? 'rgba(0,100,224,0.5)' : 'rgba(99,102,241,0.5)'}
@@ -379,8 +379,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
         }}>
           <NodeCard
-            label="Catalog Scout"
-            subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            label={t?.nodes?.catalogScout || "Catalog Scout"}
+            subLabel={sActive ? (scoutComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
             icon={Search} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} 
             glowColor={config.theme === 'Meta' ? 'rgba(0,129,251,0.5)' : 'rgba(6,182,212,0.5)'}
@@ -390,7 +390,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#22d3ee55', marginTop: 8,
-          }}>Catalog Scout</div>
+          }}>{t?.nodes?.catalogScout || "Catalog Scout"}</div>
         </div>
       )}
 
@@ -403,8 +403,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           animationDelay: showScout && visibleKeys.length === 2 ? '0.1s' : '0s',
         }}>
           <NodeCard
-            label="Quote Builder"
-            subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            label={t?.nodes?.quoteBuilder || "Quote Builder"}
+            subLabel={aActive ? (archComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
             icon={FileText} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} 
             glowColor={config.theme === 'Meta' ? 'rgba(49,162,76,0.5)' : 'rgba(245,158,11,0.5)'}
@@ -414,7 +414,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#fbbf2455', marginTop: 8,
-          }}>Quote Builder</div>
+          }}>{t?.nodes?.quoteBuilder || "Quote Builder"}</div>
         </div>
       )}
 
@@ -427,8 +427,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
         }}>
           <NodeCard
-            label="Quote Modifier"
-            subLabel={uActive ? (updatorComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            label={t?.nodes?.quoteModifier || "Quote Modifier"}
+            subLabel={uActive ? (updatorComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
             icon={Pencil} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'}
             glowColor={config.theme === 'Meta' ? 'rgba(155,89,182,0.5)' : 'rgba(167,139,250,0.5)'}
@@ -438,7 +438,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#a78bfa55', marginTop: 8,
-          }}>Quote Modifier</div>
+          }}>{t?.nodes?.quoteModifier || "Quote Modifier"}</div>
         </div>
       )}
 
