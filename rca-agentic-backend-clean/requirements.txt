@@ -10,3 +10,5 @@ pdfplumber
 Pillow
 pypdfium2
 pdfminer.six
+openpyxl
+xlrd

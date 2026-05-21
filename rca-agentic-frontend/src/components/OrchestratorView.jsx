@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings,
   ExternalLink, ArrowRight, Database,
   Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp,
-  Sparkles, ClipboardList, Sun, Moon, Globe
+  Sparkles, ClipboardList, Sun, Moon, Globe, Paperclip
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -16,8 +16,8 @@ import {
 } from '../constants';
 import { translations } from '../translations';
 
-const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
-  const [language, setLanguage] = useState('en');
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, language, setLanguage }) => {
+  const [isUploading, setIsUploading] = useState(false);
   const t = translations[language];
   const translatedModuleTitle = selectedModule ? (t.modules?.[selectedModule.id] || selectedModule.title) : 'Salesforce RCA';
 
@@ -428,6 +428,80 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const placeholderId = Date.now();
+    const aiName = 'Agivant AI';
+
+    // Show temporary progress bubble
+    setMessages(prev => [...prev, {
+      id: placeholderId,
+      role: 'assistant',
+      aiName,
+      content: language === 'es' ? `Subiendo "${file.name}"... Por favor, espera mientras analizo los requisitos.` :
+               `Uploading "${file.name}"... Please wait while I analyze the requirements.`,
+      type: 'text'
+    }]);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:8001/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        // Replace progress bubble with success and send user message
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'user',
+          content: `${t.documentUploaded || 'Document Uploaded'}: ${file.name}`,
+          type: 'text'
+        }]);
+
+        if (!graphActive) setGraphActive(true);
+        if (workflowState === 'idle') {
+          setResults([]); setQuotes([]); setOrchestration(INIT_ORCH);
+          pendingResultsRef.current = null; setComposingReply(false);
+        }
+
+        // Send file contents to agent via WS
+        ws.current?.send(result.user_message);
+      } else {
+        // Show upload failure message
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'assistant',
+          aiName,
+          content: `${t.uploadFailed || 'Upload failed'}: ${result.message}`,
+          type: 'text'
+        }]);
+      }
+    } catch (err) {
+      console.error('File upload error:', err);
+      setMessages(prev => prev.filter(m => m.id !== placeholderId));
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: 'assistant',
+        aiName,
+        content: language === 'es' ? `Error al subir el archivo. Asegúrate de que el servidor esté en ejecución.` :
+                 `Error uploading file. Make sure the backend server is running.`,
+        type: 'text'
+      }]);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const reset = () => {
     setWorkflowState('idle');
     setOrchestration(INIT_ORCH);
@@ -586,7 +660,31 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
             <form onSubmit={handleSend} className="group">
               <div className="relative flex items-center">
                 <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
-                <input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} placeholder={leftWidth > 150 ? t.sendInstruction : '…'} disabled={isBusy} className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-6 pr-14 text-[11px] font-medium outline-none text-[var(--text-main)] transition-all z-10 shadow-inner focus:border-indigo-500/50" />
+                
+                {/* Hidden File Input */}
+                <input 
+                  type="file" 
+                  id="orch-file-upload" 
+                  accept=".pdf,.docx,.txt,.xlsx,.xls" 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                  disabled={isUploading}
+                />
+                
+                {/* Paperclip Button */}
+                <label 
+                  htmlFor="orch-file-upload" 
+                  className={`absolute left-4 z-20 cursor-pointer text-slate-400 hover:text-indigo-500 transition-colors flex items-center justify-center p-1.5 rounded-lg hover:bg-white/5 ${isUploading ? 'animate-pulse pointer-events-none' : ''}`}
+                  title="Upload requirement document (PDF, DOCX, TXT, XLSX, XLS)"
+                >
+                  {isUploading ? (
+                    <Loader2 size={16} className="animate-spin text-indigo-500" />
+                  ) : (
+                    <Paperclip size={16} />
+                  )}
+                </label>
+
+                <input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} placeholder={leftWidth > 150 ? t.sendInstruction : '…'} disabled={isBusy} className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-12 pr-14 text-[11px] font-medium outline-none text-[var(--text-main)] transition-all z-10 shadow-inner focus:border-indigo-500/50" />
                 <button type="submit" className="absolute right-3.5 p-2.5 text-indigo-600 hover:scale-110 transition-transform z-20 flex items-center justify-center">
                   <Send size={16} />
                 </button>

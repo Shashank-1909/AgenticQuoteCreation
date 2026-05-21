@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut, Sun, Moon, Globe
+  ZoomIn, ZoomOut, Sun, Moon, Globe, Paperclip
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -52,6 +52,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
     }
   }, [language, selectedModule]);
   const [inputValue, setInputValue] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
   const [reasoning, setReasoning] = useState(null);
@@ -392,6 +393,77 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
     setProductConfigs({});
     setBulkQty('');
     setBulkDiscount('');
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const placeholderId = Date.now();
+    const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
+
+    // Show temporary progress bubble
+    setMessages(prev => [...prev, {
+      id: placeholderId,
+      role: 'assistant',
+      aiName,
+      content: language === 'es' ? `Subiendo "${file.name}"... Por favor, espera mientras analizo los requisitos.` :
+               `Uploading "${file.name}"... Please wait while I analyze the requirements.`,
+      type: 'text'
+    }]);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:8001/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        // Replace progress bubble with success and send user message
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'user',
+          content: `${t.documentUploaded || 'Document Uploaded'}: ${file.name}`,
+          type: 'text'
+        }]);
+
+        // Send file contents to agent via WS
+        ws.current?.send(JSON.stringify({
+          text: result.user_message,
+          module: selectedModule?.id || 'sales'
+        }));
+      } else {
+        // Show upload failure message
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'assistant',
+          aiName,
+          content: `${t.uploadFailed || 'Upload failed'}: ${result.message}`,
+          type: 'text'
+        }]);
+      }
+    } catch (err) {
+      console.error('File upload error:', err);
+      setMessages(prev => prev.filter(m => m.id !== placeholderId));
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: 'assistant',
+        aiName,
+        content: language === 'es' ? `Error al subir el archivo. Asegúrate de que el servidor esté en ejecución.` :
+                 `Error uploading file. Make sure the backend server is running.`,
+        type: 'text'
+      }]);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
   };
 
   const extractQuoteId = (dataStr) => {
@@ -942,16 +1014,40 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
         </div>
 
         <div className="af-input-area">
-          <form onSubmit={handleSend} className="relative group">
+          <form onSubmit={handleSend} className="relative group flex items-center">
              <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+             
+             {/* Hidden File Input */}
+             <input 
+               type="file" 
+               id="af-file-upload" 
+               accept=".pdf,.docx,.txt,.xlsx,.xls" 
+               onChange={handleFileUpload} 
+               className="hidden" 
+               disabled={isUploading}
+             />
+             
+             {/* Paperclip Button */}
+             <label 
+               htmlFor="af-file-upload" 
+               className={`absolute left-4 top-1/2 -translate-y-1/2 z-20 cursor-pointer text-slate-400 hover:text-indigo-500 transition-colors flex items-center justify-center p-1.5 rounded-lg hover:bg-white/5 ${isUploading ? 'animate-pulse pointer-events-none' : ''}`}
+               title="Upload requirement document (PDF, DOCX, TXT, XLSX, XLS)"
+             >
+               {isUploading ? (
+                 <Loader2 size={18} className="animate-spin text-indigo-500" />
+               ) : (
+                 <Paperclip size={18} />
+               )}
+             </label>
+
              <input 
               type="text" 
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : `Ask ${t.quotingAccelerator}...`}
-              className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+              className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 pl-12 pr-14 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
              />
-             <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+             <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
                 <Send size={20} />
              </button>
           </form>
