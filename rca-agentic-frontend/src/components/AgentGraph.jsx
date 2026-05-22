@@ -1,5 +1,5 @@
 import React from 'react';
-import { Network, Search, FileText, Pencil, ClipboardList } from 'lucide-react';
+import { Network, Search, FileText, Pencil, ClipboardList, TrendingUp } from 'lucide-react';
 import { config } from '../config';
 import NodeCard from './NodeCard';
 import ToolNode from './ToolNode';
@@ -26,32 +26,37 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   const dr = isDark ? 4 : 5;      // leading dot radius
   const tdr = isDark ? 3 : 4;      // tool leading dot radius
 
-  const { coordinator, Catalog_Scout: scout, Quote_Architect: arch, Quote_Updator: updator } = orchestration;
+  const { coordinator, Catalog_Scout: scout, Quote_Architect: arch, Quote_Updator: updator, Quote_Analyst: analyst } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
   const sActive = scout.state === 'active', sDone = scout.state === 'done';
   const aActive = arch.state === 'active', aDone = arch.state === 'done';
   const uActive = updator.state === 'active', uDone = updator.state === 'done';
+  const anActive = analyst?.state === 'active', anDone = analyst?.state === 'done';
 
   // Agent is composing its reply: it's still active but no tool is currently running
   const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
   const archComposing = aActive && arch.tools.length > 0 && !arch.tools.some(t => t.state === 'active');
   const updatorComposing = uActive && updator.tools.length > 0 && !updator.tools.some(t => t.state === 'active');
+  const analystComposing = anActive && analyst?.tools?.length > 0 && !analyst.tools.some(t => t.state === 'active');
 
   // DM→Agent line flows ONLY during the brief handoff window:
   const scoutHandoffActive = sActive && scout.tools.length === 0 && scout.routedByDm;
   const archHandoffActive  = aActive && arch.tools.length  === 0 && arch.routedByDm;
   const updatorHandoffActive = uActive && updator.tools.length === 0 && updator.routedByDm;
+  const analystHandoffActive = anActive && analyst?.tools?.length === 0 && analyst.routedByDm;
 
   const showScout = scout.state !== 'idle';
   const showArch = arch.state !== 'idle';
   const showUpdator = updator.state !== 'idle';
+  const showAnalyst = analyst?.state !== 'idle';
 
   // ── Dynamic agent positions ──────────────────────────────
   const visibleKeys = [];
   if (showScout) visibleKeys.push('scout');
   if (showArch) visibleKeys.push('arch');
   if (showUpdator) visibleKeys.push('updator');
+  if (showAnalyst) visibleKeys.push('analyst');
 
   const getAgentCx = (agentKey) => {
     const total = visibleKeys.length;
@@ -65,26 +70,36 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       if (idx === 1) return GW * 0.5;
       return GW * 0.8;
     }
+    if (total === 4) {
+      if (idx === 0) return GW * 0.15;
+      if (idx === 1) return GW * 0.38;
+      if (idx === 2) return GW * 0.62;
+      return GW * 0.85;
+    }
     return GW / 2;
   };
 
   const scoutCx = getAgentCx('scout');
   const archCx = getAgentCx('arch');
   const updatorCx = getAgentCx('updator');
+  const analystCx = getAgentCx('analyst');
 
   const scoutLeft = scoutCx - NODE_W / 2;
   const archLeft = archCx - NODE_W / 2;
   const updatorLeft = updatorCx - NODE_W / 2;
+  const analystLeft = analystCx - NODE_W / 2;
 
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
   const pathToScout   = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${scoutCx}   ${MID_Y} ${scoutCx}   ${NODE_TOP}`;
   const pathToArch    = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${archCx}    ${MID_Y} ${archCx}    ${NODE_TOP}`;
   const pathToUpdator = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${updatorCx} ${MID_Y} ${updatorCx} ${NODE_TOP}`;
+  const pathToAnalyst = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${analystCx} ${MID_Y} ${analystCx} ${NODE_TOP}`;
 
   // ── Dynamic tool positions (relative to agent cx) ─────────
   const scoutToolPos   = getToolPositions(scoutCx, scout.tools.length);
   const archToolPos    = getToolPositions(archCx, arch.tools.length);
   const updatorToolPos = getToolPositions(updatorCx, updator.tools.length);
+  const analystToolPos = getToolPositions(analystCx, analyst?.tools?.length || 0);
 
   // DM vertical position
   const dmTop = graphActive ? DM_ACTIVE_TOP : DM_IDLE_TOP;
@@ -142,6 +157,15 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'} />
+          </linearGradient>
+
+          {/* Gradient: DM indigo → Analyst green */}
+          <linearGradient id="grad-analyst"
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
+            x2={analystCx} y2={NODE_TOP}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
+            <stop offset="100%" stopColor={config.theme === 'Meta' ? '#31A24C' : '#34d399'} />
           </linearGradient>
 
 
@@ -242,6 +266,39 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <circle r={dr} fill={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'}>
                     <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
                       <mpath href="#pcu" />
+                    </animateMotion>
+                  </circle>
+                )}
+              </>
+            )}
+
+            {/* DM → Analyst  — Circuit Trace: 3 layers (green) */}
+            {showAnalyst && (
+              <>
+                {/* L1: Ghost channel */}
+                <path id="pcan" d={pathToAnalyst}
+                  stroke="url(#grad-analyst)"
+                  strokeWidth={csw} fill="none"
+                  strokeOpacity={cLit ? ch : cq}
+                  style={{ transition: pathTransition }}
+                />
+                {/* L2: Flowing dashes — handoff only */}
+                {analystHandoffActive && (
+                  <path d={pathToAnalyst}
+                    stroke="url(#grad-analyst)"
+                    strokeWidth={dsw} fill="none"
+                    style={{
+                      strokeDasharray: '6 18',
+                      animation: 'flowDash 0.65s linear infinite',
+                      transition: pathTransition
+                    }}
+                  />
+                )}
+                {/* L3: Leading dot — handoff only */}
+                {analystHandoffActive && (
+                  <circle r={dr} fill={config.theme === 'Meta' ? '#31A24C' : '#34d399'}>
+                    <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
+                      <mpath href="#pcan" />
                     </animateMotion>
                   </circle>
                 )}
@@ -354,6 +411,40 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               );
             })}
 
+            {/* Analyst → tool curves — Circuit Trace style (green) */}
+            {analyst && analyst.tools && analyst.tools.slice(0, 4).map((tool, i) => {
+              const tp = analystToolPos[i];
+              const pid = `pan${i}`;
+              const d = makeToolPath(analystCx, NODE_BOT, tp);
+              const toolActive = tool.state === 'active';
+              const toolDone = tool.state === 'done';
+              return (
+                <React.Fragment key={tool.name}>
+                  {/* L1: Ghost channel */}
+                  <path id={pid} d={d}
+                    stroke="#34d399" strokeWidth={tsw} fill="none"
+                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
+                    style={{ transition: pathTransition }}
+                  />
+                  {/* L2: Flowing dashes */}
+                  {toolActive && (
+                    <path d={d}
+                      stroke="#34d399" strokeWidth={tdsw} fill="none"
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
+                    />
+                  )}
+                  {/* L3: Leading dot */}
+                  {toolActive && (
+                    <circle r={tdr} fill="#34d399" filter="url(#glow-green)">
+                      <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
+                        <mpath href={`#${pid}`} />
+                      </animateMotion>
+                    </circle>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
 
           </>
         )}
@@ -450,6 +541,29 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         </div>
       )}
 
+      {graphReady && showAnalyst && (
+        <div style={{
+          position: 'absolute',
+          left: analystLeft, top: NODE_TOP,
+          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
+          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+        }}>
+          <NodeCard
+            label="Quote Analyst"
+            subLabel={anActive ? (analystComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            icon={TrendingUp} w={NODE_W} h={NODE_H} borderRadius={16}
+            accentColor={config.theme === 'Meta' ? '#31A24C' : '#34d399'}
+            glowColor={config.theme === 'Meta' ? 'rgba(49,162,76,0.5)' : 'rgba(52,211,153,0.5)'}
+            isIdle={false} isActive={anActive} isDone={anDone}
+          />
+          <div style={{
+            textAlign: 'center', fontSize: 7.5, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: '#34d39955', marginTop: 8,
+          }}>Quote Analyst</div>
+        </div>
+      )}
+
 
 
       {/* Tool circles — per-tool active/done state */}
@@ -480,6 +594,17 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#a78bfa"
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
+            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+          />
+        );
+      })}
+
+      {graphReady && analyst && analyst.tools && analyst.tools.slice(0, 4).map((tool, i) => {
+        const tp = analystToolPos[i];
+        return (
+          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool.name)} color="#34d399"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
             style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
           />

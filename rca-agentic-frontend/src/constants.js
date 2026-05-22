@@ -81,6 +81,7 @@ export const INIT_ORCH = {
   Catalog_Scout: { state: 'idle', tools: [], routedByDm: false },
   Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
   Quote_Updator: { state: 'idle', tools: [], routedByDm: false },
+  Quote_Analyst: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────

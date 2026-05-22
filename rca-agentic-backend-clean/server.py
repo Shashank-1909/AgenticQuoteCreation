@@ -1012,8 +1012,6 @@ if agent_type in ["architect", "all"]:
     mcp.add_tool(get_my_accounts)
     mcp.add_tool(get_opportunities_for_account)
     mcp.add_tool(evaluate_quote_graph)
-    mcp.add_tool(get_quote_preview)
-    mcp.add_tool(get_deal_history)
 
 if agent_type in ["updator", "all"]:
     mcp.add_tool(get_quote_preview)
@@ -1021,6 +1019,10 @@ if agent_type in ["updator", "all"]:
     mcp.add_tool(manage_quote_line_items)
     mcp.add_tool(get_my_accounts)
     mcp.add_tool(get_opportunities_for_account)
+
+if agent_type in ["analyst", "all"]:
+    mcp.add_tool(get_deal_history)
+    mcp.add_tool(get_my_accounts)
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

@@ -57,6 +57,7 @@ async def handle_tool_result(
     session_id: str,
     websocket: WebSocket,
     state: AppState,
+    current_agent: Optional[str] = None,
 ) -> None:
     """Processes side effects triggered by specific tool results.
 
@@ -77,8 +78,11 @@ async def handle_tool_result(
                     "options":       parsed["accounts"],
                 })
                 logger.info("Account picklist sent → %d options", len(parsed["accounts"]))
-                state.quote_flow[session_id] = True
-                logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                if current_agent != "Quote_Analyst":
+                    state.quote_flow[session_id] = True
+                    logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                else:
+                    logger.info("Session %s → Quote_Analyst active, keeping quote flow INACTIVE", session_id)
 
             elif tool_name == TOOL_OPPORTUNITIES and parsed.get("opportunities") is not None:
                 await websocket.send_json({
@@ -90,7 +94,11 @@ async def handle_tool_result(
                     "Opportunity picklist sent → %d options",
                     len(parsed["opportunities"]),
                 )
-                state.quote_flow[session_id] = True
+                if current_agent != "Quote_Analyst":
+                    state.quote_flow[session_id] = True
+                    logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                else:
+                    logger.info("Session %s → Quote_Analyst active, keeping quote flow INACTIVE", session_id)
 
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse picklist tool response: %s", exc)
@@ -203,7 +211,7 @@ async def process_events(
             tool_name = getattr(fn_resp, "name", "")
             text_content = extract_tool_text(fn_resp)
             logger.info("[TOOL RESULT] %s → %d chars", tool_name, len(text_content))
-            await handle_tool_result(tool_name, text_content, session_id, websocket, state)
+            await handle_tool_result(tool_name, text_content, session_id, websocket, state, current_agent)
 
         # ── Final text reply ──────────────────────────────────────────────
         if event.is_final_response() and event.content:
