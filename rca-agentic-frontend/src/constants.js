@@ -28,6 +28,7 @@ export const TOOL_CURVE_MID_Y = 368;
 
 // Dynamic tool positions — spread symmetrically around the agent's cx based on count
 export const getToolPositions = (agentCx, numTools = 4) => {
+  if (numTools === 0) return [];
   if (numTools === 1) {
     return [{ x: agentCx, y: 465 }];
   }
@@ -68,8 +69,9 @@ export const TOOL_LABELS = {
   transfer_to_agent: 'Route',
   get_quote_line_items: 'Line Items',
   manage_quote_line_items: 'Update Lines',
-  get_deal_history: 'Deal History',
+   get_deal_history: 'Deal History',
   summary_node: 'Summary Node',
+  win_rate: 'Win Rate',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
@@ -88,7 +90,7 @@ export const INIT_ORCH = {
 export const SUGGESTIONS = [
   {
     label: 'DEAL HISTORY',
-    text: 'Provide the detailed view of previous quotes for Edge Communication.',
+    text: 'Provide the detailed view of previous quotes.',
     color: '#818cf8',
     bg: 'rgba(129, 140, 248, 0.08)',
     border: 'rgba(129, 140, 248, 0.3)'

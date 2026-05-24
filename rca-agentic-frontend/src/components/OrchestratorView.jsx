@@ -24,6 +24,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
 
   const isSummarizeRequestRef = useRef(false);
+  const isWinRateRequestRef = useRef(false);
+  const [reasoning, setReasoning] = useState(null);
   const summarizeTimeoutsRef = useRef([]);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
@@ -154,13 +156,19 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
               clearSummarizeTimeouts();
               setOrchestration(prev => {
                 const n = { ...prev };
-                if (isSummarizeRequestRef.current) {
+                if (isWinRateRequestRef.current) {
                   n.coordinator = 'done';
-                  n.Quote_Architect = {
-                    state: 'idle',
-                    routedByDm: false,
-                    tools: []
+                  n.Quote_Analyst = {
+                    state: 'done',
+                    routedByDm: true,
+                    tools: [
+                      { name: 'get_my_accounts', state: 'done' },
+                      { name: 'get_deal_history', state: 'done' },
+                      { name: 'win_rate', state: 'done' }
+                    ]
                   };
+                } else if (isSummarizeRequestRef.current) {
+                  n.coordinator = 'done';
                   n.Quote_Analyst = {
                     state: 'done',
                     routedByDm: true,
@@ -193,14 +201,56 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
  
           case 'AGENT_START':
             const name = data.agent;
+            if (name === 'Deal_Manager' && isWinRateRequestRef.current) {
+              clearSummarizeTimeouts();
+              setOrchestration(prev => {
+                const n = { ...prev };
+                n.coordinator = 'active';
+                n.Quote_Analyst = { state: 'idle', tools: [], routedByDm: false };
+                return n;
+              });
+
+              // Timeout 1: Handoff to Quote_Analyst and trigger get_my_accounts
+              const t1 = setTimeout(() => {
+                setOrchestration(prev => {
+                  const n = { ...prev };
+                  n.coordinator = 'done';
+                  if (n.Quote_Analyst) {
+                    n.Quote_Analyst.state = 'active';
+                    n.Quote_Analyst.tools = [
+                      { name: 'get_my_accounts', state: 'active' }
+                    ];
+                  }
+                  return n;
+                });
+                setReasoning("Fetching account details...");
+              }, 800);
+
+              // Timeout 2: Transition get_my_accounts to done, and get_deal_history to active
+              const t2 = setTimeout(() => {
+                setOrchestration(prev => {
+                  const n = { ...prev };
+                  if (n.Quote_Analyst) {
+                    n.Quote_Analyst.tools = [
+                      { name: 'get_my_accounts', state: 'done' },
+                      { name: 'get_deal_history', state: 'active' }
+                    ];
+                  }
+                  return n;
+                });
+                setReasoning("Retrieving Salesforce deal history...");
+              }, 2000);
+
+              summarizeTimeoutsRef.current = [t1, t2];
+              break;
+            }
+
             if (name === 'Deal_Manager' && isSummarizeRequestRef.current) {
               clearSummarizeTimeouts();
               setOrchestration(prev => {
                 const n = { ...prev };
                 n.coordinator = 'active';
-                for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
-                  n[k] = { state: 'idle', tools: [], routedByDm: false };
-                }
+                n.Quote_Analyst = { state: 'idle', tools: [], routedByDm: false };
                 return n;
               });
 
@@ -239,7 +289,39 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
               break;
             }
 
-            if (name === 'Summary_Node') {
+            if (name === 'Summary_Node' || name === 'Win_Rate_Node') {
+              if (name === 'Win_Rate_Node') {
+                clearSummarizeTimeouts();
+                setOrchestration(prev => {
+                  const n = { ...prev };
+                  if (n.Quote_Analyst) {
+                    n.Quote_Analyst.state = 'active';
+                    n.Quote_Analyst.tools = [
+                      { name: 'get_my_accounts', state: 'done' },
+                      { name: 'get_deal_history', state: 'done' },
+                      { name: 'win_rate', state: 'active' }
+                    ];
+                  }
+                  return n;
+                });
+
+                // After a delay, set win_rate tool to done
+                const t3 = setTimeout(() => {
+                  setOrchestration(prev => {
+                    const n = { ...prev };
+                    if (n.Quote_Analyst) {
+                      n.Quote_Analyst.tools = [
+                        { name: 'get_my_accounts', state: 'done' },
+                        { name: 'get_deal_history', state: 'done' },
+                        { name: 'win_rate', state: 'done' }
+                      ];
+                    }
+                    return n;
+                  });
+                }, 1200);
+
+                summarizeTimeoutsRef.current = [t3];
+              }
               break;
             }
 
@@ -452,11 +534,14 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
     const cmd = text.toLowerCase();
 
-    const isSummarizeOrPrioritize = cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal');
+    const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
+    isWinRateRequestRef.current = isWinRateRequest;
+
+    const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
 
     // Support dynamic preview/summary/overview commands
-    const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    const isPreviewCmd = !isSummarizeOrPrioritize && !isWinRateRequest && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
       const latestFromState = quotes[quotes.length - 1]?.id;
@@ -665,6 +750,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                 </div>
               </div>
             ))}
+            {reasoning && (
+              <div className="flex items-center gap-2 text-indigo-500 text-[10px] font-bold py-2 animate-pulse">
+                <Loader2 size={12} className="animate-spin" />
+                <span>{reasoning}</span>
+              </div>
+            )}
             {composingReply && <TypingIndicator />}
             {leftWidth > 110 && messages.length === 1 && (
               <div className="pt-2 pb-6 space-y-4">

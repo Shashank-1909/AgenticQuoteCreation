@@ -6,6 +6,15 @@ import {
   ZoomIn, ZoomOut, MapPin, Layers, ShieldCheck, PlusCircle, Sun, Moon
 } from 'lucide-react';
 import { config } from '../config';
+import SelectionPanel from './SelectionPanel';
+import AgentGraph from './AgentGraph';
+import TypingIndicator from './TypingIndicator';
+import QuotePreviewModal from './QuotePreviewModal';
+import ProductConfigModal from './ProductConfigModal';
+import DealHistoryPanel from './DealHistoryPanel';
+import WinRateBattleCard from './WinRateBattleCard';
+import { INIT_ORCH, SUGGESTIONS } from '../constants';
+import './AgentforceView.css';
 
 const getActionIcon = (label) => {
   const lc = label.toLowerCase();
@@ -26,15 +35,6 @@ const getActionIcon = (label) => {
   }
   return <Sparkles size={14} className="text-indigo-500 flex-shrink-0" />;
 };
-
-import SelectionPanel from './SelectionPanel';
-import AgentGraph from './AgentGraph';
-import TypingIndicator from './TypingIndicator';
-import QuotePreviewModal from './QuotePreviewModal';
-import ProductConfigModal from './ProductConfigModal';
-import DealHistoryPanel from './DealHistoryPanel';
-import { INIT_ORCH, SUGGESTIONS } from '../constants';
-import './AgentforceView.css';
 
 const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
   const [rightWidth, setRightWidth] = useState(500);
@@ -113,6 +113,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
   const pendingCreationRef = useRef(false);
   const dealHistoryLoadingRef = useRef(false);
   const isSummarizeRequestRef = useRef(false);
+  const isWinRateRequestRef = useRef(false);
   const summarizeTimeoutsRef = useRef([]);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
@@ -151,13 +152,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
           setReasoning(null);
           setOrchestration(prev => {
             const n = { ...prev };
-            if (isSummarizeRequestRef.current) {
+            if (isWinRateRequestRef.current) {
               n.coordinator = 'done';
-              n.Quote_Architect = {
-                state: 'idle',
-                routedByDm: false,
-                tools: []
+              n.Quote_Analyst = {
+                state: 'done',
+                routedByDm: true,
+                tools: [
+                  { name: 'get_my_accounts', state: 'done' },
+                  { name: 'get_deal_history', state: 'done' },
+                  { name: 'win_rate', state: 'done' }
+                ]
               };
+            } else if (isSummarizeRequestRef.current) {
+              n.coordinator = 'done';
               n.Quote_Analyst = {
                 state: 'done',
                 routedByDm: true,
@@ -190,15 +197,64 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
 
       case 'AGENT_START':
         const name = data.agent;
+        if (name === 'Deal_Manager' && isWinRateRequestRef.current) {
+          clearSummarizeTimeouts();
+          setReasoning("Analyzing win rate request...");
+          setOrchestration(prev => {
+            const n = { ...prev };
+            n.coordinator = 'active';
+            n.Quote_Analyst = { state: 'idle', tools: [], routedByDm: false };
+            return n;
+          });
+
+          // Timeout 1: Handoff to Quote_Analyst and trigger get_my_accounts tool
+          const t1 = setTimeout(() => {
+            setOrchestration(prev => {
+              const n = { ...prev };
+              n.coordinator = 'done';
+              if (n.Quote_Analyst) {
+                n.Quote_Analyst = {
+                  ...n.Quote_Analyst,
+                  state: 'active',
+                  tools: [
+                    { name: 'get_my_accounts', state: 'active' }
+                  ]
+                };
+              }
+              return n;
+            });
+            setReasoning("Fetching account details...");
+          }, 800);
+
+          // Timeout 2: Transition get_my_accounts to done, and get_deal_history to active
+          const t2 = setTimeout(() => {
+            setOrchestration(prev => {
+              const n = { ...prev };
+              if (n.Quote_Analyst) {
+                n.Quote_Analyst = {
+                  ...n.Quote_Analyst,
+                  tools: [
+                    { name: 'get_my_accounts', state: 'done' },
+                    { name: 'get_deal_history', state: 'active' }
+                  ]
+                };
+              }
+              return n;
+            });
+            setReasoning("Retrieving Salesforce deal history...");
+          }, 2000);
+
+          summarizeTimeoutsRef.current = [t1, t2];
+          break;
+        }
+
         if (name === 'Deal_Manager' && isSummarizeRequestRef.current) {
           clearSummarizeTimeouts();
           setReasoning("Analyzing deal history...");
           setOrchestration(prev => {
             const n = { ...prev };
             n.coordinator = 'active';
-            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
-              n[k] = { state: 'idle', tools: [], routedByDm: false };
-            }
+            n.Quote_Analyst = { state: 'idle', tools: [], routedByDm: false };
             return n;
           });
 
@@ -243,7 +299,46 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
           break;
         }
 
-        if (name === 'Summary_Node') {
+        if (name === 'Summary_Node' || name === 'Win_Rate_Node') {
+          if (name === 'Win_Rate_Node') {
+            clearSummarizeTimeouts();
+            setReasoning("Running dynamic win rate analytics & competitor battle card compilation...");
+            setOrchestration(prev => {
+              const n = { ...prev };
+              if (n.Quote_Analyst) {
+                n.Quote_Analyst = {
+                  ...n.Quote_Analyst,
+                  state: 'active',
+                  tools: [
+                    { name: 'get_my_accounts', state: 'done' },
+                    { name: 'get_deal_history', state: 'done' },
+                    { name: 'win_rate', state: 'active' }
+                  ]
+                };
+              }
+              return n;
+            });
+
+            // After a delay, set win_rate tool to done
+            const t3 = setTimeout(() => {
+              setOrchestration(prev => {
+                const n = { ...prev };
+                if (n.Quote_Analyst) {
+                  n.Quote_Analyst = {
+                    ...n.Quote_Analyst,
+                    tools: [
+                      { name: 'get_my_accounts', state: 'done' },
+                      { name: 'get_deal_history', state: 'done' },
+                      { name: 'win_rate', state: 'done' }
+                    ]
+                  };
+                }
+                return n;
+              });
+            }, 1200);
+
+            summarizeTimeoutsRef.current = [t3];
+          }
           break;
         }
 
@@ -512,6 +607,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
     const cmd = text.toLowerCase();
 
     if (cmd.includes('different account') || cmd.includes('list my accounts') || cmd.includes('list accounts')) {
+      setDealHistoryData(null);
       setOrchestration(prev => {
         const n = { ...prev };
         if (n.Quote_Architect) {
@@ -525,26 +621,99 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
     }
 
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    const isSummarizeOrPrioritize = cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal');
+    const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
+    isWinRateRequestRef.current = isWinRateRequest;
+
+    const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
-    const isDealHistoryRequest = !isSummarizeOrPrioritize && (
+    const isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
       cmd.includes('deal history') || cmd.includes('previous quotes') || cmd.includes('historical quotes') || cmd.includes('detailed view of')
     );
 
-    if (!isDealHistoryRequest && !isSummarizeOrPrioritize) {
+    if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest) {
       setDealHistoryData(null);
       setDealHistoryAccount('Edge Communications');
     }
 
-    // Lazy load deal history for summarization/prioritization if not loaded yet
-    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
+    const detectAccountName = (inputStr) => {
+      const s = inputStr.toLowerCase();
+      if (s.includes('edge') || s.includes('communications')) return 'Edge Communications';
+      if (s.includes('aurobindo') || s.includes('pharma')) return 'Aurobindo Pharma R&D';
+      if (s.includes('pyramid') || s.includes('construction')) return 'Pyramid Construction Inc.';
+      return null;
+    };
+
+    // Lazy load deal history for win rate request if not loaded yet
+    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0)) {
+      const detectedAcc = detectAccountName(text);
+      if (detectedAcc) {
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        setInputValue('');
+        setDealHistoryAccount(detectedAcc);
+        setDealHistoryLoading(true);
+        dealHistoryLoadingRef.current = true;
+        try {
+          const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
+        const data = await resp.json();
+        if (data.status === 'success') {
+          setDealHistoryData(data.quotes);
+          const quotesText = data.quotes.map(q => {
+            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+          }).join('\n');
+
+          ws.current?.send(JSON.stringify({
+            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+            module: selectedModule?.id || 'sales'
+          }));
+        } else {
+          ws.current?.send(JSON.stringify({
+            text: text,
+            module: selectedModule?.id || 'sales'
+          }));
+        }
+      } catch (err) {
+        console.error("Error lazy-loading deal history for win rate:", err);
+        ws.current?.send(JSON.stringify({
+          text: text,
+          module: selectedModule?.id || 'sales'
+        }));
+      } finally {
+        setDealHistoryLoading(false);
+        dealHistoryLoadingRef.current = false;
+      }
+      return;
+      }
+    }
+
+    if (isWinRateRequest) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
       setInputValue('');
-      setDealHistoryAccount('Edge Communications');
       setDealHistoryLoading(true);
       dealHistoryLoadingRef.current = true;
-      try {
-        const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=Edge%20Communications`);
+      const quotesText = (dealHistoryData || []).map(q => {
+        const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+        return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+      }).join('\n');
+
+      ws.current?.send(JSON.stringify({
+        text: text + (quotesText ? `\n\n[Historical Quotes in context:\n${quotesText}]` : ''),
+        module: selectedModule?.id || 'sales'
+      }));
+      return;
+    }
+
+    // Lazy load deal history for summarization/prioritization if not loaded yet
+    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
+      const detectedAcc = detectAccountName(text);
+      if (detectedAcc) {
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        setInputValue('');
+        setDealHistoryAccount(detectedAcc);
+        setDealHistoryLoading(true);
+        dealHistoryLoadingRef.current = true;
+        try {
+          const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
         const data = await resp.json();
         if (data.status === 'success') {
           setDealHistoryData(data.quotes);
@@ -574,6 +743,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
         dealHistoryLoadingRef.current = false;
       }
       return;
+      }
     }
 
     if (isDealHistoryRequest) {
@@ -895,11 +1065,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
           {workspaceView === 'preview' && (
             (dealHistoryLoading || dealHistoryData) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
-                <DealHistoryPanel
-                  data={dealHistoryData}
-                  accountName={dealHistoryAccount}
-                  isLoading={dealHistoryLoading}
-                />
+                {isWinRateRequestRef.current ? (
+                  <WinRateBattleCard
+                    data={dealHistoryData}
+                    accountName={dealHistoryAccount}
+                    isLoading={dealHistoryLoading}
+                  />
+                ) : (
+                  <DealHistoryPanel
+                    data={dealHistoryData}
+                    accountName={dealHistoryAccount}
+                    isLoading={dealHistoryLoading}
+                  />
+                )}
               </div>
             ) : (
               <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
@@ -1264,47 +1442,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
               </div>
             )}
 
-            {showPreviewSuggestion && (
-              <div className="flex justify-start">
-                <button
-                  onClick={() => {
-                    setInputValue('Preview the quote');
-                    setShowPreviewSuggestion(false);
-                  }}
-                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                >
-                  ✨ Preview Quote
-                </button>
-              </div>
-            )}
 
-            {showUpdateSuggestion && (
-              <div className="flex justify-start">
-                <button
-                  onClick={() => {
-                    setInputValue('Can you update the quantity to 10 and discount to 10% in this quote');
-                    setShowUpdateSuggestion(false);
-                  }}
-                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                >
-                  ✨ Update Quote
-                </button>
-              </div>
-            )}
-
-            {showUpdateAllSuggestion && (
-              <div className="flex justify-start">
-                <button
-                  onClick={() => {
-                    setInputValue('Update all the quote line items with quantity 10 and discount 10%');
-                    setShowUpdateAllSuggestion(false);
-                  }}
-                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                >
-                  ✨ Update All Items
-                </button>
-              </div>
-            )}
           </div>
 
           <div ref={chatEndRef} />

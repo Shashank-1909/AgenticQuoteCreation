@@ -4,10 +4,13 @@ import { TrendingUp, TrendingDown, Clock, ChevronDown, ChevronUp, Tag, Sparkles,
 const statusConfig = {
   'Closed Won':  { label: 'CLOSED WON',  bg: '#dcfce7', color: '#16a34a', dot: '#22c55e' },
   'Closed Lost': { label: 'CLOSED LOST', bg: '#fee2e2', color: '#dc2626', dot: '#ef4444' },
-  'Draft':       { label: 'DRAFT',       bg: '#f1f5f9', color: '#64748b', dot: '#94a3b8' },
+  'Draft':       { label: 'DRAFT',       bg: '#fff7ed', color: '#c2410c', dot: '#f97316' },
   'In Review':   { label: 'IN REVIEW',   bg: '#fef3c7', color: '#d97706', dot: '#f59e0b' },
   'Approved':    { label: 'APPROVED',    bg: '#ede9fe', color: '#7c3aed', dot: '#8b5cf6' },
   'Presented':   { label: 'PRESENTED',  bg: '#dbeafe', color: '#1d4ed8', dot: '#3b82f6' },
+  'Accepted':    { label: 'ACCEPTED',    bg: '#d1fae5', color: '#065f46', dot: '#10b981' },
+  'Rejected':    { label: 'REJECTED',    bg: '#fef2f2', color: '#b91c1c', dot: '#ef4444' },
+  'Expired':     { label: 'EXPIRED',     bg: '#f8fafc', color: '#475569', dot: '#64748b' },
 };
 
 function StatusBadge({ status }) {

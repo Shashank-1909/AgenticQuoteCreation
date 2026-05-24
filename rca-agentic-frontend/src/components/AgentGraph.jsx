@@ -9,6 +9,26 @@ import {
   getToolPositions, makeToolPath, shortLabel
 } from '../constants';
 
+const TOOL_R = 22;
+
+const makeDynamicToolPath = (agentCx, agentBot, tp) => {
+  const midY = (agentBot + tp.y - TOOL_R) / 2;
+  return `M ${agentCx} ${agentBot} C ${agentCx} ${midY} ${tp.x} ${midY} ${tp.x} ${tp.y - TOOL_R}`;
+};
+
+const getShiftedToolPositions = (agentCx, agentOffset, tools, offsets) => {
+  if (!tools || tools.length === 0) return [];
+  const basePositions = getToolPositions(agentCx, tools.length);
+  return basePositions.map((tp, idx) => {
+    const tool = tools[idx];
+    const tOffset = offsets[tool.name] || { x: 0, y: 0 };
+    return {
+      x: tp.x + tOffset.x,
+      y: tp.y + agentOffset.y + tOffset.y
+    };
+  });
+};
+
 // ─────────────────────────────────────────────────────────────
 // ORCHESTRATION GRAPH
 // ─────────────────────────────────────────────────────────────
@@ -33,6 +53,61 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   const aActive = arch.state === 'active', aDone = arch.state === 'done';
   const uActive = updator.state === 'active', uDone = updator.state === 'done';
   const anActive = analyst?.state === 'active', anDone = analyst?.state === 'done';
+
+  // Drag and drop state
+  const [offsets, setOffsets] = React.useState({});
+  const [draggedId, setDraggedId] = React.useState(null);
+  const dragStartPos = React.useRef({ x: 0, y: 0 });
+  const elementStartOffset = React.useRef({ x: 0, y: 0 });
+
+  const startDrag = (e, id) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    setDraggedId(id);
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    dragStartPos.current = { x: clientX, y: clientY };
+    const currentOffset = offsets[id] || { x: 0, y: 0 };
+    elementStartOffset.current = { ...currentOffset };
+  };
+
+  React.useEffect(() => {
+    if (!draggedId) return;
+
+    const handleMove = (e) => {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const dx = clientX - dragStartPos.current.x;
+      const dy = clientY - dragStartPos.current.y;
+      
+      setOffsets(prev => ({
+        ...prev,
+        [draggedId]: {
+          x: elementStartOffset.current.x + dx,
+          y: elementStartOffset.current.y + dy
+        }
+      }));
+    };
+
+    const handleEnd = () => {
+      setDraggedId(null);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [draggedId]);
 
   // Agent is composing its reply: it's still active but no tool is currently running
   const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
@@ -79,33 +154,55 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
     return GW / 2;
   };
 
-  const scoutCx = getAgentCx('scout');
-  const archCx = getAgentCx('arch');
-  const updatorCx = getAgentCx('updator');
-  const analystCx = getAgentCx('analyst');
+  // DM position details
+  const dmTop = graphActive ? DM_ACTIVE_TOP : DM_IDLE_TOP;
+  const coordinatorOffset = offsets['coordinator'] || { x: 0, y: 0 };
+  const dmLeftPos = DM_LEFT + coordinatorOffset.x;
+  const dmTopPos = dmTop + coordinatorOffset.y;
+  const dmBotX = GW / 2 + coordinatorOffset.x;
+  const dmBotY = dmTopPos + DM_H;
 
+  const scoutOffset = offsets['scout'] || { x: 0, y: 0 };
+  const scoutCx = getAgentCx('scout') + scoutOffset.x;
   const scoutLeft = scoutCx - NODE_W / 2;
+  const scoutTopY = NODE_TOP + scoutOffset.y;
+  const scoutBotY = scoutTopY + NODE_H;
+
+  const archOffset = offsets['arch'] || { x: 0, y: 0 };
+  const archCx = getAgentCx('arch') + archOffset.x;
   const archLeft = archCx - NODE_W / 2;
+  const archTopY = NODE_TOP + archOffset.y;
+  const archBotY = archTopY + NODE_H;
+
+  const updatorOffset = offsets['updator'] || { x: 0, y: 0 };
+  const updatorCx = getAgentCx('updator') + updatorOffset.x;
   const updatorLeft = updatorCx - NODE_W / 2;
+  const updatorTopY = NODE_TOP + updatorOffset.y;
+  const updatorBotY = updatorTopY + NODE_H;
+
+  const analystOffset = offsets['analyst'] || { x: 0, y: 0 };
+  const analystCx = getAgentCx('analyst') + analystOffset.x;
   const analystLeft = analystCx - NODE_W / 2;
+  const analystTopY = NODE_TOP + analystOffset.y;
+  const analystBotY = analystTopY + NODE_H;
 
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
-  const pathToScout   = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${scoutCx}   ${MID_Y} ${scoutCx}   ${NODE_TOP}`;
-  const pathToArch    = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${archCx}    ${MID_Y} ${archCx}    ${NODE_TOP}`;
-  const pathToUpdator = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${updatorCx} ${MID_Y} ${updatorCx} ${NODE_TOP}`;
-  const pathToAnalyst = `M ${GW / 2} ${DM_ACTIVE_BOT} C ${GW / 2} ${MID_Y} ${analystCx} ${MID_Y} ${analystCx} ${NODE_TOP}`;
+  const pathToScout   = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + scoutTopY) / 2} ${scoutCx} ${(dmBotY + scoutTopY) / 2} ${scoutCx}   ${scoutTopY}`;
+  const pathToArch    = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + archTopY) / 2} ${archCx}    ${(dmBotY + archTopY) / 2} ${archCx}    ${archTopY}`;
+  const pathToUpdator = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + updatorTopY) / 2} ${updatorCx} ${(dmBotY + updatorTopY) / 2} ${updatorCx} ${updatorTopY}`;
+  const pathToAnalyst = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + analystTopY) / 2} ${analystCx} ${(dmBotY + analystTopY) / 2} ${analystCx} ${analystTopY}`;
 
-  // ── Dynamic tool positions (relative to agent cx) ─────────
-  const scoutToolPos   = getToolPositions(scoutCx, scout.tools.length);
-  const archToolPos    = getToolPositions(archCx, arch.tools.length);
-  const updatorToolPos = getToolPositions(updatorCx, updator.tools.length);
-  const analystToolPos = getToolPositions(analystCx, analyst?.tools?.length || 0);
-
-  // DM vertical position
-  const dmTop = graphActive ? DM_ACTIVE_TOP : DM_IDLE_TOP;
+  // ── Dynamic tool positions (relative to agent cx and offset) ─────────
+  const scoutToolPos   = getShiftedToolPositions(scoutCx, scoutOffset, scout.tools, offsets);
+  const archToolPos    = getShiftedToolPositions(archCx, archOffset, arch.tools, offsets);
+  const updatorToolPos = getShiftedToolPositions(updatorCx, updatorOffset, updator.tools, offsets);
+  const analystToolPos = getShiftedToolPositions(analystCx, analystOffset, analyst?.tools || [], offsets);
 
   // Path transition style for smooth morphing
   const pathTransition = 'd 0.72s cubic-bezier(0.4,0,0.2,1), stroke-opacity 0.5s';
+  const isDraggingAny = draggedId !== null;
+  const pathTransitionStyle = isDraggingAny ? { transition: 'none' } : { transition: pathTransition };
+
 
   return (
     <div style={{ position: 'relative', width: GW, height: GH, margin: '0 auto', flexShrink: 0 }}>
@@ -134,8 +231,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
           {/* Gradient: DM indigo → Scout cyan  (follows the bezier direction) */}
           <linearGradient id="grad-scout"
-            x1={GW / 2} y1={DM_ACTIVE_BOT}
-            x2={scoutCx} y2={NODE_TOP}
+            x1={dmBotX} y1={dmBotY}
+            x2={scoutCx} y2={scoutTopY}
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} />
@@ -143,8 +240,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
           {/* Gradient: DM indigo → Arch amber */}
           <linearGradient id="grad-arch"
-            x1={GW / 2} y1={DM_ACTIVE_BOT}
-            x2={archCx} y2={NODE_TOP}
+            x1={dmBotX} y1={dmBotY}
+            x2={archCx} y2={archTopY}
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} />
@@ -152,8 +249,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
           {/* Gradient: DM indigo → Updator violet */}
           <linearGradient id="grad-updator"
-            x1={GW / 2} y1={DM_ACTIVE_BOT}
-            x2={updatorCx} y2={NODE_TOP}
+            x1={dmBotX} y1={dmBotY}
+            x2={updatorCx} y2={updatorTopY}
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'} />
@@ -161,8 +258,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
           {/* Gradient: DM indigo → Analyst green */}
           <linearGradient id="grad-analyst"
-            x1={GW / 2} y1={DM_ACTIVE_BOT}
-            x2={analystCx} y2={NODE_TOP}
+            x1={dmBotX} y1={dmBotY}
+            x2={analystCx} y2={analystTopY}
             gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#31A24C' : '#34d399'} />
@@ -181,7 +278,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   stroke="url(#grad-scout)"
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
-                  style={{ transition: pathTransition }}
+                  style={pathTransitionStyle}
                 />
                 {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
                 {scoutHandoffActive && (
@@ -191,7 +288,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
-                      transition: pathTransition
+                      ...pathTransitionStyle
                     }}
                   />
                 )}
@@ -214,7 +311,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   stroke="url(#grad-arch)"
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
-                  style={{ transition: pathTransition }}
+                  style={pathTransitionStyle}
                 />
                 {/* L2: Flowing dashes — handoff only (DM routed, no tools yet) */}
                 {archHandoffActive && (
@@ -224,7 +321,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
-                      transition: pathTransition
+                      ...pathTransitionStyle
                     }}
                   />
                 )}
@@ -247,7 +344,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   stroke="url(#grad-updator)"
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
-                  style={{ transition: pathTransition }}
+                  style={pathTransitionStyle}
                 />
                 {/* L2: Flowing dashes — handoff only */}
                 {updatorHandoffActive && (
@@ -257,7 +354,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
-                      transition: pathTransition
+                      ...pathTransitionStyle
                     }}
                   />
                 )}
@@ -280,7 +377,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   stroke="url(#grad-analyst)"
                   strokeWidth={csw} fill="none"
                   strokeOpacity={cLit ? ch : cq}
-                  style={{ transition: pathTransition }}
+                  style={pathTransitionStyle}
                 />
                 {/* L2: Flowing dashes — handoff only */}
                 {analystHandoffActive && (
@@ -290,7 +387,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                     style={{
                       strokeDasharray: '6 18',
                       animation: 'flowDash 0.65s linear infinite',
-                      transition: pathTransition
+                      ...pathTransitionStyle
                     }}
                   />
                 )}
@@ -311,7 +408,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             {scout.tools.slice(0, 4).map((tool, i) => {
               const tp = scoutToolPos[i];
               const pid = `ps${i}`;
-              const d = makeToolPath(scoutCx, NODE_BOT, tp);
+              const d = makeDynamicToolPath(scoutCx, scoutBotY, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
               return (
@@ -320,13 +417,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <path id={pid} d={d}
                     stroke="#22d3ee" strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={{ transition: pathTransition }}
+                    style={pathTransitionStyle}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
                       stroke="#22d3ee" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
@@ -345,7 +442,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             {arch.tools.slice(0, 4).map((tool, i) => {
               const tp = archToolPos[i];
               const pid = `pa${i}`;
-              const d = makeToolPath(archCx, NODE_BOT, tp);
+              const d = makeDynamicToolPath(archCx, archBotY, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
               const strokeColor = '#fbbf24';
@@ -356,13 +453,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <path id={pid} d={d}
                     stroke={strokeColor} strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={{ transition: pathTransition }}
+                    style={pathTransitionStyle}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
                       stroke={strokeColor} strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
@@ -381,7 +478,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             {updator.tools.slice(0, 4).map((tool, i) => {
               const tp = updatorToolPos[i];
               const pid = `pu${i}`;
-              const d = makeToolPath(updatorCx, NODE_BOT, tp);
+              const d = makeDynamicToolPath(updatorCx, updatorBotY, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
               return (
@@ -390,13 +487,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <path id={pid} d={d}
                     stroke="#a78bfa" strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={{ transition: pathTransition }}
+                    style={pathTransitionStyle}
                   />
                   {/* L2: Flowing dashes — only while THIS tool is active */}
                   {toolActive && (
                     <path d={d}
                       stroke="#a78bfa" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
                     />
                   )}
                   {/* L3: Leading dot — only while THIS tool is active */}
@@ -415,7 +512,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             {analyst && analyst.tools && analyst.tools.slice(0, 4).map((tool, i) => {
               const tp = analystToolPos[i];
               const pid = `pan${i}`;
-              const d = makeToolPath(analystCx, NODE_BOT, tp);
+              const d = makeDynamicToolPath(analystCx, analystBotY, tp);
               const toolActive = tool.state === 'active';
               const toolDone = tool.state === 'done';
               return (
@@ -424,13 +521,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                   <path id={pid} d={d}
                     stroke="#34d399" strokeWidth={tsw} fill="none"
                     strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={{ transition: pathTransition }}
+                    style={pathTransitionStyle}
                   />
                   {/* L2: Flowing dashes */}
                   {toolActive && (
                     <path d={d}
                       stroke="#34d399" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', transition: pathTransition }}
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
                     />
                   )}
                   {/* L3: Leading dot */}
@@ -453,13 +550,19 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       {/* ── DOM nodes ── */}
 
       {/* Deal Manager — slides from center to top on first query */}
-      <div style={{
-        position: 'absolute',
-        left: DM_LEFT, top: dmTop,
-        width: DM_W, height: DM_H,
-        transition: 'top 0.78s cubic-bezier(0.4,0,0.2,1)',
-        zIndex: 10,
-      }}>
+      <div 
+        onMouseDown={(e) => startDrag(e, 'coordinator')}
+        onTouchStart={(e) => startDrag(e, 'coordinator')}
+        style={{
+          position: 'absolute',
+          left: dmLeftPos, top: dmTopPos,
+          width: DM_W, height: DM_H,
+          transition: draggedId === 'coordinator' ? 'none' : 'top 0.78s cubic-bezier(0.4,0,0.2,1), left 0.72s cubic-bezier(0.4,0,0.2,1)',
+          zIndex: 10,
+          cursor: draggedId === 'coordinator' ? 'grabbing' : 'grab',
+          userSelect: 'none',
+        }}
+      >
         <NodeCard
           label="Deal Manager" subLabel={cActive ? 'Routing…' : cDone ? 'Dispatched' : 'Coordinator'}
           icon={Network} w={DM_W} h={DM_H} borderRadius={16}
@@ -471,12 +574,18 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
       {/* Agent cards — appear only when activated, shift horizontally dynamically */}
       {graphReady && showScout && (
-        <div style={{
-          position: 'absolute',
-          left: scoutLeft, top: NODE_TOP,
-          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
-          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
-        }}>
+        <div 
+          onMouseDown={(e) => startDrag(e, 'scout')}
+          onTouchStart={(e) => startDrag(e, 'scout')}
+          style={{
+            position: 'absolute',
+            left: scoutLeft, top: scoutTopY,
+            transition: draggedId === 'scout' ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
+            animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+            cursor: draggedId === 'scout' ? 'grabbing' : 'grab',
+            userSelect: 'none',
+          }}
+        >
           <NodeCard
             label="Catalog Scout"
             subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
@@ -494,13 +603,19 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       )}
 
       {graphReady && showArch && (
-        <div style={{
-          position: 'absolute',
-          left: archLeft, top: NODE_TOP,
-          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
-          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
-          animationDelay: showScout && visibleKeys.length === 2 ? '0.1s' : '0s',
-        }}>
+        <div 
+          onMouseDown={(e) => startDrag(e, 'arch')}
+          onTouchStart={(e) => startDrag(e, 'arch')}
+          style={{
+            position: 'absolute',
+            left: archLeft, top: archTopY,
+            transition: draggedId === 'arch' ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
+            animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+            animationDelay: showScout && visibleKeys.length === 2 ? '0.1s' : '0s',
+            cursor: draggedId === 'arch' ? 'grabbing' : 'grab',
+            userSelect: 'none',
+          }}
+        >
           <NodeCard
             label="Quote Builder"
             subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
@@ -519,12 +634,18 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
       {/* Quote Updator — violet, appears centered during update flow */}
       {graphReady && showUpdator && (
-        <div style={{
-          position: 'absolute',
-          left: updatorLeft, top: NODE_TOP,
-          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
-          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
-        }}>
+        <div 
+          onMouseDown={(e) => startDrag(e, 'updator')}
+          onTouchStart={(e) => startDrag(e, 'updator')}
+          style={{
+            position: 'absolute',
+            left: updatorLeft, top: updatorTopY,
+            transition: draggedId === 'updator' ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
+            animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+            cursor: draggedId === 'updator' ? 'grabbing' : 'grab',
+            userSelect: 'none',
+          }}
+        >
           <NodeCard
             label="Quote Modifier"
             subLabel={uActive ? (updatorComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
@@ -542,12 +663,18 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       )}
 
       {graphReady && showAnalyst && (
-        <div style={{
-          position: 'absolute',
-          left: analystLeft, top: NODE_TOP,
-          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
-          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
-        }}>
+        <div 
+          onMouseDown={(e) => startDrag(e, 'analyst')}
+          onTouchStart={(e) => startDrag(e, 'analyst')}
+          style={{
+            position: 'absolute',
+            left: analystLeft, top: analystTopY,
+            transition: draggedId === 'analyst' ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
+            animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+            cursor: draggedId === 'analyst' ? 'grabbing' : 'grab',
+            userSelect: 'none',
+          }}
+        >
           <NodeCard
             label="Quote Analyst"
             subLabel={anActive ? (analystComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
@@ -573,7 +700,10 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#22d3ee"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
-            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+            onMouseDown={(e) => startDrag(e, tool.name)}
+            onTouchStart={(e) => startDrag(e, tool.name)}
+            cursor={draggedId === tool.name ? 'grabbing' : 'grab'}
+            style={{ transition: draggedId === tool.name ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)' }}
           />
         );
       })}
@@ -584,7 +714,10 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#fbbf24"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
-            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+            onMouseDown={(e) => startDrag(e, tool.name)}
+            onTouchStart={(e) => startDrag(e, tool.name)}
+            cursor={draggedId === tool.name ? 'grabbing' : 'grab'}
+            style={{ transition: draggedId === tool.name ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)' }}
           />
         );
       })}
@@ -595,7 +728,10 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#a78bfa"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
-            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+            onMouseDown={(e) => startDrag(e, tool.name)}
+            onTouchStart={(e) => startDrag(e, tool.name)}
+            cursor={draggedId === tool.name ? 'grabbing' : 'grab'}
+            style={{ transition: draggedId === tool.name ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)' }}
           />
         );
       })}
@@ -606,7 +742,10 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
             label={shortLabel(tool.name)} color="#34d399"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
-            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+            onMouseDown={(e) => startDrag(e, tool.name)}
+            onTouchStart={(e) => startDrag(e, tool.name)}
+            cursor={draggedId === tool.name ? 'grabbing' : 'grab'}
+            style={{ transition: draggedId === tool.name ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)' }}
           />
         );
       })}

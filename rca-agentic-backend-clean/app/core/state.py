@@ -30,3 +30,8 @@ class AppState:
     # False → use root_runner   (Deal_Manager coordinator)
     update_flow: dict[str, bool] = field(default_factory=dict)
 
+    # Tracks which sessions are win-rate related.
+    # True  → represent Win Rate node flow on the graph
+    # False → standard summary or other flows
+    win_rate_flow: dict[str, bool] = field(default_factory=dict)
+

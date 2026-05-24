@@ -152,11 +152,12 @@ async def handle_tool_result(
         try:
             parsed = json.loads(text_content)
             if parsed.get("status") == "success":
+                agent_to_start = "Win_Rate_Node" if state.win_rate_flow.get(session_id, False) else "Summary_Node"
                 await websocket.send_json({
                     "type": "AGENT_START",
-                    "agent": "Summary_Node"
+                    "agent": agent_to_start
                 })
-                logger.info("Session %s → get_deal_history complete, transitioning to Summary_Node", session_id)
+                logger.info("Session %s → get_deal_history complete, transitioning to %s", session_id, agent_to_start)
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse get_deal_history response: %s", exc)
 
