@@ -51,7 +51,13 @@ const App = () => {
       {/* Main View Router */}
       <main className="relative z-10">
         {view === 'selection' && (
-          <SelectionHub onSelect={handleSelect} isDark={isDark} setIsDark={setIsDark} language={language} setLanguage={setLanguage} />
+          <SelectionHub 
+            onSelect={handleSelect} 
+            isDark={isDark}
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
         )}
         
         {view === 'dashboard' && (
@@ -61,10 +67,7 @@ const App = () => {
             onLaunchAgentforce={handleLaunchAgentforce}
             onBack={() => setView('selection')}
             onEditQuote={(id) => console.log('Edit quote', id)}
-            isDark={isDark}
-            setIsDark={setIsDark}
             language={language}
-            setLanguage={setLanguage}
           />
         )}
         

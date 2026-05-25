@@ -62,7 +62,7 @@ export const TOOL_LABELS = {
   check_field_values: 'Field Check',
   search_catalog:     'Product Search',
   resolve_pricebook_entries: 'Pricebook',
-  evaluate_quote_graph: 'CPQ Quote',
+ evaluate_quote_graph: 'CPQ Quote',
   get_my_accounts: 'Accounts',
   get_opportunities_for_account: 'Opportunity',
   transfer_to_agent: 'Route',

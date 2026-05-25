@@ -16,9 +16,9 @@ import {
 } from '../constants';
 import { translations } from '../translations';
 
-const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
-  const [language, setLanguage] = useState('en');
-  const t = translations[language];
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, language, setLanguage }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const t = translations[language] || translations['en'];
   const translatedModuleTitle = selectedModule ? (t.modules?.[selectedModule.id] || selectedModule.title) : 'Salesforce RCA';
 
   const [messages, setMessages] = useState([

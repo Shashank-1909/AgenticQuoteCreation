@@ -3,7 +3,7 @@ import { config } from '../config';
 import { translations } from '../translations';
 
 const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, language = 'en' }) => {
-  const t = translations[language];
+  const t = translations[language] || translations['en'];
   const stats = [
     { 
       label: t?.stats?.accounts || 'Accounts',
