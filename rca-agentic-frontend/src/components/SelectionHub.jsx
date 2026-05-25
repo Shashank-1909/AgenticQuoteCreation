@@ -29,6 +29,14 @@ const modules = [
     accent: config.theme === 'Meta' ? '#F7B928' : '#f59e0b',
     gradient: config.theme === 'Meta' ? 'from-yellow-600/10 via-yellow-600/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent',
   },
+
+  {
+    id: 'migration',
+    title: 'CPQ to RCA Migration',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+    accent: config.theme === 'Meta' ? '#6B21A8' : '#8b5cf6',
+    gradient: config.theme === 'Meta' ? 'from-purple-700/10 via-purple-700/5 to-transparent' : 'from-violet-500/10 via-violet-500/5 to-transparent',
+  },
 ];
 
 const SelectionHub = ({ onSelect, isDark, setIsDark, language, setLanguage }) => {
@@ -52,24 +60,42 @@ const SelectionHub = ({ onSelect, isDark, setIsDark, language, setLanguage }) =>
       {/* ─── Top bar ─── */}
       <nav className="flex items-center justify-between mb-8">
         {/* Brand */}
+        <div className="flex items-center gap-3">
+          {config.theme === 'Meta' ? (
+            <>
+              <img src={config.META_LOGO_URL} alt="Meta" className="h-7 object-contain" />
+              <div className="h-5 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+              <div className="flex flex-col">
+                <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-7 object-contain" />
+              <div className="h-5 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
+            </>
+          )}
+        </div>
+
+        {/* Right Actions */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            {config.theme === 'Meta' ? (
-              <>
-                <img src={config.META_LOGO_URL} alt="Meta" className="h-7 object-contain" />
-                <div className="h-5 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
-                <div className="flex flex-col">
-                  <span className="text-[8.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">Meta AI Platform</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-7 object-contain" />
-                <div className="h-5 w-[1px] bg-slate-200 dark:bg-white/10 mx-2" />
-              </>
-            )}
+          {/* Stats bar */}
+          <div className="hidden md:flex items-center gap-px rounded-xl overflow-hidden border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
+            {stats.map((s, i) => (
+              <div key={i} className="flex flex-col items-center px-4 py-1.5 gap-0">
+                <span className="text-xs font-black text-indigo-500 leading-none">{s.value}</span>
+                <span className="text-[8px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{s.label}</span>
+              </div>
+            ))}
           </div>
 
+          {/* Tag */}
+          <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/8 border border-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Intelligence Portal</span>
+          </div>
+
+          {/* Dark Mode Toggle */}
           <button 
             onClick={() => setIsDark(!isDark)}
             className={`p-2 rounded-xl transition-all shadow-sm border ${
@@ -82,22 +108,6 @@ const SelectionHub = ({ onSelect, isDark, setIsDark, language, setLanguage }) =>
             {isDark ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
-        </div>
-
-        {/* Stats bar */}
-        <div className="hidden md:flex items-center gap-px rounded-xl overflow-hidden border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
-          {stats.map((s, i) => (
-            <div key={i} className="flex flex-col items-center px-4 py-1.5 gap-0">
-              <span className="text-xs font-black text-indigo-500 leading-none">{s.value}</span>
-              <span className="text-[8px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">{s.label}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Tag */}
-        <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/8 border border-indigo-500/15 text-indigo-600 dark:text-indigo-400">
-          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Intelligence Portal</span>
         </div>
       </nav>
 

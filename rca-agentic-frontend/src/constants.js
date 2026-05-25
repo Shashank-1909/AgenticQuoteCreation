@@ -28,6 +28,7 @@ export const TOOL_CURVE_MID_Y = 368;
 
 // Dynamic tool positions — spread symmetrically around the agent's cx based on count
 export const getToolPositions = (agentCx, numTools = 4) => {
+  if (numTools === 0) return [];
   if (numTools === 1) {
     return [{ x: agentCx, y: 465 }];
   }
@@ -60,17 +61,20 @@ export const makeToolPath = (agentCx, agentBot, tp) =>
 // Short display names for tools
 export const TOOL_LABELS = {
   check_field_values: 'Field Check',
-  search_catalog:     'Product Search',
+  search_catalog: 'Product Search',
   resolve_pricebook_entries: 'Pricebook',
  evaluate_quote_graph: 'CPQ Quote',
   get_my_accounts: 'Accounts',
   get_opportunities_for_account: 'Opportunity',
   transfer_to_agent: 'Route',
-  get_quote_line_items:    'Line Items',
+  get_quote_line_items: 'Line Items',
   manage_quote_line_items: 'Update Lines',
   parse_requirements_doc: 'Parse Document',
   parse_transcript_to_requirements: 'Parse Transcript',
   map_requirements_to_catalog: 'Map Products',
+  get_deal_history: 'Deal History',
+  summary_node: 'Summary Node',
+  win_rate: 'Win Rate',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
@@ -82,30 +86,32 @@ export const INIT_ORCH = {
   Requirements_Parser: { state: 'idle', tools: [], routedByDm: false },
   Catalog_Scout:   { state: 'idle', tools: [], routedByDm: false },
   Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
-  Quote_Updator:   { state: 'idle', tools: [], routedByDm: false },
+  Quote_Updator: { state: 'idle', tools: [], routedByDm: false },
+  Quote_Analyst: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────
 export const SUGGESTIONS = [
   {
-    label: 'QUOTE CREATION',
-    text: 'Quote for CloudTech Module 1 with manager rules.',
+    label: 'DEAL HISTORY',
+    text: 'Provide the detailed view of previous quotes.',
     color: '#818cf8',
     bg: 'rgba(129, 140, 248, 0.08)',
     border: 'rgba(129, 140, 248, 0.3)'
   },
   {
     label: 'PRODUCT DISCOVERY',
-    text: "Find 'manager rule' products.",
-    color: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.08)',
-    border: 'rgba(16, 185, 129, 0.3)'
+    text: 'Find Vertex AI platform bundles in the catalog.',
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
   },
   {
-    label: 'DEAL HISTORY',
-    text: 'Show CloudTech deal history.',
-    color: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.08)',
-    border: 'rgba(245, 158, 11, 0.3)'
+    label: 'QUOTE CREATION',
+    text: 'Create a quote for the selected products.',
+    color: '#818cf8',
+    bg: 'rgba(129, 140, 248, 0.08)',
+    border: 'rgba(129, 140, 248, 0.3)'
   }
 ];
+

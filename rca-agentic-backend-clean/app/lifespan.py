@@ -27,6 +27,7 @@ from app.agents.catalog_scout import build_catalog_scout
 from app.agents.requirements_parser import build_requirements_parser
 from app.agents.quote_architect import build_quote_architect
 from app.agents.quote_updator import build_quote_updator
+from app.agents.quote_analyst import build_quote_analyst
 from app.agents.deal_manager import build_deal_manager
 from app.services.session import session_service
 from app.api import websocket as ws_module
@@ -49,13 +50,15 @@ async def lifespan(app: FastAPI):
     mcp_parser    = build_mcp_toolset("parser")
     mcp_architect = build_mcp_toolset("architect")
     mcp_updator   = build_mcp_toolset("updator")
+    mcp_analyst   = build_mcp_toolset("analyst")
 
     catalog_scout_for_dm = build_catalog_scout(mcp_scout_dm)
     catalog_scout_for_parser = build_catalog_scout(mcp_scout_parser)
     requirements_parser = build_requirements_parser(mcp_parser, catalog_scout_for_parser)
     quote_architect = build_quote_architect(mcp_architect)
     quote_updator   = build_quote_updator(mcp_updator)
-    deal_manager    = build_deal_manager(requirements_parser, catalog_scout_for_dm, quote_architect, quote_updator)
+    quote_analyst   = build_quote_analyst(mcp_analyst)
+    deal_manager    = build_deal_manager(requirements_parser, catalog_scout_for_dm, quote_architect, quote_updator, quote_analyst)
 
     # _root_runner   — Deal_Manager as root (initial routing, product search)
     # _quote_runner  — Quote_Architect as root (direct, skips Deal_Manager)
@@ -102,6 +105,7 @@ async def lifespan(app: FastAPI):
     logger.info("✅ Catalog_Scout ready (MCP subprocess #2 — scout)")
     logger.info("✅ Quote_Architect ready (MCP subprocess #3 — architect)")
     logger.info("✅ Quote_Updator ready (MCP subprocess #4 — updator)")
+    logger.info("✅ Quote_Analyst ready (MCP subprocess #5 — analyst)")
     logger.info("✅ Quote_Architect direct runner ready (bypasses Deal_Manager)")
     logger.info("✅ Quote_Updator direct runner ready (bypasses Deal_Manager)")
     logger.info("✅ Runner configured — stable ADK 1.28.0")
@@ -110,7 +114,7 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown: release all MCP subprocess connections ──────────────────
     logger.info("Closing MCP connections...")
-    for toolset in [mcp_scout_dm, mcp_scout_parser, mcp_parser, mcp_architect, mcp_updator]:
+    for toolset in [mcp_scout_dm, mcp_scout_parser, mcp_parser, mcp_architect, mcp_updator, mcp_analyst]:
         try:
             result = toolset.close()
             if hasattr(result, "__await__"):

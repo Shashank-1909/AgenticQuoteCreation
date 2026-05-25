@@ -224,6 +224,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 logger.info("New document upload detected. Resetting session flags.")
                 _app_state.quote_flow.pop(session_id, None)
                 _app_state.update_flow.pop(session_id, None)
+                _app_state.win_rate_flow.pop(session_id, None)
                 try:
                     await session_service.delete_session(
                         app_name=APP_NAME, user_id=USER_ID, session_id=session_id
@@ -234,6 +235,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     logger.info("Successfully recreated session database for clean upload state.")
                 except Exception as exc:
                     logger.warning("Failed to reset session: %s", exc)
+
+            # Detect win rate requests and store state
+            clean_lower = text_content.lower()
+            is_win_rate = "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower or "success rate" in clean_lower
+            _app_state.win_rate_flow[session_id] = is_win_rate
 
             # Choose runner based on active flow.
             # Priority: document_upload > update_flow > quote_flow > root (Deal_Manager).
@@ -350,6 +356,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         logger.info("Client disconnected. Session: %s", session_id)
         _app_state.quote_flow.pop(session_id, None)
         _app_state.update_flow.pop(session_id, None)
+        _app_state.win_rate_flow.pop(session_id, None)
         try:
             await session_service.delete_session(
                 app_name=APP_NAME, user_id=USER_ID, session_id=session_id,
@@ -362,6 +369,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         logger.error("WebSocket error for session %s: %s", session_id, exc, exc_info=True)
         _app_state.quote_flow.pop(session_id, None)
         _app_state.update_flow.pop(session_id, None)
+        _app_state.win_rate_flow.pop(session_id, None)
         try:
             await websocket.send_json({"type": "ERROR", "data": str(exc)})
         except Exception:

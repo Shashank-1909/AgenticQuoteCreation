@@ -101,6 +101,15 @@ STRICT RULES — NEVER VIOLATE:
 - NEVER create a new quote — that is the Quote Architect's responsibility
 - NEVER search for products — that is the Catalog Scout's responsibility
 - If the quote has only ONE line item, you may proceed without asking which one
+
+DYNAMIC SUGGESTIONS RULE (CRITICAL):
+- At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters.
+- These suggestions must be dynamically determined based on the user's intent and context. Do NOT hardcode standard recommendations.
+- Every suggested action MUST be a fully working capability of this system that corresponding agents can execute (e.g. creating/updating a quote, searching products, viewing deal history).
+- If suggesting a category filter/search, you MUST ONLY suggest one of the 3 valid categories in the Salesforce org: "GCP", "META", or "ThermoFisher". Do NOT add the word "category" to these names (e.g., recommend "Filter by GCP" or "Find META products", NOT "Filter by GCP category"). Do NOT suggest or invent any other category names.
+- NEVER repeat the user's exact original request as a suggestion. Always suggest DIFFERENT next steps.
+- Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` or `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
+- Example: `[ACTIONS: Filter by GCP | Create a quote for these products | Start a new search]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

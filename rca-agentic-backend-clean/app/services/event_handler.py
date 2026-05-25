@@ -58,6 +58,7 @@ async def handle_tool_result(
     session_id: str,
     websocket: WebSocket,
     state: AppState,
+    current_agent: Optional[str] = None,
 ) -> None:
     """Processes side effects triggered by specific tool results.
 
@@ -78,8 +79,11 @@ async def handle_tool_result(
                     "options":       parsed["accounts"],
                 })
                 logger.info("Account picklist sent → %d options", len(parsed["accounts"]))
-                state.quote_flow[session_id] = True
-                logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                if current_agent != "Quote_Analyst":
+                    state.quote_flow[session_id] = True
+                    logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                else:
+                    logger.info("Session %s → Quote_Analyst active, keeping quote flow INACTIVE", session_id)
 
             elif tool_name == TOOL_OPPORTUNITIES and parsed.get("opportunities") is not None:
                 await websocket.send_json({
@@ -91,7 +95,11 @@ async def handle_tool_result(
                     "Opportunity picklist sent → %d options",
                     len(parsed["opportunities"]),
                 )
-                state.quote_flow[session_id] = True
+                if current_agent != "Quote_Analyst":
+                    state.quote_flow[session_id] = True
+                    logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                else:
+                    logger.info("Session %s → Quote_Analyst active, keeping quote flow INACTIVE", session_id)
 
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse picklist tool response: %s", exc)
@@ -140,6 +148,20 @@ async def handle_tool_result(
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse manage_quote_line_items response: %s", exc)
 
+    # ── Deal history retrieval complete ───────────────────────────────
+    if tool_name == "get_deal_history":
+        try:
+            parsed = json.loads(text_content)
+            if parsed.get("status") == "success":
+                agent_to_start = "Win_Rate_Node" if state.win_rate_flow.get(session_id, False) else "Summary_Node"
+                await websocket.send_json({
+                    "type": "AGENT_START",
+                    "agent": agent_to_start
+                })
+                logger.info("Session %s → get_deal_history complete, transitioning to %s", session_id, agent_to_start)
+        except json.JSONDecodeError as exc:
+            logger.warning("Could not parse get_deal_history response: %s", exc)
+
     # ── Build and send TOOL_RESULT payload ────────────────────────────────
     payload: dict = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
     if tool_name == TOOL_QUOTE:
@@ -166,6 +188,7 @@ async def process_events(
     Delegates all tool-result side effects to handle_tool_result.
     """
     current_agent: Optional[str] = None
+    sent_replies = set()
 
     async for event in runner.run_async(
         user_id=USER_ID,
@@ -190,7 +213,7 @@ async def process_events(
             tool_name = getattr(fn_resp, "name", "")
             text_content = extract_tool_text(fn_resp)
             logger.info("[TOOL RESULT] %s → %s (%d chars)", current_agent, tool_name, len(text_content))
-            await handle_tool_result(tool_name, text_content, session_id, websocket, state)
+            await handle_tool_result(tool_name, text_content, session_id, websocket, state, current_agent)
 
         # ── Final text reply ──────────────────────────────────────────────
         if event.is_final_response():
@@ -198,9 +221,12 @@ async def process_events(
             if event.content:
                 for part in event.content.parts or []:
                     if hasattr(part, "text") and part.text:
-                        logger.info("[REPLY] %s: %s...", current_agent, part.text[:120])
-                        await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
-                        replied = True
+                        reply_text = part.text.strip()
+                        if reply_text and reply_text not in sent_replies:
+                            sent_replies.add(reply_text)
+                            logger.info("[REPLY] %s: %s...", current_agent, reply_text[:120])
+                            await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
+                            replied = True
             
             # Fallback if the model is silent but turn is over
             if not replied:

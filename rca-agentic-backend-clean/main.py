@@ -166,5 +166,17 @@ async def upload_file(file: UploadFile = File(...)):
         print(f"[DEBUG] Error parsing file: {str(e)}")
         return {"status": "error", "message": f"Error parsing file: {str(e)}"}
 
+@app.get("/api/deal-history")
+async def deal_history(account_name: str = "Edge Communications"):
+    """Fetches all quotes across all opportunities for a given account name."""
+    import json
+    from server import get_deal_history
+
+    try:
+        res_str = get_deal_history(account_name)
+        return json.loads(res_str)
+    except Exception as e:
+        return {"status": "error", "message": str(e), "quotes": []}
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT)

@@ -65,6 +65,7 @@
 
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
+  height: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -72,12 +73,12 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.15);
   border-radius: 10px;
 }
 
 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.3);
 }
 
 .modal-overlay {
