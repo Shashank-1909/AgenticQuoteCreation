@@ -189,7 +189,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 }
               }
             }
-            }
             return n;
           });
           if (dealHistoryLoadingRef.current) {
@@ -1164,7 +1163,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           )}
           {workspaceView === 'preview' && (
-            {(dealHistoryLoading || dealHistoryData) ? (
+            (dealHistoryLoading || dealHistoryData) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
                   <WinRateBattleCard
@@ -1268,7 +1267,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
               )}
             </div>
-            )}
+            )
           )}
         </div>
       </section>
@@ -1477,7 +1476,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                     </button>
                   </div>
                 </div>
->>>>>>> winloss_clean
               )}
 
               {msg.type === 'card' && msg.cardType === 'quote' && (
@@ -1495,8 +1493,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                       Preview in Workspace <ExternalLink size={12} />
                     </button>
                   </div>
-<<<<<<< HEAD
-=======
+
                 </div>
               )}
 
@@ -1534,14 +1531,22 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </div>
             )}
 
-
-          </div>
-
           <div ref={chatEndRef} />
         </div>
 
         <div className="af-input-area">
-
+          <form onSubmit={handleSend} className="relative group">
+            <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+            <input
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+              className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+            />
+            <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+              <Send size={20} />
+            </button>
           </form>
         </div>
       </section>
