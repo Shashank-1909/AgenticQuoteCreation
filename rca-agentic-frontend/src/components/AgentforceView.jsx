@@ -114,6 +114,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
   const dealHistoryLoadingRef = useRef(false);
   const isSummarizeRequestRef = useRef(false);
   const isWinRateRequestRef = useRef(false);
+  const isQuoteWinRateRequestRef = useRef(false);
   const summarizeTimeoutsRef = useRef([]);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
@@ -623,6 +624,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
     isWinRateRequestRef.current = isWinRateRequest;
+    const isQuoteWinRateRequest = isWinRateRequest && (cmd.includes('this quote') || cmd.includes('current quote') || cmd.includes('the quote'));
+    isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
@@ -1070,6 +1073,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
                     data={dealHistoryData}
                     accountName={dealHistoryAccount}
                     isLoading={dealHistoryLoading}
+                    isQuoteMode={isQuoteWinRateRequestRef.current}
+                    messages={messages}
                   />
                 ) : (
                   <DealHistoryPanel
@@ -1240,7 +1245,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) =
               ) : (
                 <>
                   <div className="af-bubble">
-                    {msg.content}
+                    {msg.content.replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '').replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '').trim()}
                   </div>
                 </>
               )}

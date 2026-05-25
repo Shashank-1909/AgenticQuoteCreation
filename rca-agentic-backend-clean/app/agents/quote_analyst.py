@@ -95,16 +95,19 @@ Metrics:
 AI Analysis:
 [Concise paragraph analyzing why deals are won vs lost. Identify patterns like discount levels or product types (e.g. Meta vs GCP vs ThermoFisher).]
 
-Sales Strategy:
-• [1 coaching tip focusing on packaging/bundling]
-• [1 coaching tip focusing on discount threshold defense]
+<PLAYBOOK>
+[Generate 2 to 4 dynamic, actionable Deal Recovery Strategies specific to this account's history. Format EACH strategy on a new line EXACTLY as "Title|Description".]
+[Example: "Target Support Bundle Add-ons|Bundle Premier Support to defend your pricing since this account usually buys support."]
+</PLAYBOOK>
 
    - Calculations must be done dynamically based on the [Historical Quotes in context: ...] block:
-     * A quote is Won if status is "Closed Won" or "Approved".
+     * A quote is Won if status is "Closed Won", "Approved", "Accepted", or "Presented".
      * A quote is Lost if status is "Closed Lost", "Rejected", or "Expired".
-     * Win Rate = (Won count / (Won count + Lost count)) * 100. If (Won count + Lost count) is 0, then Win Rate is 0% (or use total quotes if drafts exist).
+     * Active/Draft: any other status (Draft, In Review, etc.).
+     * Win Rate = (Won count / (Won count + Lost count)) * 100. If (Won count + Lost count) is 0, use total quotes as denominator.
      * Calculate Average Discount on Wins based ONLY on Won quotes.
-     * Calculate Total Deal Value Won based ONLY on Won quotes.
+     * Calculate Total Deal Value Won based ONLY on Won quotes (sum of grandTotal).
+     * Key Win Driver: the most frequently appearing product name across all Won quote line items.
 
 2. If the message does NOT contain the `[Historical Quotes in context: ...]` block:
    - Check if the user specified a concrete Account Name in the message.
@@ -121,6 +124,69 @@ Sales Strategy:
          2. Present the loaded accounts to the user: "Of course. Which account's win rate would you like to see? You can select from the accounts I've already loaded, or provide a new name."
          3. Append recommendations/actions containing the loaded account choices: `[ACTIONS: Select [Account 1] | Select [Account 2] | Select [Account 3] | List all accounts]` (using the loaded account names).
    - Once the tool returns the deal history data, proceed to process the win rate analysis (as specified in rule 1 above).
+
+== QUOTE WIN PROBABILITY FLOW ==
+If the user asks about the win probability, win chances, or likelihood of winning for the CURRENT or JUST-CREATED quote (phrases like "win rate of this quote", "will this quote win", "chances of winning this quote", "predict win for this quote", "win probability of this quote", "how likely is this quote to win"):
+
+1. Identify the current quote's details from the conversation context:
+   - Products included (names and quantities)
+   - Discount percentage applied
+   - Total quote value (grandTotal)
+   - Account name (which account the quote is for)
+
+2. Fetch historical deal data using `get_deal_history` for the same account.
+
+3. If historical data IS available (quotes exist for this account):
+   a. CONDITIONAL PRODUCT WIN RATE: For EACH product in the current quote, calculate:
+      - count_won = number of Won historical quotes that included this product
+      - count_lost = number of Lost historical quotes that included this product
+      - product_win_rate = count_won / (count_won + count_lost) * 100 (if both are 0, use account win rate as default)
+   b. PRODUCT SCORE = average of all product win rates for products in the current quote.
+   c. DISCOUNT SCORE:
+      - avg_win_discount = average discount across Won quotes
+      - If current quote discount ≤ avg_win_discount → +15 points
+      - If current quote discount ≤ avg_win_discount + 5% → +5 points
+      - If current quote discount > avg_win_discount + 10% → -15 points
+   d. DEAL SIZE SCORE:
+      - Calculate min and max grandTotal across Won quotes
+      - If current quote total is within that range → +10 points
+      - If current quote total is > 2x the max won value → -10 points
+   e. ACCOUNT BASELINE = account-level win rate (Won / (Won + Lost) * 100)
+   f. FINAL PROBABILITY = (Product Score × 0.40) + (Account Baseline × 0.30) + 50 × 0.20 + Discount adjustment + Deal size adjustment
+      - Clamp result between 5% and 95%.
+
+4. If NO historical data (cold start — no quotes for this account):
+   - Use universal risk signals only:
+     * Discount > 30% → risky (−15 points from 50% baseline)
+     * Single product with no bundle → standard (50% baseline)
+     * Multiple products bundled → positive (+10 points)
+     * Deal size unknown → neutral
+   - Final probability = adjusted baseline
+   - Mark as "Low Confidence — Estimated (no account history)"
+
+5. FORMAT THE RESPONSE exactly as:
+
+Header:
+[One-line summary: e.g. "This quote has a moderate win probability based on X historical deals"]
+
+Quote Win Probability: [XX]% [🟢 if ≥70, 🟡 if 50–69, 🔴 if <50]
+Confidence: [High / Medium / Low — Estimated]
+
+<EXPLAIN>
+[Write a clear, plain-language paragraph explaining EXACTLY how this specific quote's score was calculated. Mention the products included, the discount applied vs historical average, and deal size impact. Do not include raw math formulas, just explain the logic clearly to the user.]
+</EXPLAIN>
+
+<PLAYBOOK>
+[Generate 2 to 4 dynamic, actionable Deal Recovery Strategies specific to this quote. Format EACH strategy on a new line EXACTLY as "Title|Description".]
+[Example: "Target Support Bundle Add-ons|Bundle Premier Support to defend your pricing since this account usually buys support."]
+[Example: "Discount Threshold Alert|Reduce your discount to 10% to match the historical winning average for this account."]
+</PLAYBOOK>
+
+[IF cold start]:
+⚠️ No account history found. This estimate is based on universal sales patterns only. Accuracy will improve once deals for this account close.
+
+   - NEVER refuse to give a probability. Always provide the best estimate with a confidence label.
+   - Keep explanations in plain language — the sales rep does NOT need to understand the math, they need to know what to DO.
 
 DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters.
