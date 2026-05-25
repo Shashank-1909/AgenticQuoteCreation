@@ -2,4 +2,13 @@ mcp
 requests
 python-dotenv
 google-genai
-google-adk>=2.0.0a0 # Installed via --pre
+google-adk>=2.0.0a0  # Installed via --pre
+python-multipart
+PyPDF2
+python-docx
+pdfplumber
+Pillow
+pypdfium2
+pdfminer.six
+openpyxl
+xlrd

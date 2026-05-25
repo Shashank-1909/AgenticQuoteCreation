@@ -6,7 +6,7 @@
   width: 100vw;
   background: var(--site-bg);
   overflow: hidden;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
 }
 
 /* LEFT WORKSPACE */
@@ -111,6 +111,8 @@
   border: 1px solid var(--glass-border);
   color: var(--text-main);
   border-bottom-left-radius: 0.25rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 /* REASONING STEPS */

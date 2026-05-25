@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit, 
+import {
+  Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit,
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut, Sun, Moon, Globe
+  ZoomIn, ZoomOut, Paperclip
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -11,51 +11,24 @@ import AgentGraph from './AgentGraph';
 import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
-import LanguageToggle from './LanguageToggle';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
-import { translations } from '../translations';
 import './AgentforceView.css';
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, language, setLanguage }) => {
-  const t = translations[language];
-  const translatedModuleTitle = selectedModule ? (t.modules?.[selectedModule.id] || selectedModule.title) : 'Salesforce';
-
-  const [rightWidth, setRightWidth] = useState(500);
-  const [isResizingRight, setIsResizingRight] = useState(false);
+const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [messages, setMessages] = useState([
-    { 
-      id: 1, 
-      role: 'assistant', 
+    {
+      id: 1,
+      role: 'assistant',
       aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-      content: language === 'es' ? `¡Hola! Soy tu asistente de ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} para ${translatedModuleTitle}. ¿Cómo puedo ayudarte hoy?` :
-               language === 'ta' ? `வணக்கம்! நான் உங்கள் ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} உதவியாளர் ${translatedModuleTitle} க்கு. இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?` :
-               language === 'te' ? `నమస్కారం! నేను మీ ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} అసిస్టెంట్ ${translatedModuleTitle} కోసం. ఈ రోజు నేను మీకు ఎలా సహాయం చేయగలను?` :
-               `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} Assistant for ${translatedModuleTitle}. How can I help you today?`,
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
       type: 'text'
     }
   ]);
-
-  useEffect(() => {
-    if (messages.length === 1 && messages[0].id === 1) {
-      setMessages([
-        { 
-          id: 1, 
-          role: 'assistant', 
-          aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-          content: language === 'es' ? `¡Hola! Soy tu asistente de ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} para ${translatedModuleTitle}. ¿Cómo puedo ayudarte hoy?` :
-                   language === 'ta' ? `வணக்கம்! நான் உங்கள் ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} உதவியாளர் ${translatedModuleTitle} க்கு. இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?` :
-                   language === 'te' ? `నమస్కారం! నేను మీ ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} అసిస్టెంట్ ${translatedModuleTitle} కోసం. ఈ రోజు నేను మీకు ఎలా సహాయం చేయగలను?` :
-                   `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : t.quotingAccelerator} Assistant for ${translatedModuleTitle}. How can I help you today?`,
-          type: 'text'
-        }
-      ]);
-    }
-  }, [language, selectedModule]);
   const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
   const [reasoning, setReasoning] = useState(null);
-  
+
   // UI States
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [configProducts, setConfigProducts] = useState([]);
@@ -80,56 +53,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
   const pendingSelectionRef = useRef(null);
   const pendingUpdateRef = useRef(false);
   const pendingCreationRef = useRef(false);
+  const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
-
-  const startResizingRight = useCallback((e) => {
-    e.preventDefault();
-    setIsResizingRight(true);
-  }, []);
-
-  const stopResizingRight = useCallback(() => {
-    setIsResizingRight(false);
-  }, []);
-
-  const resizeRight = useCallback((e) => {
-    if (isResizingRight) {
-      const newWidth = window.innerWidth - e.clientX;
-      if (newWidth > 350 && newWidth < 800) {
-        setRightWidth(newWidth);
-      }
-    }
-  }, [isResizingRight]);
-
-  useEffect(() => {
-    if (isResizingRight) {
-      window.addEventListener('mousemove', resizeRight);
-      window.addEventListener('mouseup', stopResizingRight);
-    } else {
-      window.removeEventListener('mousemove', resizeRight);
-      window.removeEventListener('mouseup', stopResizingRight);
-    }
-    return () => {
-      window.removeEventListener('mousemove', resizeRight);
-      window.removeEventListener('mouseup', stopResizingRight);
-    };
-  }, [isResizingRight, resizeRight, stopResizingRight]);
-
-  const handleWsMessageRef = useRef(null);
-  useEffect(() => {
-    handleWsMessageRef.current = handleWsMessage;
-  });
 
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
     ws.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (handleWsMessageRef.current) {
-          handleWsMessageRef.current(data);
-        }
+        handleWsMessage(data);
       } catch (err) {
         console.error('[WS] parse error', err);
       }
@@ -146,8 +83,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
           setOrchestration(prev => {
             const n = { ...prev };
             if (n.coordinator === 'active') n.coordinator = 'done';
-            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-              if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+              if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             return n;
           });
@@ -157,13 +94,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
       case 'AGENT_START':
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
+          // Preserve the true agent name; the parser now has its own graph node
           const name = data.agent;
           const n = { ...prev };
           if (name === 'Deal_Manager') {
             n.coordinator = 'active';
-          } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator') {
-            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-              if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+          } else if (
+            name === 'Requirements_Parser' ||
+            name === 'Catalog_Scout' ||
+            name === 'Quote_Architect' ||
+            name === 'Quote_Updator'
+          ) {
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+              if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
             if (n.coordinator === 'active') n.coordinator = 'done';
@@ -177,8 +120,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-            if (n[k].state === 'active') {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+            if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
               );
@@ -202,8 +145,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-            if (n[k].tools.some(t => t.name === data.tool)) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+            if (n[k] && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
                   t.name === data.tool ? { ...t, state: 'done' } : t
@@ -216,8 +159,32 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
         });
         try {
           const parsed = JSON.parse(data.data);
-          if (data.tool === 'search_catalog' && parsed.results) {
+          if ((data.tool === 'search_catalog' || data.tool === 'parse_transcript_to_requirements' || data.tool === 'parse_requirements_doc' || data.tool === 'map_requirements_to_catalog') && parsed.results && parsed.results.length > 0) {
             pendingResultsRef.current = parsed.results;
+
+            if (parsed.requirements) {
+              const newSelected = new Set();
+              const newConfigs = {};
+
+              parsed.requirements.forEach(req => {
+                const need = req.extracted_need;
+                const mappedList = req.mapped_catalog_products;
+
+                if (mappedList && mappedList.length > 0) {
+                  if (req.confidence === 'High' || req.confidence === 'Medium') {
+                    const p = mappedList[0];
+                    newSelected.add(p.id);
+                    newConfigs[p.id] = {
+                      qty: need.quantity || 1,
+                      discount: need.discount || 0
+                    };
+                  }
+                }
+              });
+
+              setSelectedProducts(prev => new Set([...prev, ...newSelected]));
+              setProductConfigs(prev => ({ ...prev, ...newConfigs }));
+            }
           }
           if (data.tool === 'evaluate_quote_graph') {
             let qId = extractQuoteId(data.data);
@@ -226,7 +193,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
             // Clear any pending cards since the quote is now finalized
             pendingResultsRef.current = null;
             pendingSelectionRef.current = null;
-            
+
             /*
             addMessage({
               type: 'card',
@@ -235,7 +202,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
               content: "Quote generated successfully in Salesforce."
             });
             */
-            
+
             // Fetch quote number to replace ID in future messages
             fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
               .then(res => res.json())
@@ -245,7 +212,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
                 }
               })
               .catch(err => console.error('Error fetching quote number:', err));
-            
+
             pendingCreationRef.current = true;
             // handlePreview(qId);
           }
@@ -258,12 +225,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
 
       case 'FINAL_REPLY':
         setReasoning(null);
-        if (pendingResultsRef.current) {
+        if (pendingResultsRef.current && pendingResultsRef.current.length > 0) {
           addMessage({
             type: 'card',
             cardType: 'products',
             data: pendingResultsRef.current,
-            content: t.searchedCatalog
+            content: "Based on the document you uploaded, these are the products:"
           });
           pendingResultsRef.current = null;
         }
@@ -272,7 +239,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
             type: 'card',
             cardType: 'selection',
             data: pendingSelectionRef.current,
-            content: `${t.pleaseSelectAn}${pendingSelectionRef.current.type}:`
+            content: `Please select an ${pendingSelectionRef.current.type}:`
           });
           pendingSelectionRef.current = null;
         }
@@ -298,8 +265,29 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
 
             addMessage({ type: 'text', content: processedText });
 
-            // If AI asks which one to update or offers to update all, show "Update All" suggestion
+            // Detect if AI is asking for a document upload
             const lcText = processedText.toLowerCase();
+            if (
+              lcText.includes('upload') ||
+              lcText.includes('paste') ||
+              lcText.includes('share') ||
+              lcText.includes('document') ||
+              lcText.includes('transcript') ||
+              lcText.includes('file') ||
+              lcText.includes('sow') ||
+              lcText.includes('rfp') ||
+              lcText.includes('analyse') ||
+              lcText.includes('analyze') ||
+              lcText.includes('[action: show_upload_card]')
+            ) {
+              addMessage({
+                type: 'card',
+                cardType: 'upload',
+                content: "Upload your document to get started."
+              });
+            }
+
+            // If AI asks which one to update or offers to update all, show "Update All" suggestion
             if (lcText.includes('update') && (lcText.includes('which one') || lcText.includes('all of them') || lcText.includes('specific ones'))) {
               setShowUpdateAllSuggestion(true);
             }
@@ -323,7 +311,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
 
   const addMessage = (msg) => {
     const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
-    setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'assistant', aiName, ...msg }]);
   };
 
   const handleSend = (e, overrideText = null) => {
@@ -331,15 +319,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
     const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
+
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
-    
+
     // Support dynamic preview/summary/overview commands
     const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
       const latestFromState = quotes[quotes.length - 1]?.id;
-      
+
       if (latestFromState && latestFromState !== 'Generated') {
         quoteIdToPreview = latestFromState;
       } else {
@@ -350,7 +339,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
       }
 
       if (quoteIdToPreview) {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
         handlePreview(quoteIdToPreview);
         setInputValue('');
         return;
@@ -372,13 +361,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
       }
     }
 
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    
-    const payloadText = language !== 'en' ? `${finalMessage} [System Context: ${t.languageContext}]` : finalMessage;
-    
     ws.current?.send(JSON.stringify({
-      text: payloadText,
+      text: finalMessage,
       module: selectedModule?.id || 'sales'
     }));
 
@@ -394,6 +380,57 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
     setBulkDiscount('');
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const resp = await fetch(`${config.API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        // Clear old selections, configs, and orchestration graph
+        setSelectedProducts(new Set());
+        setProductConfigs({});
+        setBulkQty('');
+        setBulkDiscount('');
+        setOrchestration(INIT_ORCH);
+
+        // Immediately notify the user in the UI
+        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
+
+        // FIX: Must enter orchestrating state before sending — otherwise the
+        // frontend state machine desyncs and FINAL_REPLY renders nothing.
+        setWorkflowState('orchestrating');
+
+        // Ensure the orchestration flow is visible
+        setWorkspaceView('graph');
+
+        // Send the extracted text (already truncated server-side) to the agent
+        ws.current?.send(JSON.stringify({
+          text: data.user_message,
+          module: selectedModule?.id || 'sales'
+        }));
+      } else {
+        addMessage({ type: 'text', content: `Error uploading file: ${data.message}` });
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      addMessage({ type: 'text', content: `Error uploading file: ${err.message}` });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+
   const extractQuoteId = (dataStr) => {
     const match = dataStr.match(/0Q0[a-zA-Z0-9]{12,15}/);
     return match ? match[0] : 'Generated';
@@ -404,7 +441,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
     const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
     const allProds = productMessages.flatMap(m => m.data);
     const selected = allProds.filter(p => selectedProducts.has(p.id));
-    
+
     if (selected.length > 0) {
       const mapped = selected.map(p => ({
         ...p,
@@ -447,9 +484,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
         setProductConfigs(newConfigs);
       } else {
         n.add(prod.id);
-        setProductConfigs(prev => ({ 
-          ...prev, 
-          [prod.id]: { qty: 1, discount: 0 } 
+        setProductConfigs(prev => ({
+          ...prev,
+          [prod.id]: { qty: 1, discount: 0 }
         }));
       }
       return n;
@@ -471,14 +508,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
         quantity: productConfigs[p.id]?.qty || 1,
         discount: productConfigs[p.id]?.discount || 0
       }));
-    
+
     const listStr = selectedList.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-    const payloadText = language !== 'en' ? `${text} [System Context: ${t.languageContext}]` : text;
-    ws.current?.send(payloadText);
-    
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
+    ws.current?.send(text);
+
     // Clear selections after confirm
     setSelectedProducts(new Set());
     setProductConfigs({});
@@ -492,9 +528,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
     setProductConfigs(prev => {
       const next = { ...prev };
       selectedProducts.forEach(id => {
-        next[id] = { 
-          ...(next[id] || { qty: 1, discount: 0 }), 
-          [field]: num 
+        next[id] = {
+          ...(next[id] || { qty: 1, discount: 0 }),
+          [field]: num
         };
       });
       return next;
@@ -504,7 +540,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
   const toggleSelectAll = (products) => {
     const allIdsInCard = products.map(p => p.id);
     const areAllSelected = allIdsInCard.every(id => selectedProducts.has(id));
-    
+
     setSelectedProducts(prev => {
       const n = new Set(prev);
       if (areAllSelected) {
@@ -528,7 +564,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
 
   return (
     <div className={`agentforce-container ${isDark ? 'dark' : ''} ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
-      
+
       {/* LEFT WORKSPACE — CONTEXT VIEW */}
       <section className="af-workspace">
         <div className="af-workspace-header">
@@ -538,194 +574,163 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : t.quotingAccelerator}
+                {config.theme === 'Meta' ? 'Meta Workspace' : 'Quoting Accelerator'}
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsDark(!isDark)}
-              className={`p-2 rounded-xl transition-all shadow-sm border ${
-                isDark 
-                  ? 'bg-white/5 border-white/10 text-amber-500 hover:bg-white/10' 
-                  : 'bg-black/5 border-black/10 text-indigo-500 hover:bg-black/10'
-              }`}
-              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+            <button
+              onClick={() => setWorkspaceView('graph')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              Orchestration Flow
             </button>
-
-            <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
-
-            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
-              <button 
-                onClick={() => setWorkspaceView('graph')}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-              >
-                {t.orchestrationFlow}
-              </button>
-              <button 
-                onClick={() => setWorkspaceView('preview')}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-              >
-                {t.recordPreview}
-              </button>
-            </div>
+            <button
+              onClick={() => setWorkspaceView('preview')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+            >
+              Record Preview
+            </button>
           </div>
         </div>
 
         <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
           {workspaceView === 'graph' && (
-             <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
-                <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
-                  <button 
-                    onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
-                    className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${
-                      isDark 
-                        ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10' 
-                        : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
+            <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
+              <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+                <button
+                  onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
+                  className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${isDark
+                    ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10'
+                    : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
                     }`}
-                    title="Zoom In"
-                  >
-                    <ZoomIn size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setZoomLevel(z => Math.max(0.4, z - 0.1))}
-                    className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${
-                      isDark 
-                        ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10' 
-                        : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
+                  title="Zoom In"
+                >
+                  <ZoomIn size={16} />
+                </button>
+                <button
+                  onClick={() => setZoomLevel(z => Math.max(0.4, z - 0.1))}
+                  className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${isDark
+                    ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10'
+                    : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
                     }`}
-                    title="Zoom Out"
-                  >
-                    <ZoomOut size={16} />
-                  </button>
-                </div>
-                <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease-out' }} className="origin-center">
-                  <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} t={t} />
-                </div>
-             </div>
+                  title="Zoom Out"
+                >
+                  <ZoomOut size={16} />
+                </button>
+              </div>
+              <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease-out' }} className="origin-center">
+                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+              </div>
+            </div>
           )}
           {workspaceView === 'preview' && (
             <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-               {previewData ? (
-                 <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex items-center justify-between mb-2">
-                       <div className="flex items-center gap-3">
-                          <div className="p-2 bg-emerald-500/10 rounded-xl">
-                             <FileText size={20} className="text-emerald-500" />
-                          </div>
-                          <div>
-                             <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
-                             <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
-                          </div>
-                       </div>
-                       <button 
-                        onClick={() => {
-                          const qId = previewData.records?.[0]?.Id;
-                          const inst = previewData.instance_url || 'https://login.salesforce.com';
-                          if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
-                        }}
-                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
-                       >
-                         Open in Salesforce <ExternalLink size={14} />
-                       </button>
+              {previewData ? (
+                <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-500/10 rounded-xl">
+                        <FileText size={20} className="text-emerald-500" />
+                      </div>
+                      <div>
+                        <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
+                        <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const qId = previewData.records?.[0]?.Id;
+                        const inst = previewData.instance_url || 'https://login.salesforce.com';
+                        if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
+                      }}
+                      className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
+                    >
+                      Open in Salesforce <ExternalLink size={14} />
+                    </button>
+                  </div>
+
+                  {/* Rich Details Table */}
+                  <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
+                    <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
+                    </div>
+                    <div className="p-0">
+                      <table className="w-full text-left">
+                        <thead className="bg-white/[0.01] border-b border-white/5">
+                          <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            <th className="px-6 py-4">Account</th>
+                            <th className="px-6 py-4">Opportunity</th>
+                            <th className="px-6 py-4 text-right">Grand Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="text-sm font-bold border-b border-white/5">
+                            <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
+                            <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
+                            <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
 
-                    {/* Rich Details Table */}
-                    <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
-                       <div className="p-6 border-b border-white/5 bg-white/[0.02]">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
-                       </div>
-                       <div className="p-0">
-                          <table className="w-full text-left">
-                             <thead className="bg-white/[0.01] border-b border-white/5">
-                                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                   <th className="px-6 py-4">Account</th>
-                                   <th className="px-6 py-4">Opportunity</th>
-                                   <th className="px-6 py-4 text-right">Grand Total</th>
-                                </tr>
-                             </thead>
-                             <tbody>
-                                <tr className="text-sm font-bold border-b border-white/5">
-                                   <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
-                                   <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                                   <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
-                                </tr>
-                             </tbody>
-                          </table>
-                       </div>
-
-                       <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
-                       </div>
-                       <div className="p-0">
-                          <table className="w-full text-left">
-                             <thead className="bg-white/[0.01] border-b border-white/5">
-                                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                   <th className="px-6 py-4">Product</th>
-                                   <th className="px-6 py-4 text-center">Qty</th>
-                                   <th className="px-6 py-4 text-right">Sales Price</th>
-                                   <th className="px-6 py-4 text-center">Discount</th>
-                                   <th className="px-6 py-4 text-right">Total</th>
-                                </tr>
-                             </thead>
-                             <tbody className="divide-y divide-white/5">
-                                {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
-                                   <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                                      <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
-                                      <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                                      <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                       </div>
+                    <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
                     </div>
-                 </div>
-               ) : (
-                 <div className="flex flex-col items-center opacity-20 py-40">
-                    <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
-                    <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
-                 </div>
-               )}
+                    <div className="p-0">
+                      <table className="w-full text-left">
+                        <thead className="bg-white/[0.01] border-b border-white/5">
+                          <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            <th className="px-6 py-4">Product</th>
+                            <th className="px-6 py-4 text-center">Qty</th>
+                            <th className="px-6 py-4 text-right">Sales Price</th>
+                            <th className="px-6 py-4 text-center">Discount</th>
+                            <th className="px-6 py-4 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
+                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
+                              <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
+                              <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
+                              <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
+                              <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center opacity-20 py-40">
+                  <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
+                  <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       </section>
 
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
-      {/* RESIZER HANDLE */}
-      <div 
-        onMouseDown={startResizingRight} 
-        className={`w-6 cursor-col-resize h-full bg-transparent flex items-center justify-center relative z-[60] group/resizer -mx-3`}
-      >
-        <div className={`w-[2px] h-32 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 group-hover/resizer:w-1 group-hover/resizer:h-48 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] !w-1 !h-full' : ''}`} />
-        <div className="absolute flex flex-col gap-1.5 opacity-0 group-hover/resizer:opacity-100 transition-opacity">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="w-1 h-1 rounded-full bg-indigo-500/60" />
-          ))}
-        </div>
-      </div>
-
-      <section className="af-sidebar" style={{ width: rightWidth }}>
+      <section className="af-sidebar">
         <div className="af-sidebar-header">
-           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
-              {config.theme === 'Meta' ? (
-                <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
-              ) : (
-                <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
-              )}
-           </div>
-           <div className="flex flex-col">
-              <h3 className="text-xs font-black uppercase tracking-tighter">
-                {config.theme === 'Meta' ? 'Meta Assistant' : t.quotingAccelerator}
-              </h3>
-              <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">{t.activeThinking}</span>
-           </div>
-           <Settings size={14} className="ml-auto text-slate-500 cursor-pointer" />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
+            {config.theme === 'Meta' ? (
+              <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+            ) : (
+              <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h3 className="text-xs font-black uppercase tracking-tighter">
+              {config.theme === 'Meta' ? 'Meta Assistant' : 'Quoting Accelerator'}
+            </h3>
+            <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
+          </div>
+          <Settings size={14} className="ml-auto text-slate-500 cursor-pointer" />
         </div>
 
         <div className="af-chat-area">
@@ -742,59 +747,59 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
               <div className="af-bubble">
                 {msg.content}
               </div>
-              
+
               {msg.type === 'card' && msg.cardType === 'products' && (
                 <div className="af-card">
                   <div className="af-card-header flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Package size={14} className="text-indigo-500" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{t.productCatalog}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Product Catalog</span>
                     </div>
-                    <button 
+                    <button
                       onClick={() => toggleSelectAll(msg.data)}
-                      title={t.selectAll}
+                      title="Select All"
                       className={`p-1.5 rounded-lg transition-all ${msg.data.every(p => selectedProducts.has(p.id)) ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-slate-500'}`}
                     >
                       <CheckCircle2 size={12} />
                     </button>
                   </div>
-                  
+
                   {selectedProducts.size > 1 && (
                     <div className="px-4 py-3 bg-indigo-500/[0.03] border-b border-white/5 flex items-center gap-4 animate-in fade-in">
-                       <div className="flex-1">
-                          <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">{t.bulkQty}</label>
-                          <div className="flex gap-1">
-                             <input 
-                              type="number" 
-                              value={bulkQty}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setBulkQty(v);
-                                if (v !== '') applyBulk('qty', v);
-                              }}
-                              placeholder={t.all}
-                              className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
-                             />
-                          
-                          </div>
-                       </div>
-                       <div className="flex-1">
-                          <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">{t.bulkDiscPercent}</label>
-                          <div className="flex gap-1">
-                             <input 
-                              type="number" 
-                              value={bulkDiscount}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setBulkDiscount(v);
-                                if (v !== '') applyBulk('discount', v);
-                              }}
-                              placeholder={t.all}
-                              className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
-                             />
-                         
-                          </div>
-                       </div>
+                      <div className="flex-1">
+                        <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">Bulk Qty</label>
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            value={bulkQty}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBulkQty(v);
+                              if (v !== '') applyBulk('qty', v);
+                            }}
+                            placeholder="All"
+                            className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
+                          />
+
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[7px] font-black uppercase text-indigo-500 block mb-1">Bulk Disc %</label>
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            value={bulkDiscount}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBulkDiscount(v);
+                              if (v !== '') applyBulk('discount', v);
+                            }}
+                            placeholder="All"
+                            className="w-full bg-black/20 border border-indigo-500/20 rounded-lg py-1 px-2 text-[10px] font-bold outline-none"
+                          />
+
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -802,38 +807,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
                     {msg.data.map(p => {
                       const isSelected = selectedProducts.has(p.id);
                       return (
-                        <div key={p.id} onClick={() => toggleProduct(p)} className={`flex flex-col p-2.5 mb-2 min-h-[46px] justify-center rounded-xl cursor-pointer transition-all border group ${isSelected ? 'bg-indigo-500/[0.08] border-indigo-500/40 shadow-inner' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/10'}`}>
-                           <div className="flex items-center gap-3.5 min-w-0">
-                              <div style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${isSelected ? '#6366f1' : '#94a3b8'}`, background: isSelected ? '#6366f1' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isSelected ? '0 0 10px rgba(99,102,241,0.4)' : 'none', transition: 'all 0.3s' }}>
-                                {isSelected && <CheckCircle2 size={10} color="white" />}
+                        <div key={p.id} className={`p-3 mb-2 rounded-2xl border transition-all ${isSelected ? 'bg-indigo-500/[0.04] border-indigo-500/30 shadow-inner' : 'border-white/5 hover:bg-white/5'}`}>
+                          <div onClick={() => toggleProduct(p)} className="flex items-center gap-2 cursor-pointer mb-2">
+                            {isSelected && <CheckCircle2 size={14} className="text-indigo-500" />}
+                            <span className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-500' : 'text-slate-600'}`}>{p.name}</span>
+                          </div>
+
+                          {isSelected && (
+                            <div className="flex items-center gap-3 pl-7 animate-in fade-in slide-in-from-left-2">
+                              <div className="flex-1">
+                                <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">Quantity</label>
+                                <input
+                                  type="number"
+                                  value={productConfigs[p.id]?.qty || 1}
+                                  onChange={(e) => updateConfig(p.id, 'qty', parseFloat(e.target.value))}
+                                  className="w-full bg-black/20 border border-white/5 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30"
+                                />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-[11px] font-bold uppercase tracking-tight leading-tight transition-colors ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 group-hover:text-indigo-500'}`}>{p.name}</div>
+                              <div className="flex-1">
+                                <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">Discount %</label>
+                                <input
+                                  type="number"
+                                  value={productConfigs[p.id]?.discount || 0}
+                                  onChange={(e) => updateConfig(p.id, 'discount', parseFloat(e.target.value))}
+                                  className="w-full bg-black/20 border border-white/5 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30"
+                                />
                               </div>
-                           </div>
-                           
-                           {isSelected && (
-                             <div className="flex items-center gap-3 pl-8 mt-3 animate-in fade-in slide-in-from-top-2" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex-1">
-                                   <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">{t.quantity}</label>
-                                   <input 
-                                    type="number" 
-                                    value={productConfigs[p.id]?.qty || 1}
-                                    onChange={(e) => updateConfig(p.id, 'qty', parseFloat(e.target.value))}
-                                    className="w-full bg-black/5 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30 transition-colors"
-                                   />
-                                </div>
-                                <div className="flex-1">
-                                   <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">{t.discountPercent}</label>
-                                   <input 
-                                    type="number" 
-                                    value={productConfigs[p.id]?.discount || 0}
-                                    onChange={(e) => updateConfig(p.id, 'discount', parseFloat(e.target.value))}
-                                    className="w-full bg-black/5 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1.5 px-2 text-[11px] font-bold outline-none focus:border-indigo-500/30 transition-colors"
-                                   />
-                                </div>
-                             </div>
-                           )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -842,118 +843,157 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
               )}
 
               {msg.type === 'card' && msg.cardType === 'selection' && (
-                 <div className="af-card">
-                    <SelectionPanel 
-                      panel={msg.data} 
-                      onSelect={(opt) => {
-                        const text = `${opt.name} (ID: ${opt.id})`;
-                        setInputValue(text);
-                        handleSend();
-                      }} 
-                    />
-                 </div>
+                <div className="af-card">
+                  <SelectionPanel
+                    panel={msg.data}
+                    onSelect={(opt) => {
+                      const text = `${opt.name} (ID: ${opt.id})`;
+                      setInputValue(text);
+                      handleSend();
+                    }}
+                  />
+                </div>
+              )}
+
+              {msg.type === 'card' && msg.cardType === 'upload' && (
+                <div className="af-card animate-in fade-in slide-in-from-bottom-2">
+                  <div className="p-6 bg-indigo-500/[0.03] border border-indigo-500/20 rounded-[1.5rem] shadow-xl shadow-indigo-500/5">
+                    <div className="flex items-center gap-4 mb-5">
+                      <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <FileText size={20} className="text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">Requirements Analyst</span>
+                        <span className="text-[10px] font-medium text-slate-500">Document Analysis Service</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 text-white rounded-xl text-[12px] font-bold hover:bg-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                    >
+                      {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
+                      Click here to upload document
+                    </button>
+                  </div>
+                </div>
               )}
 
               {msg.type === 'card' && msg.cardType === 'quote' && (
                 <div className="af-card">
-                   <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
-                      <div className="flex items-center gap-2 mb-2">
-                         <CheckCircle2 size={16} className="text-emerald-500" />
-                         <span className="text-[10px] font-black uppercase text-emerald-500">Quote Finalized</span>
-                      </div>
-                      <div className="text-sm font-mono font-bold mb-3">{msg.data.id}</div>
-                      <button 
-                        onClick={() => handlePreview(msg.data.id)}
-                        className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-400"
-                      >
-                        Preview in Workspace <ExternalLink size={12} />
-                      </button>
-                   </div>
+                  <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                      <span className="text-[10px] font-black uppercase text-emerald-500">Quote Finalized</span>
+                    </div>
+                    <div className="text-sm font-mono font-bold mb-3">{msg.data.id}</div>
+                    <button
+                      onClick={() => handlePreview(msg.data.id)}
+                      className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-400"
+                    >
+                      Preview in Workspace <ExternalLink size={12} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           ))}
-          
+
           {reasoning && (
             <div className="af-reasoning">
               <Loader2 size={12} className="animate-spin" />
               {reasoning}
             </div>
           )}
-          
+
           {workflowState === 'orchestrating' && <TypingIndicator />}
 
           <div className="flex flex-col gap-2 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-2">
-             {selectedProducts.size > 0 && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => setInputValue('Create a quote for the selected products')}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Create a Quote
-                   </button>
-                </div>
-             )}
+            {selectedProducts.size > 0 && (
+              <div className="flex justify-start">
+                <button
+                  onClick={() => setInputValue('Create a quote for the selected products')}
+                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                >
+                  ✨ Create a Quote
+                </button>
+              </div>
+            )}
 
-             {showPreviewSuggestion && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => {
-                       setInputValue('Preview the quote');
-                       setShowPreviewSuggestion(false);
-                     }}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Preview Quote
-                   </button>
-                </div>
-             )}
+            {showPreviewSuggestion && (
+              <div className="flex justify-start">
+                <button
+                  onClick={() => {
+                    setInputValue('Preview the quote');
+                    setShowPreviewSuggestion(false);
+                  }}
+                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                >
+                  ✨ Preview Quote
+                </button>
+              </div>
+            )}
 
-             {showUpdateSuggestion && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => {
-                       setInputValue('Can you update the quantity to 10 and discount to 10% in this quote');
-                       setShowUpdateSuggestion(false);
-                     }}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Update Quote
-                   </button>
-                </div>
-             )}
+            {showUpdateSuggestion && (
+              <div className="flex justify-start">
+                <button
+                  onClick={() => {
+                    setInputValue('Can you update the quantity to 10 and discount to 10% in this quote');
+                    setShowUpdateSuggestion(false);
+                  }}
+                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                >
+                  ✨ Update Quote
+                </button>
+              </div>
+            )}
 
-             {showUpdateAllSuggestion && (
-                <div className="flex justify-start">
-                   <button 
-                     onClick={() => {
-                       setInputValue('Update all the quote line items with quantity 10 and discount 10%');
-                       setShowUpdateAllSuggestion(false);
-                     }}
-                     className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
-                   >
-                     ✨ Update All Items
-                   </button>
-                </div>
-             )}
+            {showUpdateAllSuggestion && (
+              <div className="flex justify-start">
+                <button
+                  onClick={() => {
+                    setInputValue('Update all the quote line items with quantity 10 and discount 10%');
+                    setShowUpdateAllSuggestion(false);
+                  }}
+                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                >
+                  ✨ Update All Items
+                </button>
+              </div>
+            )}
           </div>
-          
+
           <div ref={chatEndRef} />
         </div>
 
         <div className="af-input-area">
-          <form onSubmit={handleSend} className="relative group">
-             <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
-             <input 
-              type="text" 
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : `Ask ${t.quotingAccelerator}...`}
-              className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
-             />
-             <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+          <form onSubmit={handleSend} className="relative group flex items-center gap-2">
+            <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              className="hidden"
+              accept=".pdf,.docx,.txt,.xlsx,.xls"
+            />
+
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 pl-6 pr-12 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+              />
+
+              <button
+                type="submit"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform"
+              >
                 <Send size={20} />
-             </button>
+              </button>
+            </div>
           </form>
           {/* <div className="mt-4 flex flex-wrap gap-2">
              <div className="flex items-center gap-2 mb-2 w-full">
@@ -975,16 +1015,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark, lan
         </div>
       </section>
 
-      <ProductConfigModal 
-        isOpen={isConfigOpen} 
-        onClose={() => setIsConfigOpen(false)} 
-        products={configProducts} 
+      <ProductConfigModal
+        isOpen={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
+        products={configProducts}
         onConfirm={(configuredItems) => {
           const list = configuredItems.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
           setInputValue(`Create a quote for: ${list}`);
           handleSend(); // This will add the message to the UI and send the JSON
           setIsConfigOpen(false);
-        }} 
+        }}
       />
     </div>
   );

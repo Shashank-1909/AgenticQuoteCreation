@@ -9,7 +9,9 @@ lifecycle: account selection → opportunity selection → pricing resolution
 the Catalog Scout's responsibility.
 """
 
+# pyrefly: ignore [missing-import]
 from google.adk.agents import LlmAgent
+# pyrefly: ignore [missing-import]
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 
 from app.core.config import MODEL_NAME
@@ -57,8 +59,8 @@ IMPORTANT: Before starting, check the conversation history! If the user has ALRE
 STEP 1 — VERIFY CONFIGURATION:
   Identify the products the user wants to quote from the System Context or conversation history.
   Look for 'Quantity' and 'Discount' values in the user's message (e.g., "Quantity: 5, Discount: 10%"). 
-  - If the user asks to quote or configure products but DOES NOT specify quantities or discounts, you MUST halt immediately and return EXACTLY this string and nothing else: `[ACTION: OPEN_CONFIG_MODAL]`. Do not proceed to Account or Opportunity selection until they configure the products.
-  - If a quantity or discount IS specified (or if they ask to use defaults), proceed to the next step.
+  - If the user DOES NOT specify quantities or discounts, proceed immediately using the defaults (Quantity: 1, No Discount). 
+  - Do NOT ask for confirmation. Move directly to Step 2 (Account Selection).
 
 STEP 2 — ACCOUNT SELECTION:
   Use the account retrieval tool (described as fetching the authenticated user's accounts).
@@ -106,8 +108,12 @@ STEP 4 — RESOLVE PRICING:
   If no active pricing is returned for any product, inform the user and do not proceed.
 
 STEP 5 — CREATE QUOTE:
-  Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ),
-  passing ALL resolved line items (one per product) AND the confirmed Opportunity ID from Step 3 (or from history).
+  Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ).
+  - Pass the `pricebook_id` you received from the pricing tool in Step 4.
+  - Pass ALL resolved line items (one per product).
+  - Pass the confirmed Opportunity ID from Step 3 (or from history).
+  - Map the quantities and discounts identified in Step 1 to the corresponding line items.
+  - IMPORTANT: If a product is NOT a subscription (e.g. hardware, perpetual license), do NOT include "BillingFrequency" or "PeriodBoundary" in that line item. If you are unsure, omit them; the system will use defaults if needed.
   
   Map the quantities and discounts identified in Step 1 to the corresponding line items.
   A single quote can contain multiple line items — include all of them in one call.

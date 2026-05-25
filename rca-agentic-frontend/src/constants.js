@@ -68,6 +68,9 @@ export const TOOL_LABELS = {
   transfer_to_agent: 'Route',
   get_quote_line_items:    'Line Items',
   manage_quote_line_items: 'Update Lines',
+  parse_requirements_doc: 'Parse Document',
+  parse_transcript_to_requirements: 'Parse Transcript',
+  map_requirements_to_catalog: 'Map Products',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
@@ -76,6 +79,7 @@ export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0,
 // ─────────────────────────────────────────────────────────────
 export const INIT_ORCH = {
   coordinator: 'idle',
+  Requirements_Parser: { state: 'idle', tools: [], routedByDm: false },
   Catalog_Scout:   { state: 'idle', tools: [], routedByDm: false },
   Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
   Quote_Updator:   { state: 'idle', tools: [], routedByDm: false },

@@ -24,6 +24,8 @@ export const translations = {
     saved: "SAVED",
     language: "Language",
     languageContext: "Please respond entirely in English.",
+    documentUploaded: "Document Uploaded",
+    uploadFailed: "Upload failed",
     searchedCatalog: "I've searched the catalog and found these products:",
     productCatalog: "Product Catalog",
     pleaseSelectAn: "Please select an ",
@@ -62,6 +64,8 @@ export const translations = {
     orchestrationFlow: "Flujo de Orquestación",
     recordPreview: "Vista Previa",
     commandCenterOnline: "Centro de Comando en Línea. Esperando instrucciones para ",
+    documentUploaded: "Documento Subido",
+    uploadFailed: "Error al subir",
 
     // New UI sections for Spanish
     selectionHub: {
@@ -123,6 +127,8 @@ export const translations = {
   saved: "已保存",
   language: "语言",
   languageContext: "Please respond entirely in Chinese.",
+  documentUploaded: "文档已上传",
+  uploadFailed: "上传失败",
   searchedCatalog: "我已搜索目录并找到了以下产品：",
   productCatalog: "产品目录",
   pleaseSelectAn: "请选择一个",
