@@ -32,7 +32,7 @@ const modules = [
 ];
 
 const SelectionHub = ({ onSelect, isDark, setIsDark, language, setLanguage }) => {
-  const t = translations[language];
+  const t = translations[language] || translations.en;
   const stats = [
     { value: '10×', label: (t && t.stats && t.stats.accounts) || 'Accounts' },
     { value: '+10%', label: (t && t.stats && t.stats.opportunities) || 'Opportunities' },

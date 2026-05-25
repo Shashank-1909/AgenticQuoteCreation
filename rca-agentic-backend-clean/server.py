@@ -2,6 +2,21 @@ import os
 import sys
 import json
 import requests
+
+# Redirect sys.stderr to a file to prevent subprocess standard error pipe deadlocks on Windows
+class FileLogger:
+    def __init__(self, filepath="server.log"):
+        self.filepath = filepath
+    def write(self, message):
+        try:
+            with open(self.filepath, "a", encoding="utf-8") as f:
+                f.write(message)
+        except Exception:
+            pass
+    def flush(self):
+        pass
+
+sys.stderr = FileLogger()
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 from google import genai
@@ -23,12 +38,15 @@ _INDEX_BUILT = False
 
 # Global GenAI Client Initialization
 def _get_genai_client():
-    use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false").lower() == "true"
+    raw_val = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false")
+    use_vertex = raw_val.replace('"', '').replace("'", "").strip().lower() == "true"
     if use_vertex:
+        project_id = (os.getenv("GOOGLE_CLOUD_PROJECT") or "").replace('"', '').replace("'", "").strip()
+        location_id = (os.getenv("GOOGLE_CLOUD_LOCATION") or "us-central1").replace('"', '').replace("'", "").strip()
         return genai.Client(
             vertexai=True,
-            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+            project=project_id,
+            location=location_id
         )
     return genai.Client()
 
@@ -944,30 +962,9 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         "salesforce_response": resp.json(),
     }, indent=2)
 
-agent_type = os.environ.get("MCP_AGENT_TYPE", "all")
-
-if agent_type in ["scout", "all"]:
-    mcp.add_tool(search_catalog)
-    mcp.add_tool(get_searchable_custom_fields)
-    mcp.add_tool(get_picklist_values)
-    mcp.add_tool(check_field_values)
-
-if agent_type in ["architect", "all"]:
-    mcp.add_tool(resolve_pricebook_entries)
-    mcp.add_tool(get_my_accounts)
-    mcp.add_tool(get_opportunities_for_account)
-    mcp.add_tool(evaluate_quote_graph)
-    mcp.add_tool(get_quote_preview)
-
-if agent_type in ["updator", "all"]:
-    mcp.add_tool(get_quote_preview)
-    mcp.add_tool(get_quote_line_items)
-    mcp.add_tool(manage_quote_line_items)
-    mcp.add_tool(get_my_accounts)
-    mcp.add_tool(get_opportunities_for_account)
 
 
-@mcp.tool()
+
 def search_products(search_term: str, region: str = None, page_size: int = 15) -> str:
     """
     Searches Salesforce products by name or keyword using direct SOQL on the Product2 object.
@@ -1040,7 +1037,51 @@ def search_products(search_term: str, region: str = None, page_size: int = 15) -
     }, indent=2)
 
 
-@mcp.tool()
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class RequirementItem(BaseModel):
+    product_name: str = Field(description="The exact name of the product or service needed.")
+    quantity: int = Field(default=1, description="The quantity requested. Default to 1 if not specified.")
+    discount: float = Field(default=0.0, description="The discount percentage requested, e.g. 10.0 for 10%. Default to 0.0.")
+
+class RequirementsPayload(BaseModel):
+    requirements: List[RequirementItem]
+
+
+def _call_gemini_direct(
+    prompt: str,
+    mime_type: str = "application/json",
+    temperature: float = 0.0,
+    response_schema: any = None
+) -> str:
+    """
+    Helper to make a Gemini API call using the official, pre-configured GenAI Client.
+    Bypasses raw REST requests and manual credential refreshes to avoid Windows grandchild pipe deadlocks.
+    """
+    sys.stderr.write("[DEBUG] _call_gemini_direct: Calling Gemini via official Client...\n")
+    try:
+        client = _get_genai_client()
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type=mime_type,
+                temperature=temperature,
+                response_schema=response_schema,
+            )
+        )
+        if response and response.text:
+            sys.stderr.write("[DEBUG] _call_gemini_direct: Call succeeded.\n")
+            return response.text.strip()
+        else:
+            raise ValueError("Empty response received from Gemini.")
+    except Exception as e:
+        sys.stderr.write(f"[DEBUG] _call_gemini_direct Error: {str(e)}\n")
+        raise e
+
+
 def parse_transcript_to_requirements(transcript_text: str) -> str:
     """
     Extracts product requirements and customer intent from a call transcript or meeting notes.
@@ -1051,82 +1092,42 @@ def parse_transcript_to_requirements(transcript_text: str) -> str:
     if len(transcript_text) > 15000:
         transcript_text = transcript_text[:15000] + "... [truncated]"
 
-    prompt = f"""
-    Analyze the following call transcript and extract the customer's requirements.
-
-    Return a JSON array of objects:
-    [
-      {{
-        "product_name": "...",
-        "quantity": 1,
-        "discount": 0,
-        "context": "..."
-      }}
-    ]
-
-    Transcript:
-    {transcript_text}
-    """
-
-    def _call_gemini():
-        return _genai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
-        )
+    prompt = (
+        "Extract all product/service requirements from the following call transcript. "
+        "For each item, identify its name, quantity, and discount (if mentioned)."
+        f"\n\nTranscript:\n{transcript_text}"
+    )
 
     try:
-        # FIX: Directly call gemini instead of using ThreadPoolExecutor
-        sys.stderr.write("[DEBUG] Calling Gemini directly (no thread pool)...\n")
-        response = _call_gemini()
-        
-        # Robust JSON extraction
-        raw_text = response.text.strip()
-        if "```json" in raw_text:
-            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-        requirements = json.loads(raw_text)
+        sys.stderr.write("[DEBUG] Calling Gemini directly for transcript parsing via Pydantic schema...\n")
+        raw_text = _call_gemini_direct(prompt, response_schema=RequirementsPayload)
+        data = json.loads(raw_text)
+        requirements = data.get("requirements", [])
         sys.stderr.write(f"[DEBUG] LLM extraction complete: {len(requirements)} items.\n")
     except Exception as e:
         sys.stderr.write(f"[DEBUG] LLM extraction error: {str(e)}\n")
-        return json.dumps({
-            "status": "error",
-            "message": f"Error analyzing transcript: {str(e)}"
-        })
-
-    return map_requirements_to_catalog(requirements)
+        requirements = []
+        
+    return json.dumps(requirements, indent=2)
 
 
-@mcp.tool()
 def parse_requirements_doc(document_content: str) -> str:
     """
     Extracts requirements from RFP/SOW documents and maps them to the catalog.
     """
     sys.stderr.write(f"\n[DEBUG] parse_requirements_doc: Processing {len(document_content)} characters...\n")
 
-    # FIX: Removed ThreadPoolExecutor — spawning nested threads inside an MCP tool
-    # causes a deadlock because the MCP thread context blocks inner Gemini calls.
-    # A single direct Gemini call is faster and more reliable for documents this size.
     prompt = (
-        "You are a requirements analyst. Extract ALL product/service needs from this document.\n"
-        "Return ONLY a JSON array with no explanation: [{\"product_name\": \"...\", \"quantity\": 1}]\n"
-        "Include every product mentioned. Use the exact product names as written.\n"
-        f"Document:\n{document_content[:20000]}"
+        "Extract all product/service requirements from the following document. "
+        "For each item, identify its exact product name, quantity, and discount (if specified)."
+        f"\n\nDocument:\n{document_content[:20000]}"
     )
 
     try:
-        sys.stderr.write("[DEBUG] Calling Gemini directly (no thread pool)...\n")
-        response = _genai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0)
-        )
-        raw = response.text.strip()
-        if "```json" in raw:
-            raw = raw.split("```json")[1].split("```")[0].strip()
-        elif "```" in raw:
-            raw = raw.split("```")[1].strip()
-
-        all_requirements = json.loads(raw)
+        sys.stderr.write("[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...\n")
+        raw = _call_gemini_direct(prompt, response_schema=RequirementsPayload)
+        data = json.loads(raw)
+        all_requirements = data.get("requirements", [])
         sys.stderr.write(f"[DEBUG] Gemini extracted {len(all_requirements)} items.\n")
     except Exception as e:
         sys.stderr.write(f"[DEBUG] Gemini extraction error: {str(e)}\n")
@@ -1137,15 +1138,16 @@ def parse_requirements_doc(document_content: str) -> str:
     for r in all_requirements:
         name = r.get("product_name", "").strip()
         if name and name.lower() not in unique_reqs:
-            unique_reqs[name.lower()] = {"product_name": name, "quantity": r.get("quantity", 1)}
+            unique_reqs[name.lower()] = {
+                "product_name": name,
+                "quantity": r.get("quantity", 1),
+                "discount": r.get("discount", 0.0)
+            }
 
     transformed = list(unique_reqs.values())
     sys.stderr.write(f"[DEBUG] Extraction complete. Total unique requirements: {len(transformed)}\n")
 
-    if not transformed:
-        return json.dumps({"status": "empty", "message": "No product requirements detected."})
-
-    return _map_requirements_to_catalog(transformed)
+    return json.dumps(transformed, indent=2)
    
 
 def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
@@ -1208,7 +1210,6 @@ def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
         return []
 
 
-@mcp.tool()
 def map_requirements_to_catalog(requirements: list) -> str:
     """
     Maps a list of extracted product requirements to actual Salesforce catalog products.
@@ -1284,6 +1285,33 @@ def _map_requirements_to_catalog(requirements: list) -> str:
             "No catalog matches found. Ask the user to describe the products differently or search manually."
         ),
     }, indent=2)
+
+agent_type = os.environ.get("MCP_AGENT_TYPE", "all")
+
+if agent_type in ["scout", "all"]:
+    mcp.add_tool(search_catalog)
+    mcp.add_tool(get_searchable_custom_fields)
+    mcp.add_tool(get_picklist_values)
+    mcp.add_tool(check_field_values)
+    mcp.add_tool(map_requirements_to_catalog)
+
+if agent_type in ["architect", "all"]:
+    mcp.add_tool(resolve_pricebook_entries)
+    mcp.add_tool(get_my_accounts)
+    mcp.add_tool(get_opportunities_for_account)
+    mcp.add_tool(evaluate_quote_graph)
+    mcp.add_tool(get_quote_preview)
+
+if agent_type in ["updator", "all"]:
+    mcp.add_tool(get_quote_preview)
+    mcp.add_tool(get_quote_line_items)
+    mcp.add_tool(manage_quote_line_items)
+    mcp.add_tool(get_my_accounts)
+    mcp.add_tool(get_opportunities_for_account)
+
+if agent_type in ["parser", "all"]:
+    mcp.add_tool(parse_requirements_doc)
+    mcp.add_tool(parse_transcript_to_requirements)
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

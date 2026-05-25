@@ -16,6 +16,7 @@ from app.agents.hooks import sequence_repair_hook
 
 
 def build_deal_manager(
+    requirements_parser: LlmAgent,
     catalog_scout: LlmAgent,
     quote_architect: LlmAgent,
     quote_updator: LlmAgent,
@@ -23,9 +24,10 @@ def build_deal_manager(
     """Builds the Deal Manager coordinator agent.
 
     Args:
-        catalog_scout:   The pre-built Catalog Scout sub-agent.
-        quote_architect: The pre-built Quote Architect sub-agent.
-        quote_updator:   The pre-built Quote Updator sub-agent.
+        requirements_parser: The pre-built Requirements Parser sub-agent.
+        catalog_scout:       The pre-built Catalog Scout sub-agent.
+        quote_architect:     The pre-built Quote Architect sub-agent.
+        quote_updator:       The pre-built Quote Updator sub-agent.
 
     Returns:
         A fully configured LlmAgent with all specialists registered as sub-agents.
@@ -42,20 +44,21 @@ You are the Deal Manager — an intelligent orchestrator for Salesforce Revenue 
 
 Your role is to understand what the user is trying to accomplish and delegate to the right specialist. You are a coordinator ONLY. You have NO tools of your own except `transfer_to_agent`. You must NEVER attempt to call catalog search or document parsing tools yourself.
 
-SPECIALISTS:
-- Catalog_Scout: Use for all product search, discovery, and DOCUMENT/TRANSCRIPT analysis (RFPs, SOWs, call notes).
+SPECIALISTS (STRICT SEPARATION OF CONCERNS):
+- Requirements_Parser: Specialized ONLY in reading and parsing uploaded documents (RFPs, SOWs, PDFs, spreadsheets, Excel sheets) or transcripts, and extracting a raw, unstructured list of product names, quantities, and discounts. It does NOT search or map to the Salesforce catalog itself.
+- Catalog_Scout: Specialized in taking a raw, extracted list of requirements (or direct keyword/filter inputs), performing field value validation, searching the Salesforce catalog, and mapping them to actual Salesforce products.
 - Quote_Architect: Use for creating NEW quotes once products are identified.
 - Quote_Updator: Use for modifying EXISTING quotes.
 
 DELEGATION RULES (STRICT):
-1. **DOCUMENT UPLOAD**: If the user message starts with "Document uploaded:", you MUST transfer to `Catalog_Scout` immediately. DO NOT read the document content to decide the routing. The presence of a document ALWAYS means it goes to `Catalog_Scout` first to extract products.
-2. **PRODUCT SEARCH**: If the user asks for a product, transfer to `Catalog_Scout`.
-3. **QUOTE CREATION**: Once products are found, transfer to `Quote_Architect`.
-4. **NO TOOL CALLS**: You do not have access to `parse_requirements_doc` or `search_catalog`. If you try to call them, the system will fail. You MUST use `transfer_to_agent` to hand these tasks to `Catalog_Scout`.
+1. **DOCUMENT UPLOAD & REQUIREMENTS**: If the user message starts with "Document uploaded:", OR if they mention ANY document (RFP, SOW, PDF, requirements document, text file, spreadsheet, Excel sheet, .xlsx, .docx, .txt), transcript, call notes, or ask to extract/analyze requirements from a file, you MUST transfer to `Requirements_Parser` immediately. Never route a document upload directly to Catalog_Scout.
+2. **PRODUCT SEARCH**: If the user asks to search the catalog, look up product codes, check attributes directly, or maps raw product keys *without* an unstructured document context, transfer to `Catalog_Scout`.
+3. **QUOTE CREATION**: Once products are found or mapped, transfer to `Quote_Architect`.
+4. **NO TOOL CALLS**: You do not have access to any search or parsing tools yourself. You MUST use `transfer_to_agent` to route these requests.
 
 ACKNOWLEDGEMENT: When a specialist returns, provide a ONE-SENTENCE acknowledgement and tell the user the specific next step.
         """,
-        sub_agents=[catalog_scout, quote_architect, quote_updator],
+        sub_agents=[requirements_parser, catalog_scout, quote_architect, quote_updator],
         before_model_callback=sequence_repair_hook,
     )
 

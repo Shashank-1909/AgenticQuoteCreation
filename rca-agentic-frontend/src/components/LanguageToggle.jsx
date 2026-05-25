@@ -11,7 +11,7 @@ const LanguageToggle = ({ language, setLanguage, isDark }) => {
       }`}>
         <Globe size={16} className="text-indigo-500" />
         <span className={`text-[10px] font-black tracking-widest ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
-          {language.toUpperCase()}
+          {(language || 'en').toUpperCase()}
         </span>
       </button>
       <div className={`absolute right-0 top-full mt-2 w-32 rounded-xl shadow-xl border overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 ${isDark ? 'bg-slate-800 border-white/10' : 'bg-white border-slate-200'}`}>

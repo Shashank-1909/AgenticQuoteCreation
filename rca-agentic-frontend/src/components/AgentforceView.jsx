@@ -83,8 +83,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           setOrchestration(prev => {
             const n = { ...prev };
             if (n.coordinator === 'active') n.coordinator = 'done';
-            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-              if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+              if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             return n;
           });
@@ -94,13 +94,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       case 'AGENT_START':
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
+          // Preserve the true agent name; the parser now has its own graph node
           const name = data.agent;
           const n = { ...prev };
           if (name === 'Deal_Manager') {
             n.coordinator = 'active';
-          } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator') {
-            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-              if (n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
+          } else if (
+            name === 'Requirements_Parser' ||
+            name === 'Catalog_Scout' ||
+            name === 'Quote_Architect' ||
+            name === 'Quote_Updator'
+          ) {
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+              if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
             if (n.coordinator === 'active') n.coordinator = 'done';
@@ -114,8 +120,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-            if (n[k].state === 'active') {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+            if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
               );
@@ -139,8 +145,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
-            if (n[k].tools.some(t => t.name === data.tool)) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+            if (n[k] && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
                   t.name === data.tool ? { ...t, state: 'done' } : t
@@ -261,7 +267,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
             // Detect if AI is asking for a document upload
             const lcText = processedText.toLowerCase();
-            if (lcText.includes('upload the document') || lcText.includes('share your requirements') || lcText.includes('provide the details here')) {
+            if (
+              lcText.includes('upload') ||
+              lcText.includes('paste') ||
+              lcText.includes('share') ||
+              lcText.includes('document') ||
+              lcText.includes('transcript') ||
+              lcText.includes('file') ||
+              lcText.includes('sow') ||
+              lcText.includes('rfp') ||
+              lcText.includes('analyse') ||
+              lcText.includes('analyze') ||
+              lcText.includes('[action: show_upload_card]')
+            ) {
               addMessage({
                 type: 'card',
                 cardType: 'upload',
@@ -293,28 +311,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
   const addMessage = (msg) => {
     const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
-    setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'assistant', aiName, ...msg }]);
   };
 
   const handleSend = (e, overrideText = null) => {
     e?.preventDefault();
     const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
-
-    // Detect "I had a call" or "I have requirements"
-    const lowerText = text.toLowerCase();
-    if ((lowerText.includes('i had call') || lowerText.includes('i have call') || lowerText.includes('have requirements') || lowerText.includes('share requirements') || lowerText.includes('i had a call')) && !lowerText.includes('context:')) {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-      setTimeout(() => {
-        addMessage({
-          type: 'card',
-          cardType: 'upload',
-          content: "I can help with that. Please provide the content of the document, and I will analyze it to start building your quote."
-        });
-      }, 500);
-      setInputValue('');
-      return;
-    }
 
 
     // Support dynamic preview/summary commands
@@ -336,7 +339,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       }
 
       if (quoteIdToPreview) {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
         handlePreview(quoteIdToPreview);
         setInputValue('');
         return;
@@ -358,7 +361,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       }
     }
 
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
     setInputValue('');
     ws.current?.send(JSON.stringify({
       text: finalMessage,
@@ -393,14 +396,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       const data = await resp.json();
 
       if (data.status === 'success') {
-        // Clear old selections and configs
+        // Clear old selections, configs, and orchestration graph
         setSelectedProducts(new Set());
         setProductConfigs({});
         setBulkQty('');
         setBulkDiscount('');
+        setOrchestration(INIT_ORCH);
 
         // Immediately notify the user in the UI
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
+        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
 
         // FIX: Must enter orchestrating state before sending — otherwise the
         // frontend state machine desyncs and FINAL_REPLY renders nothing.
@@ -508,7 +512,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const listStr = selectedList.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
     ws.current?.send(text);
 
     // Clear selections after confirm
@@ -597,8 +601,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 <button
                   onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
                   className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${isDark
-                      ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10'
-                      : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
+                    ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10'
+                    : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
                     }`}
                   title="Zoom In"
                 >
@@ -607,8 +611,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 <button
                   onClick={() => setZoomLevel(z => Math.max(0.4, z - 0.1))}
                   className={`p-2 rounded-lg transition-colors backdrop-blur-md border ${isDark
-                      ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10'
-                      : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
+                    ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10'
+                    : 'bg-black/5 hover:bg-black/10 text-slate-500 hover:text-black border-black/10'
                     }`}
                   title="Zoom Out"
                 >
@@ -980,9 +984,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
-                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 pl-6 pr-12 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+
+              <button
+                type="submit"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform"
+              >
                 <Send size={20} />
               </button>
             </div>
