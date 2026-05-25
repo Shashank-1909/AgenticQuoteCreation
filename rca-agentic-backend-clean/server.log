@@ -1,0 +1,669 @@
+Processing request of type ListToolsRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 4 items
+[DEBUG] _search_product_direct: Querying 'Product Name' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Product%' AND Name LIKE '%Name%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Product Name' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Product%' OR Name LIKE '%Name%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Product Name'
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 6 unique products found
+Tool already exists: get_quote_preview
+Tool already exists: get_my_accounts
+Tool already exists: get_opportunities_for_account
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 3 unique products found
+Traceback (most recent call last):
+  File "C:\Agivant Projects\Agentic Accelerator\Shashank code\ADK\rca-agentic-backend-clean\scratch\test_matching.py", line 88, in <module>
+    run_test()
+  File "C:\Agivant Projects\Agentic Accelerator\Shashank code\ADK\rca-agentic-backend-clean\scratch\test_matching.py", line 85, in run_test
+    print("\n✅ ALL TESTS PASSED SUCCESSFULLY!")
+  File "C:\Users\admin\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 2: character maps to <undefined>
+Tool already exists: get_quote_preview
+Tool already exists: get_my_accounts
+Tool already exists: get_opportunities_for_account
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 4 items
+[DEBUG] _search_product_direct: Querying 'Product Name' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Product%' AND Name LIKE '%Name%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Product Name' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Product%' OR Name LIKE '%Name%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'Product Name'
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 5 unique products found
+Tool already exists: get_quote_preview
+Tool already exists: get_my_accounts
+Tool already exists: get_opportunities_for_account
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 3 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 0 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 12 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 0 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 12 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 0 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 12 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 0 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 12 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 3 items
+[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
+[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
+[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
+[DEBUG] Mapping complete — 3 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 19 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 19 unique products found
+Tool already exists: get_quote_preview
+Tool already exists: get_my_accounts
+Tool already exists: get_opportunities_for_account
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 3 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 0 unique products found
+Traceback (most recent call last):
+  File "C:\Agivant Projects\Agentic Accelerator\Shashank code\ADK\rca-agentic-backend-clean\scratch\test_matching.py", line 123, in <module>
+    run_test()
+  File "C:\Agivant Projects\Agentic Accelerator\Shashank code\ADK\rca-agentic-backend-clean\scratch\test_matching.py", line 117, in run_test
+    assert req_item_4["confidence"] in ["High", "Medium"], "Confidence should be High or Medium for a typo"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Confidence should be High or Medium for a typo
+Tool already exists: get_quote_preview
+Tool already exists: get_my_accounts
+Tool already exists: get_opportunities_for_account
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 3 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 73 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 73 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 10 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 14 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 10 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 14 unique products found
+Processing request of type ListToolsRequest
+
+[DEBUG] parse_requirements_doc: Processing 1718 characters...
+[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
+[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
+[DEBUG] _call_gemini_direct: Call succeeded.
+[DEBUG] Gemini extracted 5 items.
+[DEBUG] Extraction complete. Total unique requirements: 5
+[DEBUG] _map_requirements_to_catalog: mapping 5 items
+[DEBUG] _search_product_direct: Querying 'Analytics & Insights – Forecasting Enterprise' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analytics%' AND Name LIKE '%Insights%' AND Name LIKE '%Forecasting%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analytics & Insights – Forecasting Enterprise' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analytics%' OR Name LIKE '%Insights%' OR Name LIKE '%Forecasting%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 2 matches for 'Analytics & Insights – Forecasting Enterprise'
+[DEBUG] _search_product_direct: Querying 'BigQuery – BI Engine' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%BigQuery%' AND Name LIKE '%Engine%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'BigQuery – BI Engine' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%BigQuery%' OR Name LIKE '%Engine%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 7 matches for 'BigQuery – BI Engine'
+[DEBUG] _search_product_direct: Querying 'Data Services – Data Governance Enterprise' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Services%' AND Name LIKE '%Data%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Data Services – Data Governance Enterprise'
+[DEBUG] _search_product_direct: Querying 'Vertex AI Platform Bundle' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Platform%' AND Name LIKE '%Bundle%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Vertex AI Platform Bundle'
+[DEBUG] _search_product_direct: Querying 'Support & Success – Enhanced Support Premium' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Support%' AND Name LIKE '%Success%' AND Name LIKE '%Enhanced%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Support & Success – Enhanced Support Premium' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Support%' OR Name LIKE '%Success%' OR Name LIKE '%Enhanced%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 5 matches for 'Support & Success – Enhanced Support Premium'
+[DEBUG] Mapping complete — 13 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 5 items
+[DEBUG] _search_product_direct: Querying 'Analytics & Insights – Forecasting Enterprise' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analytics%' AND Name LIKE '%Insights%' AND Name LIKE '%Forecasting%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analytics & Insights – Forecasting Enterprise' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analytics%' OR Name LIKE '%Insights%' OR Name LIKE '%Forecasting%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 2 matches for 'Analytics & Insights – Forecasting Enterprise'
+[DEBUG] _search_product_direct: Querying 'BigQuery – BI Engine' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%BigQuery%' AND Name LIKE '%Engine%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'BigQuery – BI Engine' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%BigQuery%' OR Name LIKE '%Engine%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 7 matches for 'BigQuery – BI Engine'
+[DEBUG] _search_product_direct: Querying 'Data Services – Data Governance Enterprise' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Services%' AND Name LIKE '%Data%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Data Services – Data Governance Enterprise'
+[DEBUG] _search_product_direct: Querying 'Vertex AI Platform Bundle' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Platform%' AND Name LIKE '%Bundle%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Vertex AI Platform Bundle'
+[DEBUG] _search_product_direct: Querying 'Support & Success – Enhanced Support Premium' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Support%' AND Name LIKE '%Success%' AND Name LIKE '%Enhanced%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Support & Success – Enhanced Support Premium' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Support%' OR Name LIKE '%Success%' OR Name LIKE '%Enhanced%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 5 matches for 'Support & Success – Enhanced Support Premium'
+[DEBUG] Mapping complete — 13 unique products found
+Tool already exists: get_quote_preview
+Tool already exists: get_my_accounts
+Tool already exists: get_opportunities_for_account
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 3 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+[DEBUG] _map_requirements_to_catalog: mapping 1 items
+[DEBUG] Mapping complete — 1 unique products found
+Processing request of type ListToolsRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 10 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 154 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'Rayban Meta Wayferer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' AND Name LIKE '%Meta%' AND Name LIKE '%Wayferer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Rayban Meta Wayferer' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Rayban%' OR Name LIKE '%Meta%' OR Name LIKE '%Wayferer%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Rayban Meta Wayferer'
+[DEBUG] _search_product_direct: Querying 'Qest 3' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
+[DEBUG] _search_product_direct: Found 150 matches for 'Qest 3'
+[DEBUG] _search_product_direct: Querying 'Meta Qest 3S' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' AND Name LIKE '%Qest%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Meta Qest 3S' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Meta%' OR Name LIKE '%Qest%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 26 matches for 'Meta Qest 3S'
+[DEBUG] _search_product_direct: Querying 'Analitics & Insights' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' AND Name LIKE '%Insights%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Analitics & Insights' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Analitics%' OR Name LIKE '%Insights%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 1 matches for 'Analitics & Insights'
+[DEBUG] _search_product_direct: Querying 'Data Servises' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' AND Name LIKE '%Servises%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Data Servises' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Data%' OR Name LIKE '%Servises%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 10 matches for 'Data Servises'
+[DEBUG] _search_product_direct: Querying 'Vertex Aii' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' AND Name LIKE '%Aii%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 50
+[DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
+[DEBUG] Mapping complete — 154 unique products found
+Processing request of type ListToolsRequest
+
+[DEBUG] parse_requirements_doc: Processing 816 characters...
+[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
+[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
+[DEBUG] _call_gemini_direct: Call succeeded.
+[DEBUG] Gemini extracted 9 items.
+[DEBUG] Extraction complete. Total unique requirements: 9
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kit' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kit'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kit' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Endotoxin-Free Plasmid Kit'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kit' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kit'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 10 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kit' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kit'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kit' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Endotoxin-Free Plasmid Kit'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kit' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kit'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 10 unique products found
+Processing request of type ListToolsRequest
+
+[DEBUG] parse_requirements_doc: Processing 1106 characters...
+[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
+[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
+[DEBUG] _call_gemini_direct: Call succeeded.
+[DEBUG] Gemini extracted 9 items.
+[DEBUG] Extraction complete. Total unique requirements: 9
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
+[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 10 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
+[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 10 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest

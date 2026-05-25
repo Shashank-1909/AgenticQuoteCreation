@@ -80,7 +80,7 @@ def _parse_document_inline(text: str) -> list[dict] | None:
         name_candidates = [j for j, c in enumerate(cols) if "name" in c or "product" in c or "service" in c]
         qty_candidates  = [j for j, c in enumerate(cols) if "qty" in c or "quant" in c]
         disc_candidates = [j for j, c in enumerate(cols) if "disc" in c or "%" in c]
-        if name_candidates:
+        if name_candidates and (qty_candidates or disc_candidates):
             header_idx = i
             col_name  = name_candidates[0]
             col_qty   = qty_candidates[0]  if qty_candidates  else None
@@ -268,6 +268,14 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         logger.warning("Direct Gemini parser failed: %s", parse_err)
 
                 if parsed_reqs is not None:
+                    # Ignore header elements if any got parsed
+                    ignored_names = {"product name", "product_name", "quantity", "discount", "price"}
+                    parsed_reqs = [r for r in parsed_reqs if (isinstance(r, dict) and r.get("product_name", "").strip().lower() not in ignored_names)]
+
+                    # Proactively run the mapping logic to match items and get quantities/discounts
+                    from server import _map_requirements_to_catalog
+                    mapping_res_json = _map_requirements_to_catalog(parsed_reqs)
+
                     # Build a Catalog_Scout–style handoff message with the extracted JSON.
                     reqs_json = json.dumps(parsed_reqs, indent=2)
                     text_content = (

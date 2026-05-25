@@ -1189,7 +1189,7 @@ def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
             where_clause_loose = " OR ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
             query_loose = (
                 f"SELECT Id, Name, ProductCode, Family FROM Product2 "
-                f"WHERE ({where_clause_loose}) AND IsActive = true LIMIT {page_size}"
+                f"WHERE ({where_clause_loose}) AND IsActive = true LIMIT 500"
             )
             sys.stderr.write(f"[DEBUG] _search_product_direct: Fallback Querying '{prod_name}' (LOOSE) -> {query_loose}\n")
             resp_loose = requests.get(
@@ -1199,6 +1199,18 @@ def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
             )
             if resp_loose.status_code == 200:
                 recs = resp_loose.json().get("records", [])
+
+        # Final Fallback: if even loose search failed (total typo like 'Stndard Usr'), fetch active catalog to fuzzy match locally
+        if not recs:
+            query_all = "SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150"
+            sys.stderr.write(f"[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> {query_all}\n")
+            resp_all = requests.get(
+                f"{instance_url}/services/data/v65.0/query/?q={url_quote(query_all)}",
+                headers=headers,
+                timeout=20,
+            )
+            if resp_all.status_code == 200:
+                recs = resp_all.json().get("records", [])
 
         sys.stderr.write(f"[DEBUG] _search_product_direct: Found {len(recs)} matches for '{prod_name}'\n")
         return [
@@ -1234,12 +1246,17 @@ def _map_requirements_to_catalog(requirements: list) -> str:
     and the public map_requirements_to_catalog tool.
     Uses _search_product_direct (plain function, no MCP) to avoid deadlocks.
     """
+    ignored_names = {"product name", "product_name", "quantity", "discount", "price"}
     valid_reqs = []
     for r in requirements:
         if isinstance(r, dict) and r.get("product_name", "").strip():
-            valid_reqs.append(r)
+            name = r.get("product_name", "").strip()
+            if name.lower() not in ignored_names:
+                valid_reqs.append(r)
         elif isinstance(r, str) and r.strip():
-            valid_reqs.append({"product_name": r.strip()})
+            name = r.strip()
+            if name.lower() not in ignored_names:
+                valid_reqs.append({"product_name": name})
     
     requirements = valid_reqs[:12]
 
@@ -1260,12 +1277,63 @@ def _map_requirements_to_catalog(requirements: list) -> str:
     results = [_search_one(req) for req in requirements]
 
     for req, products_found in results:
+        req_name = req.get("product_name", "").strip()
+        
+        scored_products = []
+        for p in products_found:
+            p_name = p.get("name", "").strip()
+            
+            # Exact lowercase match
+            if p_name.lower() == req_name.lower():
+                score = 1.0
+            else:
+                import difflib
+                req_words = req_name.lower().split()
+                p_words = p_name.lower().split()
+                
+                # Token-level fuzzy match (resolves length-mismatched typos like 'Qest 3' vs 'Meta Quest 3')
+                word_scores = []
+                for rw in req_words:
+                    best_word_score = 0
+                    for pw in p_words:
+                        if rw in pw or pw in rw:
+                            best_word_score = max(best_word_score, min(len(rw), len(pw)) / max(len(rw), len(pw)))
+                        else:
+                            best_word_score = max(best_word_score, difflib.SequenceMatcher(None, rw, pw).ratio())
+                    word_scores.append(best_word_score)
+                
+                token_score = sum(word_scores) / len(req_words) if req_words else 0
+                fuzzy_score = difflib.SequenceMatcher(None, req_name.lower(), p_name.lower()).ratio()
+                
+                # Take the highest of the full string match vs the token average
+                score = max(token_score, fuzzy_score)
+                
+            scored_products.append((p, score))
+            
+        # Sort products by score descending
+        scored_products.sort(key=lambda x: x[1], reverse=True)
+        
+        # Determine confidence and filter
+        if scored_products:
+            best_score = scored_products[0][1]
+            if best_score >= 0.75:
+                # Accurate match (including typos): filter out unrelated and HIGHLIGHT ONLY THAT
+                filtered_products = [item[0] for item in scored_products if item[1] >= best_score - 0.1]
+                confidence = "High" if len(filtered_products) == 1 else "Medium"
+            else:
+                # No accurate match: give keyword matches in the list, but DO NOT highlight (Low confidence)
+                filtered_products = [item[0] for item in scored_products if item[1] > 0]
+                confidence = "Low"
+        else:
+            filtered_products = []
+            confidence = "Low"
+
         mapped_requirements.append({
             "extracted_need": req,
-            "mapped_catalog_products": products_found,
-            "confidence": "High" if len(products_found) == 1 else "Medium" if products_found else "Low",
+            "mapped_catalog_products": filtered_products,
+            "confidence": confidence,
         })
-        for p in products_found:
+        for p in filtered_products:
             if p["id"] not in seen_ids:
                 all_catalog_products.append(p)
                 seen_ids.add(p["id"])
