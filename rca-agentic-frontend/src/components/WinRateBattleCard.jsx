@@ -25,9 +25,18 @@ export default function WinRateBattleCard({ data, accountName, isLoading }) {
   }
 
   const quotes = data || [];
-  const wonQuotes = quotes.filter(q => q.status === 'Closed Won' || q.status === 'Approved');
-  const lostQuotes = quotes.filter(q => q.status === 'Closed Lost' || q.status === 'Rejected');
-  const activeQuotes = quotes.filter(q => !['Closed Won', 'Approved', 'Closed Lost', 'Rejected'].includes(q.status));
+  // Won: Closed Won, Approved, Accepted, Presented (positive outcomes)
+  const wonQuotes = quotes.filter(q =>
+    ['Closed Won', 'Approved', 'Accepted', 'Presented'].includes(q.status)
+  );
+  // Lost: Closed Lost, Rejected, Expired (negative outcomes)
+  const lostQuotes = quotes.filter(q =>
+    ['Closed Lost', 'Rejected', 'Expired'].includes(q.status)
+  );
+  // Active: everything else (Draft, In Review, etc.)
+  const activeQuotes = quotes.filter(q =>
+    !['Closed Won', 'Approved', 'Accepted', 'Presented', 'Closed Lost', 'Rejected', 'Expired'].includes(q.status)
+  );
 
   const totalResolved = wonQuotes.length + lostQuotes.length;
   const winRate = totalResolved > 0 ? Math.round((wonQuotes.length / totalResolved) * 100) : 0;
@@ -237,9 +246,9 @@ export default function WinRateBattleCard({ data, accountName, isLoading }) {
                   {q.discount > 0 && <span className="text-[9px] text-slate-400 font-bold">{q.discount}% disc.</span>}
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                  q.status === 'Closed Won' || q.status === 'Approved'
+                  ['Closed Won', 'Approved', 'Accepted', 'Presented'].includes(q.status)
                     ? 'bg-emerald-500/10 text-emerald-600'
-                    : q.status === 'Closed Lost' || q.status === 'Rejected'
+                    : ['Closed Lost', 'Rejected', 'Expired'].includes(q.status)
                     ? 'bg-rose-500/10 text-rose-600'
                     : 'bg-slate-500/10 text-slate-600'
                 }`}>
