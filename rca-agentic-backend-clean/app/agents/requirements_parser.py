@@ -21,7 +21,9 @@ from app.core.config import MODEL_NAME
 from app.agents.hooks import sequence_repair_hook
 
 
-def build_requirements_parser(toolset: McpToolset, catalog_scout: LlmAgent) -> LlmAgent:
+from typing import Optional
+
+def build_requirements_parser(toolset: McpToolset, catalog_scout: Optional[LlmAgent] = None) -> LlmAgent:
     """Builds the Requirements Parser sub-agent.
 
     Args:
@@ -96,7 +98,8 @@ CRITICAL RULES
         """,
         tools=[toolset],
         # Catalog_Scout must be registered here so ADK can resolve the
-        # transfer_to_agent("Catalog_Scout") call at runtime.
-        sub_agents=[catalog_scout],
+        # transfer_to_agent("Catalog_Scout") call at runtime, ONLY when
+        # Requirements_Parser is used as a standalone root agent.
+        sub_agents=[catalog_scout] if catalog_scout else [],
         before_model_callback=sequence_repair_hook,
     )

@@ -52,13 +52,22 @@ async def lifespan(app: FastAPI):
     mcp_updator   = build_mcp_toolset("updator")
     mcp_analyst   = build_mcp_toolset("analyst")
 
-    catalog_scout_for_dm = build_catalog_scout(mcp_scout_dm)
-    catalog_scout_for_parser = build_catalog_scout(mcp_scout_parser)
-    requirements_parser = build_requirements_parser(mcp_parser, catalog_scout_for_parser)
+    catalog_scout_dm   = build_catalog_scout(mcp_scout_dm)
+    catalog_scout_parser = build_catalog_scout(mcp_scout_parser)
+    
+    # Deal_Manager's tree: Requirements_Parser must NOT have Catalog_Scout as a sub-agent
+    # because Deal_Manager already has it as a sub-agent (prevents duplicate name error).
+    requirements_parser_dm = build_requirements_parser(mcp_parser, catalog_scout=None)
+    
     quote_architect = build_quote_architect(mcp_architect)
     quote_updator   = build_quote_updator(mcp_updator)
     quote_analyst   = build_quote_analyst(mcp_analyst)
-    deal_manager    = build_deal_manager(requirements_parser, catalog_scout_for_dm, quote_architect, quote_updator, quote_analyst)
+    
+    deal_manager    = build_deal_manager(requirements_parser_dm, catalog_scout_dm, quote_architect, quote_updator, quote_analyst)
+
+    # Standalone parser_runner's tree: Requirements_Parser MUST have Catalog_Scout as a 
+    # sub-agent in order to transfer to it, since it is the root agent here.
+    requirements_parser_standalone = build_requirements_parser(mcp_parser, catalog_scout=catalog_scout_parser)
 
     # _root_runner   — Deal_Manager as root (initial routing, product search)
     # _quote_runner  — Quote_Architect as root (direct, skips Deal_Manager)
@@ -82,12 +91,12 @@ async def lifespan(app: FastAPI):
     )
     parser_runner = Runner(
         app_name=APP_NAME,      # SAME app_name = shared session history!
-        agent=requirements_parser,
+        agent=requirements_parser_standalone,
         session_service=session_service,
     )
     scout_runner = Runner(
         app_name=APP_NAME,      # SAME app_name = shared session history!
-        agent=catalog_scout_for_dm,
+        agent=catalog_scout_dm,
         session_service=session_service,
     )
 

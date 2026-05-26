@@ -478,7 +478,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
       {/* Quote History list */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
         <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
-          Quote History mapping ({quotes.length} total)
+          Quote History mapping ({quotes.length} totals)
         </h3>
         <div className="space-y-3">
           {quotes.map((q, i) => (

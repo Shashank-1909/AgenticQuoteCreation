@@ -677,9 +677,28 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     }
 
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
+    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
+    
+    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers
+    if (!isWinRateRequest && isWinRateRequestRef.current && (
+        cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
+    )) {
+      isWinRateRequest = true;
+    }
     isWinRateRequestRef.current = isWinRateRequest;
-    const isQuoteWinRateRequest = isWinRateRequest && (cmd.includes('this quote') || cmd.includes('current quote') || cmd.includes('the quote'));
+
+    // A win rate request is a QUOTE win rate request if it explicitly mentions 'quote' or provides an ID/number
+    let isQuoteWinRateRequest = isWinRateRequest && (
+      cmd.includes('quote') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
+    );
+    // Persist quote mode if they are just answering follow-ups
+    if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {
+      isQuoteWinRateRequest = true;
+    }
+    // If they explicitly asked for an ACCOUNT win rate, turn off quote mode
+    if (cmd.includes('account win rate') || (cmd.includes('account') && !cmd.includes('quote'))) {
+      isQuoteWinRateRequest = false;
+    }
     isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
@@ -1163,7 +1182,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           )}
           {workspaceView === 'preview' && (
-            (dealHistoryLoading || dealHistoryData) ? (
+            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || dealHistoryData) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
                   <WinRateBattleCard
@@ -1535,18 +1554,29 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         </div>
 
         <div className="af-input-area">
-          <form onSubmit={handleSend} className="relative group">
+          <form onSubmit={handleSend} className="relative group flex items-center gap-2">
             <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+            
             <input
-              type="text"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
-              className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              className="hidden"
+              accept=".pdf,.docx,.txt,.xlsx,.xls"
             />
-            <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
-              <Send size={20} />
-            </button>
+
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+              />
+              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+                <Send size={20} />
+              </button>
+            </div>
           </form>
         </div>
       </section>
