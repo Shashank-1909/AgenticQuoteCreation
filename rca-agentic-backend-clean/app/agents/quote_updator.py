@@ -107,7 +107,7 @@ DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
-- Example: `[ACTIONS: Update another item | Add new products | Calculate win probability]`
+- Example: `[ACTIONS: Update another item | Add new products | Calculate win probability | change discount]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

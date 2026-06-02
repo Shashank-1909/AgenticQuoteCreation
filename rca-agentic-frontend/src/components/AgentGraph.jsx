@@ -213,11 +213,123 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const pathToAnalyst = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + analystTopY) / 2} ${analystCx} ${(dmBotY + analystTopY) / 2} ${analystCx} ${analystTopY}`;
 
   // ── Dynamic tool positions (relative to agent cx) ─────────
-  const parserToolPos  = getShiftedToolPositions(parserCx, parserOffset, parser?.tools || [], offsets);
-  const scoutToolPos   = getShiftedToolPositions(scoutCx, scoutOffset, scout.tools, offsets);
-  const archToolPos    = getShiftedToolPositions(archCx, archOffset, arch.tools, offsets);
-  const updatorToolPos = getShiftedToolPositions(updatorCx, updatorOffset, updator.tools, offsets);
-  const analystToolPos = getShiftedToolPositions(analystCx, analystOffset, analyst?.tools || [], offsets);
+  const baseParserToolPos  = getShiftedToolPositions(parserCx, parserOffset, parser?.tools || [], offsets);
+  const baseScoutToolPos   = getShiftedToolPositions(scoutCx, scoutOffset, scout.tools, offsets);
+  const baseArchToolPos    = getShiftedToolPositions(archCx, archOffset, arch.tools, offsets);
+  const baseUpdatorToolPos = getShiftedToolPositions(updatorCx, updatorOffset, updator.tools, offsets);
+  const baseAnalystToolPos = getShiftedToolPositions(analystCx, analystOffset, analyst?.tools || [], offsets);
+
+  // ── Overlap Resolution / Collision Avoidance ──────────────────
+  const resolveToolCollisions = (allToolPositions) => {
+    const resolved = allToolPositions.map(tp => ({ ...tp }));
+    const minDistance = TOOL_R * 2.3; // minimum separation (diameter + padding)
+
+    for (let iter = 0; iter < 20; iter++) {
+      let shifted = false;
+      for (let i = 0; i < resolved.length; i++) {
+        for (let j = i + 1; j < resolved.length; j++) {
+          const dx = resolved[j].x - resolved[i].x;
+          const dy = resolved[j].y - resolved[i].y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < minDistance) {
+            const overlap = minDistance - dist;
+            const angle = dist > 0 ? Math.atan2(dy, dx) : Math.random() * 2 * Math.PI;
+            const forceX = Math.cos(angle) * (overlap / 2);
+            const forceY = Math.sin(angle) * (overlap / 2);
+
+            resolved[i].x -= forceX;
+            resolved[i].y -= forceY;
+            resolved[j].x += forceX;
+            resolved[j].y += forceY;
+            shifted = true;
+          }
+        }
+      }
+      if (!shifted) break;
+    }
+    return resolved;
+  };
+
+  // Build a list of all visible/rendered tools to resolve their collisions
+  const visibleTools = [];
+
+  if (showParser && parser?.tools) {
+    parser.tools.slice(0, 4).forEach((tool, i) => {
+      const basePos = baseParserToolPos[i] || { x: parserCx, y: 450 };
+      visibleTools.push({
+        agentKey: 'parser',
+        index: i,
+        name: tool.name,
+        x: basePos.x,
+        y: basePos.y
+      });
+    });
+  }
+
+  if (showScout && scout?.tools) {
+    scout.tools.slice(0, 4).forEach((tool, i) => {
+      const basePos = baseScoutToolPos[i] || { x: scoutCx, y: 450 };
+      visibleTools.push({
+        agentKey: 'scout',
+        index: i,
+        name: tool.name,
+        x: basePos.x,
+        y: basePos.y
+      });
+    });
+  }
+
+  if (showArch && arch?.tools) {
+    arch.tools.slice(0, 4).forEach((tool, i) => {
+      const basePos = baseArchToolPos[i] || { x: archCx, y: 450 };
+      visibleTools.push({
+        agentKey: 'arch',
+        index: i,
+        name: tool.name,
+        x: basePos.x,
+        y: basePos.y
+      });
+    });
+  }
+
+  if (showUpdator && updator?.tools) {
+    updator.tools.slice(0, 4).forEach((tool, i) => {
+      const basePos = baseUpdatorToolPos[i] || { x: updatorCx, y: 450 };
+      visibleTools.push({
+        agentKey: 'updator',
+        index: i,
+        name: tool.name,
+        x: basePos.x,
+        y: basePos.y
+      });
+    });
+  }
+
+  if (showAnalyst && analyst?.tools) {
+    analyst.tools.slice(0, 4).forEach((tool, i) => {
+      const basePos = baseAnalystToolPos[i] || { x: analystCx, y: 450 };
+      visibleTools.push({
+        agentKey: 'analyst',
+        index: i,
+        name: tool.name,
+        x: basePos.x,
+        y: basePos.y
+      });
+    });
+  }
+
+  const resolvedVisibleTools = resolveToolCollisions(visibleTools);
+
+  const getResolvedToolPos = (agentKey, index, fallback) => {
+    const found = resolvedVisibleTools.find(t => t.agentKey === agentKey && t.index === index);
+    return found ? { x: found.x, y: found.y } : fallback;
+  };
+
+  const parserToolPos = baseParserToolPos.map((tp, i) => getResolvedToolPos('parser', i, tp));
+  const scoutToolPos = baseScoutToolPos.map((tp, i) => getResolvedToolPos('scout', i, tp));
+  const archToolPos = baseArchToolPos.map((tp, i) => getResolvedToolPos('arch', i, tp));
+  const updatorToolPos = baseUpdatorToolPos.map((tp, i) => getResolvedToolPos('updator', i, tp));
+  const analystToolPos = baseAnalystToolPos.map((tp, i) => getResolvedToolPos('analyst', i, tp));
 
   // Path transition style for smooth morphing
   const pathTransition = 'd 0.72s cubic-bezier(0.4,0,0.2,1), stroke-opacity 0.5s';

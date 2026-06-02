@@ -115,6 +115,23 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [workspaceView, setWorkspaceView] = useState('graph'); // graph, preview, account
   const [zoomLevel, setZoomLevel] = useState(0.75);
+  const graphContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (workspaceView !== 'graph' || !graphContainerRef.current) return;
+    const updateScale = () => {
+      const rect = graphContainerRef.current.getBoundingClientRect();
+      const scaleX = (rect.width - 40) / 980; // 980 is GW
+      const scaleY = (rect.height - 40) / 580; // 580 is GH
+      const fitScale = Math.min(scaleX, scaleY);
+      setZoomLevel(Math.max(0.4, Math.min(fitScale, 1.15)));
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(graphContainerRef.current);
+    return () => observer.disconnect();
+  }, [workspaceView]);
+
   const [quotes, setQuotes] = useState([]);
   const [quoteNumberMap, setQuoteNumberMap] = useState({}); // { id: number }
   const [showPreviewSuggestion, setShowPreviewSuggestion] = useState(false);
@@ -424,6 +441,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
       case 'TOOL_TRIGGER':
         if (data.tool === 'get_deal_history') {
+          isDealHistoryRequestRef.current = true;
+          isWinRateRequestRef.current = false;
+          isSummarizeRequestRef.current = false;
           // Trigger get_my_accounts first to represent going to accounts
           setOrchestration(prev => {
             const n = { ...prev };
@@ -554,6 +574,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             }
           }
           if (data.tool === 'get_deal_history') {
+            isDealHistoryRequestRef.current = true;
+            isWinRateRequestRef.current = false;
+            isSummarizeRequestRef.current = false;
             if (parsed.status === 'success' || parsed.quotes) {
               setDealHistoryData(parsed.quotes || []);
               setDealHistoryAccount(parsed.accountName || '');
@@ -765,8 +788,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote');
     
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter
-    if (!isWinRateRequest && !isStatusFilterRequest && isWinRateRequestRef.current && (
+    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter or updating/modifying quotes
+    const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
+    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && (
         cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
     )) {
       isWinRateRequest = true;
@@ -789,7 +813,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
-    const isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
+    let isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
       isStatusFilterRequest || 
       cmd.includes('deal history') || 
       cmd.includes('previous quotes') || 
@@ -804,6 +828,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       cmd.includes('deal history of')
     );
 
+    // If we're already in a deal history context, keep it alive for follow-up account selection, filters, or resetting account
+    if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
+      detectAccountName(text) || 
+      cmd.includes('yes') || 
+      cmd.includes('all') || 
+      cmd.includes('list') || 
+      cmd.includes('show') || 
+      cmd.includes('current') ||
+      cmd.includes('different') ||
+      cmd.includes('account')
+    )) {
+      isDealHistoryRequest = true;
+    }
+
     if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest) {
       setDealHistoryData(null);
     }
@@ -816,8 +854,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       setDealHistoryAccount(newlyDetectedAcc);
     }
 
-    // Lazy load deal history for win rate request if not loaded yet
-    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0)) {
+    // Lazy load deal history for win rate request if not loaded yet or if the account changed
+    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount))) {
       const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
@@ -876,8 +914,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       return;
     }
 
-    // Lazy load deal history for summarization/prioritization if not loaded yet
-    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
+    // Lazy load deal history for summarization/prioritization if not loaded yet or if the account changed
+    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount))) {
       const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
@@ -1294,7 +1332,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
         <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
           {workspaceView === 'graph' && (
-            <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
+            <div ref={graphContainerRef} className="w-full h-full relative overflow-hidden flex items-center justify-center">
               <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
                 <button
                   onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
@@ -1323,7 +1361,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             </div>
           )}
           {workspaceView === 'preview' && (
-            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || dealHistoryData) ? (
+            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || (dealHistoryData && isDealHistoryRequestRef.current)) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
                   <WinRateBattleCard

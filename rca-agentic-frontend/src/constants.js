@@ -3,8 +3,8 @@ import { config } from './config';
 // ─────────────────────────────────────────────────────────────
 // GRAPH LAYOUT CONSTANTS  (SVG + DOM coordinate space, px)
 // ─────────────────────────────────────────────────────────────
-export const GW = 680;   // graph canvas width
-export const GH = 560;   // graph canvas height
+export const GW = 980;   // graph canvas width
+export const GH = 580;   // graph canvas height
 
 // Deal Manager card (active / top position)
 export const DM_W = 160, DM_H = 76;
