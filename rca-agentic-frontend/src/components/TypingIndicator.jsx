@@ -23,7 +23,7 @@ const TypingIndicator = () => (
       fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
       textTransform: 'uppercase', color: 'rgba(129,140,248,0.45)',
       marginLeft: 7,
-    }}>Composing reply…</span>
+    }}>Composing</span>
   </div>
 );
 

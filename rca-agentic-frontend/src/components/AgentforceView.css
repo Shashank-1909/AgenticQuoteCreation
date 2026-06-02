@@ -27,6 +27,8 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 100;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -107,6 +109,12 @@
   background: var(--theme-primary-500);
   color: white;
   border-bottom-right-radius: 0.25rem;
+}
+
+html[data-theme="thermofisher"] .user .af-bubble {
+  background: rgba(238, 49, 36, 0.05); /* very light transparent red */
+  color: var(--theme-primary-500);
+  border: 1px solid rgba(238, 49, 36, 0.2);
 }
 
 .assistant .af-bubble {

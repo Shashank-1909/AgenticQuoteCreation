@@ -780,7 +780,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
     setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
     setVaultHistory(prev => [...prev, confirmedItem]);
     setSelectionPanel(null);
-    const text = `${option.name} (ID: ${option.id})`;
+    const text = option.name;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
   };

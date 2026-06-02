@@ -159,7 +159,7 @@ const MigrationView = ({ onBack, selectedModule, isDark = false, setIsDark }) =>
 
       <section className="af-sidebar" style={{ width: rightWidth }}>
         <div className="af-sidebar-header">
-           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
+           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${(config.theme === 'Meta' || config.theme === 'Thermofisher') ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
               {config.theme === 'Meta' ? (
                 <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
               ) : config.theme === 'Thermofisher' ? (

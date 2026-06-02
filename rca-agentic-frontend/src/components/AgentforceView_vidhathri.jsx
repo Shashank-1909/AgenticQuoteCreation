@@ -12,9 +12,30 @@ import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
+import { translations } from '../translations';
+import LanguageToggle from './LanguageToggle';
 import './AgentforceView.css';
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setLanguage }) => {
+  const sendPayload = useCallback((payloadStr) => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+    try {
+      const t = translations[language] || translations['en'];
+      let parsed = JSON.parse(payloadStr);
+      if (language !== 'en' && t?.languageContext && parsed.text) {
+        parsed.text = `${parsed.text}\n\n[System Context: ${t.languageContext}]`;
+      }
+      ws.current.send(JSON.stringify(parsed));
+    } catch (e) {
+      const t = translations[language] || translations['en'];
+      let text = payloadStr;
+      if (language !== 'en' && t?.languageContext) {
+        text = `${text}\n\n[System Context: ${t.languageContext}]`;
+      }
+      ws.current.send(text);
+    }
+  }, [language]);
+
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -360,7 +381,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    ws.current?.send(JSON.stringify({
+    sendPayload(JSON.stringify({
       text: finalMessage,
       module: selectedModule?.id || 'sales'
     }));
@@ -410,7 +431,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setWorkspaceView('graph');
 
         // Send the extracted text (already truncated server-side) to the agent
-        ws.current?.send(JSON.stringify({
+        sendPayload(JSON.stringify({
           text: data.user_message,
           module: selectedModule?.id || 'sales'
         }));
@@ -509,7 +530,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-    ws.current?.send(text);
+    sendPayload(text);
 
     // Clear selections after confirm
     setSelectedProducts(new Set());
@@ -574,19 +595,27 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
-            <button
-              onClick={() => setWorkspaceView('graph')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Orchestration Flow
-            </button>
-            <button
-              onClick={() => setWorkspaceView('preview')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Record Preview
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+              <button
+                onClick={() => setWorkspaceView('graph')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Orchestration Flow
+              </button>
+              <button
+                onClick={() => {
+                  setWorkspaceView('preview');
+                  if (quotes && quotes.length > 0) {
+                    handlePreview(quotes[quotes.length - 1].id);
+                  }
+                }}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Record Preview
+              </button>
+            </div>
+            <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
           </div>
         </div>
 
@@ -713,7 +742,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
       <section className="af-sidebar">
         <div className="af-sidebar-header">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${(config.theme === 'Meta' || config.theme === 'Thermofisher') ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
             {config.theme === 'Meta' ? (
               <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
             ) : config.theme === 'Thermofisher' ? (
@@ -845,7 +874,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   <SelectionPanel
                     panel={msg.data}
                     onSelect={(opt) => {
-                      const text = `${opt.name} (ID: ${opt.id})`;
+                      const text = opt.name;
                       setInputValue(text);
                       handleSend();
                     }}
