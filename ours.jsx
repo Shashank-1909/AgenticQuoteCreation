@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Send, Loader2, Zap, Settings, ArrowLeft, ArrowRight, BrainCircuit,
+  Send, Loader2, Zap, Settings, ArrowLeft, BrainCircuit,
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut, Paperclip, MapPin, Layers, ShieldCheck, PlusCircle, Sun, Moon
+  ZoomIn, ZoomOut, Paperclip
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -11,70 +11,17 @@ import AgentGraph from './AgentGraph';
 import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
-import DealHistoryPanel from './DealHistoryPanel';
-import WinRateBattleCard from './WinRateBattleCard';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
 import './AgentforceView.css';
 
-const getActionIcon = (label) => {
-  const lc = label.toLowerCase();
-  if (lc.includes('filter') || lc.includes('region') || lc.includes('north') || lc.includes('south') || lc.includes('east') || lc.includes('west')) {
-    return <MapPin size={14} className="text-indigo-500 flex-shrink-0" />;
-  }
-  if (lc.includes('compare') || lc.includes('analytics') || lc.includes('history')) {
-    return <Layers size={14} className="text-indigo-500 flex-shrink-0" />;
-  }
-  if (lc.includes('spec') || lc.includes('technical') || lc.includes('detail') || lc.includes('feature')) {
-    return <ShieldCheck size={14} className="text-indigo-500 flex-shrink-0" />;
-  }
-  if (lc.includes('add-on') || lc.includes('addon') || lc.includes('compatible') || lc.includes('extra')) {
-    return <Package size={14} className="text-indigo-500 flex-shrink-0" />;
-  }
-  if (lc.includes('create') || lc.includes('new') || lc.includes('generate')) {
-    return <PlusCircle size={14} className="text-indigo-500 flex-shrink-0" />;
-  }
-  return <Sparkles size={14} className="text-indigo-500 flex-shrink-0" />;
-};
-
 const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
-  const [rightWidth, setRightWidth] = useState(500);
-  const [isResizingRight, setIsResizingRight] = useState(false);
-
-  const startResizingRight = useCallback((e) => {
-    setIsResizingRight(true);
-  }, []);
-
-  const stopResizingRight = useCallback(() => {
-    setIsResizingRight(false);
-  }, []);
-
-  const resizeRight = useCallback((e) => {
-    if (isResizingRight) {
-      setRightWidth(prev => {
-        const newWidth = document.body.clientWidth - e.clientX;
-        return Math.max(350, Math.min(newWidth, 800));
-      });
-    }
-  }, [isResizingRight]);
-
-  useEffect(() => {
-    if (isResizingRight) {
-      window.addEventListener('mousemove', resizeRight);
-      window.addEventListener('mouseup', stopResizingRight);
-    }
-    return () => {
-      window.removeEventListener('mousemove', resizeRight);
-      window.removeEventListener('mouseup', stopResizingRight);
-    };
-  }, [isResizingRight, resizeRight, stopResizingRight]);
   const [messages, setMessages] = useState([
     {
       id: 1,
       role: 'assistant',
       aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
       content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
-      type: 'text',
-      isGreeting: true
+      type: 'text'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -100,12 +47,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [showUpdateSuggestion, setShowUpdateSuggestion] = useState(false);
   const [showUpdateAllSuggestion, setShowUpdateAllSuggestion] = useState(false);
 
-  // Deal History States
-  const [dealHistoryData, setDealHistoryData] = useState(null);
-  const [dealHistoryAccount, setDealHistoryAccount] = useState('');
-  const [dealHistoryLoading, setDealHistoryLoading] = useState(false);
-  const [dealHistoryFilter, setDealHistoryFilter] = useState('All');
-
   const chatEndRef = useRef(null);
   const ws = useRef(null);
   const pendingResultsRef = useRef(null);
@@ -115,268 +56,45 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const dealHistoryLoadingRef = useRef(false);
-  const isSummarizeRequestRef = useRef(false);
-  const isWinRateRequestRef = useRef(false);
-  const isDealHistoryRequestRef = useRef(false);
-  const isQuoteWinRateRequestRef = useRef(false);
-  const summarizeTimeoutsRef = useRef([]);
-  const clearSummarizeTimeouts = () => {
-    summarizeTimeoutsRef.current.forEach(clearTimeout);
-    summarizeTimeoutsRef.current = [];
-  };
-
-  const connectWebSocket = useCallback(() => {
-    if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
-    const socket = new WebSocket('ws://localhost:8001/ws/orchestrate');
-    socket.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        handleWsMessageRef.current?.(data);
-      } catch (err) {
-        console.error('[WS] parse error', err);
-      }
-    };
-    socket.onclose = () => {
-      setTimeout(connectWebSocket, 3000);
-    };
-    socket.onerror = () => {
-      socket.close();
-    };
-    ws.current = socket;
-  }, []);
-
-  useEffect(() => {
-    if (workflowState === 'completed') {
-      if (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current) {
-        setWorkspaceView('preview');
-      }
-    }
-  }, [workflowState]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, reasoning]);
 
-
-  const handleWsMessageRef = useRef(null);
   useEffect(() => {
-    handleWsMessageRef.current = handleWsMessage;
-  });
-
-  useEffect(() => {
-    connectWebSocket();
-    return () => {
-      if (ws.current) {
-        ws.current.onclose = null;
-        ws.current.close();
+    ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
+    ws.current.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        handleWsMessage(data);
+      } catch (err) {
+        console.error('[WS] parse error', err);
       }
     };
-  }, [connectWebSocket]);
+    return () => ws.current?.close();
+  }, []);
 
   const handleWsMessage = (data) => {
     switch (data.type) {
       case 'STATE':
         setWorkflowState(data.state);
         if (data.state === 'completed') {
-          clearSummarizeTimeouts();
           setReasoning(null);
           setOrchestration(prev => {
             const n = { ...prev };
-            if (isWinRateRequestRef.current) {
-              n.coordinator = 'done';
-              n.Quote_Analyst = {
-                state: 'done',
-                routedByDm: true,
-                tools: [
-                  { name: 'get_my_accounts', state: 'done' },
-                  { name: 'get_deal_history', state: 'done' },
-                  { name: 'win_rate', state: 'done' }
-                ]
-              };
-            } else if (isSummarizeRequestRef.current) {
-              n.coordinator = 'done';
-              n.Quote_Analyst = {
-                state: 'done',
-                routedByDm: true,
-                tools: [
-                  { name: 'get_my_accounts', state: 'done' },
-                  { name: 'get_deal_history', state: 'done' },
-                  { name: 'summary_node', state: 'done' }
-                ]
-              };
-            } else {
-              if (n.coordinator === 'active') n.coordinator = 'done';
-              for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
-                if (n[k] && n[k].state === 'active') {
-                  n[k] = { ...n[k], state: 'done' };
-                  if (n[k].tools) {
-                    n[k].tools = n[k].tools.map(t => ({ ...t, state: 'done' }));
-                  }
-                }
-              }
+            if (n.coordinator === 'active') n.coordinator = 'done';
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+              if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             return n;
           });
-          if (dealHistoryLoadingRef.current) {
-            setDealHistoryLoading(false);
-            dealHistoryLoadingRef.current = false;
-            setWorkspaceView('preview');
-          }
         }
         break;
 
       case 'AGENT_START':
-        const name = data.agent;
-        if (name === 'Deal_Manager' && isWinRateRequestRef.current) {
-          clearSummarizeTimeouts();
-          setReasoning("Analyzing win rate request...");
-          setOrchestration(prev => {
-            const n = { ...prev };
-            n.coordinator = 'active';
-            n.Quote_Analyst = { state: 'idle', tools: [], routedByDm: false };
-            return n;
-          });
-
-          // Timeout 1: Handoff to Quote_Analyst and trigger get_my_accounts tool
-          const t1 = setTimeout(() => {
-            setOrchestration(prev => {
-              const n = { ...prev };
-              n.coordinator = 'done';
-              if (n.Quote_Analyst) {
-                n.Quote_Analyst = {
-                  ...n.Quote_Analyst,
-                  state: 'active',
-                  tools: [
-                    { name: 'get_my_accounts', state: 'active' }
-                  ]
-                };
-              }
-              return n;
-            });
-            setReasoning("Fetching account details...");
-          }, 800);
-
-          // Timeout 2: Transition get_my_accounts to done, and get_deal_history to active
-          const t2 = setTimeout(() => {
-            setOrchestration(prev => {
-              const n = { ...prev };
-              if (n.Quote_Analyst) {
-                n.Quote_Analyst = {
-                  ...n.Quote_Analyst,
-                  tools: [
-                    { name: 'get_my_accounts', state: 'done' },
-                    { name: 'get_deal_history', state: 'active' }
-                  ]
-                };
-              }
-              return n;
-            });
-            setReasoning("Retrieving Salesforce deal history...");
-          }, 2000);
-
-          summarizeTimeoutsRef.current = [t1, t2];
-          break;
-        }
-
-        if (name === 'Deal_Manager' && isSummarizeRequestRef.current) {
-          clearSummarizeTimeouts();
-          setReasoning("Analyzing deal history...");
-          setOrchestration(prev => {
-            const n = { ...prev };
-            n.coordinator = 'active';
-            n.Quote_Analyst = { state: 'idle', tools: [], routedByDm: false };
-            return n;
-          });
-
-          // Timeout 1: Handoff to Quote_Analyst and trigger get_my_accounts tool
-          const t1 = setTimeout(() => {
-            setOrchestration(prev => {
-              const n = { ...prev };
-              n.coordinator = 'done';
-              if (n.Quote_Analyst) {
-                n.Quote_Analyst = {
-                  ...n.Quote_Analyst,
-                  state: 'active',
-                  tools: [
-                    { name: 'get_my_accounts', state: 'active' }
-                  ]
-                };
-              }
-              return n;
-            });
-            setReasoning("Fetching account details...");
-          }, 800);
-
-          // Timeout 2: Transition get_my_accounts to done, and get_deal_history to active
-          const t2 = setTimeout(() => {
-            setOrchestration(prev => {
-              const n = { ...prev };
-              if (n.Quote_Analyst) {
-                n.Quote_Analyst = {
-                  ...n.Quote_Analyst,
-                  tools: [
-                    { name: 'get_my_accounts', state: 'done' },
-                    { name: 'get_deal_history', state: 'active' }
-                  ]
-                };
-              }
-              return n;
-            });
-            setReasoning("Fetching deal history records...");
-          }, 2000);
-
-          summarizeTimeoutsRef.current = [t1, t2];
-          break;
-        }
-
-        if (name === 'Summary_Node' || name === 'Win_Rate_Node') {
-          if (name === 'Win_Rate_Node') {
-            clearSummarizeTimeouts();
-            setReasoning("Running dynamic win rate analytics & competitor battle card compilation...");
-            setOrchestration(prev => {
-              const n = { ...prev };
-              if (n.Quote_Analyst) {
-                n.Quote_Analyst = {
-                  ...n.Quote_Analyst,
-                  state: 'active',
-                  tools: [
-                    { name: 'get_my_accounts', state: 'done' },
-                    { name: 'get_deal_history', state: 'done' },
-                    { name: 'win_rate', state: 'active' }
-                  ]
-                };
-              }
-              return n;
-            });
-
-            // After a delay, set win_rate tool to done
-            const t3 = setTimeout(() => {
-              setOrchestration(prev => {
-                const n = { ...prev };
-                if (n.Quote_Analyst) {
-                  n.Quote_Analyst = {
-                    ...n.Quote_Analyst,
-                    tools: [
-                      { name: 'get_my_accounts', state: 'done' },
-                      { name: 'get_deal_history', state: 'done' },
-                      { name: 'win_rate', state: 'done' }
-                    ]
-                  };
-                }
-                return n;
-              });
-            }, 1200);
-
-            summarizeTimeoutsRef.current = [t3];
-          }
-          break;
-        }
-
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
+          // Preserve the true agent name; the parser now has its own graph node
           const name = data.agent;
           const n = { ...prev };
           if (name === 'Deal_Manager') {
@@ -385,78 +103,24 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             name === 'Requirements_Parser' ||
             name === 'Catalog_Scout' ||
             name === 'Quote_Architect' ||
-            name === 'Quote_Updator' ||
-            name === 'Quote_Analyst'
+            name === 'Quote_Updator'
           ) {
-            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
               if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
             if (n.coordinator === 'active') n.coordinator = 'done';
-            if (n[name]) {
-              n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
-            }
+            n[name] = { ...n[name], state: 'active', routedByDm: dmWasActive };
           }
           return n;
         });
         break;
 
       case 'TOOL_TRIGGER':
-        if (data.tool === 'get_deal_history') {
-          // Trigger get_my_accounts first to represent going to accounts
-          setOrchestration(prev => {
-            const n = { ...prev };
-            if (n.Quote_Analyst) {
-              n.Quote_Analyst.state = 'active';
-              if (n.coordinator === 'active') n.coordinator = 'done';
-              const tools = n.Quote_Analyst.tools || [];
-              const hasAccounts = tools.some(t => t.name === 'get_my_accounts');
-              
-              let newTools = tools.map(t => 
-                t.name === 'get_my_accounts' ? { ...t, state: 'active' } : t
-              );
-              if (!hasAccounts) {
-                newTools.push({ name: 'get_my_accounts', state: 'active' });
-              }
-              // Ensure get_deal_history is NOT in the tools array yet so it doesn't appear
-              newTools = newTools.filter(t => t.name !== 'get_deal_history');
-              n.Quote_Analyst.tools = newTools;
-            }
-            return n;
-          });
-
-          // After a delay, set get_my_accounts to done and get_deal_history to active
-          setTimeout(() => {
-            setOrchestration(prev => {
-              const n = { ...prev };
-              if (n.Quote_Analyst) {
-                const tools = n.Quote_Analyst.tools || [];
-                const hasDealHistory = tools.some(t => t.name === 'get_deal_history');
-                
-                let newTools = tools.map(t => 
-                  t.name === 'get_my_accounts' ? { ...t, state: 'done' } : t
-                );
-                if (!hasDealHistory) {
-                  newTools.push({ name: 'get_deal_history', state: 'active' });
-                } else {
-                  newTools = newTools.map(t => 
-                    t.name === 'get_deal_history' ? { ...t, state: 'active' } : t
-                  );
-                }
-                n.Quote_Analyst.tools = newTools;
-              }
-              return n;
-            });
-          }, 1500);
-
-          setReasoning("Checking customer accounts...");
-          break;
-        }
-
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
             if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
@@ -481,8 +145,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
-            if (n[k] && n[k].tools && n[k].tools.some(t => t.name === data.tool)) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator']) {
+            if (n[k] && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
                   t.name === data.tool ? { ...t, state: 'done' } : t
@@ -495,18 +159,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         });
         try {
           const parsed = JSON.parse(data.data);
-          
-          if (data.tool === 'get_quote_line_items' && parsed.quote_id) {
-            // Automatically switch to preview when Quote Updator fetches line items
-            fetch(`${config.API_BASE_URL}/api/quote-preview/${parsed.quote_id}`)
-              .then(res => res.json())
-              .then(d => {
-                setPreviewData(d);
-                setWorkspaceView('preview');
-              })
-              .catch(err => console.error('Error fetching quote preview:', err));
-          }
-
           if ((data.tool === 'search_catalog' || data.tool === 'parse_transcript_to_requirements' || data.tool === 'parse_requirements_doc' || data.tool === 'map_requirements_to_catalog') && parsed.results && parsed.results.length > 0) {
             pendingResultsRef.current = parsed.results;
 
@@ -534,12 +186,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               setProductConfigs(prev => ({ ...prev, ...newConfigs }));
             }
           }
-          if (data.tool === 'get_deal_history') {
-            if (parsed.status === 'success' || parsed.quotes) {
-              setDealHistoryData(parsed.quotes || []);
-              setDealHistoryAccount(parsed.accountName || '');
-            }
-          }
           if (data.tool === 'evaluate_quote_graph') {
             let qId = extractQuoteId(data.data);
             const newQuote = { id: qId, status: 'Draft' };
@@ -557,19 +203,18 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             });
             */
 
-            // Fetch quote number and auto-redirect to preview
+            // Fetch quote number to replace ID in future messages
             fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
               .then(res => res.json())
               .then(d => {
                 if (d.records?.[0]?.QuoteNumber) {
                   setQuoteNumberMap(prev => ({ ...prev, [qId]: d.records[0].QuoteNumber }));
                 }
-                setPreviewData(d);
-                setWorkspaceView('preview');
               })
               .catch(err => console.error('Error fetching quote number:', err));
 
             pendingCreationRef.current = true;
+            // handlePreview(qId);
           }
         } catch (_) { }
         break;
@@ -608,15 +253,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             setTimeout(() => handleOpenConfig(), 100);
           } else {
             let processedText = data.data;
-            let actions = [];
-
-            // Parse [ACTIONS: Action 1 | Action 2 | ...]
-            const actionsMatch = processedText.match(/\[ACTIONS:\s*([^\]]+)\]/);
-            if (actionsMatch) {
-              actions = actionsMatch[1].split('|').map(act => act.trim()).filter(Boolean);
-              processedText = processedText.replace(/\[ACTIONS:\s*[^\]]+\]/, '').trim();
-            }
-
             // Replace any Quote IDs with their Numbers if we have them
             Object.entries(quoteNumberMap).forEach(([id, num]) => {
               processedText = processedText.replace(new RegExp(id, 'g'), num);
@@ -627,7 +263,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
             }
 
-            addMessage({ type: 'text', content: processedText, actions });
+            addMessage({ type: 'text', content: processedText });
 
             // Detect if AI is asking for a document upload
             const lcText = processedText.toLowerCase();
@@ -675,295 +311,31 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
   const addMessage = (msg) => {
     const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
-    setMessages(prev => {
-      // Prevent any duplicate dealHistorySummary messages for the same account
-      if (msg.type === 'dealHistorySummary') {
-        const alreadyExists = prev.some(
-          m => m.type === 'dealHistorySummary' && m.accountName === msg.accountName
-        );
-        if (alreadyExists) return prev;
-      }
-      return [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }];
-    });
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'assistant', aiName, ...msg }]);
   };
 
-  const handleSuggestionClick = (text) => {
-    setInputValue(text);
-    handleSend(null, text);
-  };
-
-  const handleSend = async (e, overrideText = null) => {
+  const handleSend = (e, overrideText = null) => {
     e?.preventDefault();
     const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
-    const detectAccountName = (inputStr) => {
-      const s = inputStr.toLowerCase();
-      if (s.includes('edge') || s.includes('communications')) return 'Edge Communications';
-      if (s.includes('aurobindo') || s.includes('pharma')) return 'Aurobindo Pharma R&D';
-      if (s.includes('pyramid') || s.includes('construction')) return 'Pyramid Construction Inc.';
-      if (s.includes('pfizer')) return 'Pfizer';
-      if (s.includes('moderna')) return 'Moderna';
-      if (s.includes('novartis')) return 'Novartis';
-      if (s.includes('roche')) return 'Roche';
-      if (s.includes('merck')) return 'Merck';
-      if (s.includes('genentech')) return 'Genentech';
-      if (s.includes('biogen')) return 'Biogen';
-      if (s.includes('gilead')) return 'Gilead';
-      return null;
-    };
 
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
 
-    // Set deal history filter based on command
-    if (cmd.includes('drafted quote') || cmd.includes('draft quote')) {
-      setDealHistoryFilter('Draft');
-    } else if (cmd.includes('accepted quote')) {
-      setDealHistoryFilter('Accepted');
-    } else if (cmd.includes('rejected quote')) {
-      setDealHistoryFilter('Rejected');
-    } else if (cmd.includes('deal history') || cmd.includes('all quote')) {
-      setDealHistoryFilter('All');
-    }
-
-    if (cmd.includes('different account') || cmd.includes('list my accounts') || cmd.includes('list accounts')) {
-      setDealHistoryData(null);
-      setOrchestration(prev => {
-        const n = { ...prev };
-        if (n.Quote_Architect) {
-          n.Quote_Architect = {
-            ...n.Quote_Architect,
-            tools: []
-          };
-        }
-        return n;
-      });
-    }
-
-    let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
-
-    // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote');
-    
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter
-    if (!isWinRateRequest && !isStatusFilterRequest && isWinRateRequestRef.current && (
-        cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
-    )) {
-      isWinRateRequest = true;
-    }
-    isWinRateRequestRef.current = isWinRateRequest;
-
-    // A win rate request is a QUOTE win rate request if it explicitly mentions 'quote' or provides an ID/number
-    let isQuoteWinRateRequest = isWinRateRequest && (
-      cmd.includes('quote') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
-    );
-    // Persist quote mode if they are just answering follow-ups
-    if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {
-      isQuoteWinRateRequest = true;
-    }
-    // If they explicitly asked for an ACCOUNT win rate, or if an account is mentioned in the text, turn off quote mode
-    if (cmd.includes('account win rate') || (cmd.includes('account') && !cmd.includes('quote')) || detectAccountName(text)) {
-      isQuoteWinRateRequest = false;
-    }
-    isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
-
-    const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
-    isSummarizeRequestRef.current = isSummarizeOrPrioritize;
-    const isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
-      isStatusFilterRequest || 
-      cmd.includes('deal history') || 
-      cmd.includes('previous quotes') || 
-      cmd.includes('historical quotes') || 
-      cmd.includes('detailed view of') ||
-      cmd.includes('view all deals') ||
-      cmd.includes('get all deals') ||
-      cmd.includes('show all deals') ||
-      cmd.includes('view all quotes') ||
-      cmd.includes('get all quotes') ||
-      cmd.includes('show all quotes') ||
-      cmd.includes('deal history of')
-    );
-
-    if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest) {
-      setDealHistoryData(null);
-    }
-    setWorkspaceView('graph'); // Auto redirect to orchestration flow (graph) for all requests initially
-    isDealHistoryRequestRef.current = isDealHistoryRequest;
-
-    // Update global account tracker if any account is mentioned
-    const newlyDetectedAcc = detectAccountName(text);
-    if (newlyDetectedAcc) {
-      setDealHistoryAccount(newlyDetectedAcc);
-    }
-
-    // Lazy load deal history for win rate request if not loaded yet
-    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0)) {
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
-      if (detectedAcc) {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-        setInputValue('');
-        setDealHistoryAccount(detectedAcc);
-        setDealHistoryLoading(true);
-        dealHistoryLoadingRef.current = true;
-        try {
-          const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-          setDealHistoryData(data.quotes);
-          const quotesText = data.quotes.map(q => {
-            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-          }).join('\n');
-
-          ws.current?.send(JSON.stringify({
-            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
-            module: selectedModule?.id || 'sales'
-          }));
-        } else {
-          ws.current?.send(JSON.stringify({
-            text: text,
-            module: selectedModule?.id || 'sales'
-          }));
-        }
-      } catch (err) {
-        console.error("Error lazy-loading deal history for win rate:", err);
-        ws.current?.send(JSON.stringify({
-          text: text,
-          module: selectedModule?.id || 'sales'
-        }));
-      } finally {
-        setDealHistoryLoading(false);
-        dealHistoryLoadingRef.current = false;
-      }
-      return;
-      }
-    }
-
-    if (isWinRateRequest) {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-      setInputValue('');
-      setDealHistoryLoading(true);
-      dealHistoryLoadingRef.current = true;
-      const quotesText = (dealHistoryData || []).map(q => {
-        const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-        return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-      }).join('\n');
-
-      ws.current?.send(JSON.stringify({
-        text: text + (quotesText ? `\n\n[Historical Quotes in context:\n${quotesText}]` : ''),
-        module: selectedModule?.id || 'sales'
-      }));
-      return;
-    }
-
-    // Lazy load deal history for summarization/prioritization if not loaded yet
-    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
-      if (detectedAcc) {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-        setInputValue('');
-        setDealHistoryAccount(detectedAcc);
-        setDealHistoryLoading(true);
-        dealHistoryLoadingRef.current = true;
-        try {
-          const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-          setDealHistoryData(data.quotes);
-          const quotesText = data.quotes.map(q => {
-            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-          }).join('\n');
-
-          ws.current?.send(JSON.stringify({
-            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
-            module: selectedModule?.id || 'sales'
-          }));
-        } else {
-          ws.current?.send(JSON.stringify({
-            text: text,
-            module: selectedModule?.id || 'sales'
-          }));
-        }
-      } catch (err) {
-        console.error("Error lazy-loading deal history:", err);
-        ws.current?.send(JSON.stringify({
-          text: text,
-          module: selectedModule?.id || 'sales'
-        }));
-      } finally {
-        setDealHistoryLoading(false);
-        dealHistoryLoadingRef.current = false;
-      }
-      return;
-      }
-    }
-
-    if (isDealHistoryRequest) {
-      setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-      setInputValue('');
-      
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
-      setDealHistoryAccount(detectedAcc);
-      setDealHistoryLoading(true);
-      dealHistoryLoadingRef.current = true;
-      
-      try {
-        const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-          setDealHistoryData(data.quotes);
-          const quotesText = data.quotes.map(q => {
-            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-          }).join('\n');
-          
-          ws.current?.send(JSON.stringify({
-            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
-            module: selectedModule?.id || 'sales'
-          }));
-        } else {
-          setDealHistoryData([]);
-          ws.current?.send(JSON.stringify({ text: text, module: selectedModule?.id || 'sales' }));
-        }
-      } catch (err) {
-        console.error("Error fetching deal history proactively:", err);
-        setDealHistoryData([]);
-        ws.current?.send(JSON.stringify({ text: text, module: selectedModule?.id || 'sales' }));
-      } finally {
-        setDealHistoryLoading(false);
-        dealHistoryLoadingRef.current = false;
-      }
-      return;
-    }
-
     // Support dynamic preview/summary/overview commands
-    const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
+    const isPreviewCmd = (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
-      
-      // Check if user explicitly provided an ID or Number
-      const explicitNumMatch = text.match(/\b\d{8}\b/);
-      const explicitIdMatch = text.match(/\b0Q0[a-zA-Z0-9]{12,15}\b/);
-      
-      if (explicitIdMatch) {
-        quoteIdToPreview = explicitIdMatch[0];
-      } else if (explicitNumMatch) {
-        const foundQuote = (dealHistoryData || []).find(q => q.quoteNumber === explicitNumMatch[0]) || (quotes || []).find(q => q.quoteNumber === explicitNumMatch[0]);
-        if (foundQuote) quoteIdToPreview = foundQuote.id;
-      }
+      const latestFromState = quotes[quotes.length - 1]?.id;
 
-      if (!quoteIdToPreview) {
-        const latestFromState = quotes[quotes.length - 1]?.id;
-        if (latestFromState && latestFromState !== 'Generated') {
-          quoteIdToPreview = latestFromState;
-        } else {
-          // Fallback: search messages for a quote ID pattern (0Q0...)
-          const allContent = messages.map(m => m.content).join(' ');
-          const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
-          if (match) quoteIdToPreview = match[0];
-        }
+      if (latestFromState && latestFromState !== 'Generated') {
+        quoteIdToPreview = latestFromState;
+      } else {
+        // Fallback: search messages for a quote ID pattern (0Q0...)
+        const allContent = messages.map(m => m.content).join(' ');
+        const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
+        if (match) quoteIdToPreview = match[0];
       }
 
       if (quoteIdToPreview) {
@@ -976,16 +348,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
 
     let finalMessage = text;
-    if (isSummarizeOrPrioritize) {
-      if (dealHistoryData && dealHistoryData.length > 0) {
-        const quotesText = dealHistoryData.map(q => {
-          const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-          return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-        }).join('\n');
-        finalMessage += `\n\n[Historical Quotes in context:\n${quotesText}]`;
-      }
-    }
-
     if (selectedProducts.size > 0) {
       const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
       const allProds = productMessages.flatMap(m => m.data);
@@ -1109,40 +471,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       console.error(err);
     } finally {
       setLoadingPreview(false);
-    }
-  };
-
-  const handleDealHistory = async (accountName = '', switchView = true) => {
-    // Guard: prevent concurrent/duplicate calls
-    if (dealHistoryLoadingRef.current) return;
-    dealHistoryLoadingRef.current = true;
-    setDealHistoryAccount(accountName);
-    setDealHistoryLoading(true);
-    if (switchView) {
-      setWorkspaceView('preview');
-    }
-    try {
-      const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(accountName)}`);
-      const data = await resp.json();
-      if (data.status === 'success') {
-        setDealHistoryData(data.quotes);
-        // Inject AI message about the results — addMessage guards against duplicates
-        const count = data.quoteCount || data.quotes?.length || 0;
-        addMessage({
-          type: 'dealHistorySummary',
-          content: `Pulled up ${count} historical quote${count !== 1 ? 's' : ''} for ${data.accountName}. Each has been fetched with full line item detail — you can view the breakdown on the left or ask me to summarize the patterns across all of them.`,
-          accountName: data.accountName,
-          quoteCount: count,
-        });
-      } else {
-        addMessage({ type: 'text', content: `❌ Could not fetch deal history: ${data.message}` });
-      }
-    } catch (err) {
-      console.error(err);
-      addMessage({ type: 'text', content: '❌ Failed to fetch deal history. Please try again.' });
-    } finally {
-      setDealHistoryLoading(false);
-      dealHistoryLoadingRef.current = false;
     }
   };
 
@@ -1297,26 +625,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           )}
           {workspaceView === 'preview' && (
-            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || dealHistoryData) ? (
-              <div className="w-full h-full bg-slate-50 overflow-hidden">
-                {isWinRateRequestRef.current ? (
-                  <WinRateBattleCard
-                    data={dealHistoryData}
-                    accountName={dealHistoryAccount}
-                    isLoading={dealHistoryLoading}
-                    isQuoteMode={isQuoteWinRateRequestRef.current}
-                    messages={messages}
-                  />
-                ) : (
-                  <DealHistoryPanel
-                    data={dealHistoryData ? dealHistoryData.filter(q => dealHistoryFilter === 'All' || (q.status && q.status.toLowerCase() === dealHistoryFilter.toLowerCase())) : null}
-                    accountName={dealHistoryAccount}
-                    isLoading={dealHistoryLoading}
-                    filter={dealHistoryFilter}
-                  />
-                )}
-              </div>
-            ) : (
             <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
               {previewData ? (
                 <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
@@ -1402,26 +710,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
               )}
             </div>
-            )
           )}
         </div>
       </section>
 
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
-      {/* RESIZER HANDLE */}
-      <div
-        onMouseDown={startResizingRight}
-        className={`w-6 cursor-col-resize h-full bg-transparent flex items-center justify-center relative z-[60] group/resizer -mx-3`}
-      >
-        <div className={`w-[2px] h-32 rounded-full bg-slate-200 dark:bg-white/5 transition-all group-hover/resizer:bg-indigo-500/50 group-hover/resizer:w-1 group-hover/resizer:h-48 ${isResizingRight ? '!bg-indigo-500 shadow-[0_0_20px_#6366f1] !w-1 !h-full' : ''}`} />
-        <div className="absolute flex flex-col gap-1.5 opacity-0 group-hover/resizer:opacity-100 transition-opacity">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="w-1 h-1 rounded-full bg-indigo-500/60" />
-          ))}
-        </div>
-      </div>
-
-      <section className="af-sidebar" style={{ width: rightWidth }}>
+      <section className="af-sidebar">
         <div className="af-sidebar-header">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
             {config.theme === 'Meta' ? (
@@ -1450,37 +744,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   </span>
                 </div>
               )}
-              {msg.type === 'dealHistorySummary' ? (
-                <div className="w-full animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center gap-1.5 mb-2 mt-1">
-                    <Sparkles size={9} className="text-indigo-500" />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500">Solution Advisor</span>
-                  </div>
-                  <div className="af-bubble mb-3">{msg.content}</div>
-                  <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Quick Replies</div>
-                  <div className="flex flex-col gap-2">
-                    {[
-                      { label: 'Summarize all quotes', text: `Summarize all quotes for ${msg.accountName}` },
-                      { label: 'Which deal should I prioritize?', text: `Which deal should I prioritize for ${msg.accountName}?` },
-                    ].map((qr, qi) => (
-                      <button
-                        key={qi}
-                        onClick={() => handleSend(null, qr.text)}
-                        className="flex items-center justify-between w-full px-4 py-2.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-[11px] font-bold text-indigo-600 hover:bg-indigo-500/15 transition-all text-left"
-                      >
-                        {qr.label}
-                        <ArrowRight size={12} className="text-indigo-400 flex-shrink-0" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="af-bubble">
-                    {msg.content.replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '').replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '').trim()}
-                  </div>
-                </>
-              )}
+              <div className="af-bubble">
+                {msg.content}
+              </div>
 
               {msg.type === 'card' && msg.cardType === 'products' && (
                 <div className="af-card">
@@ -1628,33 +894,24 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                       Preview in Workspace <ExternalLink size={12} />
                     </button>
                   </div>
-
-                </div>
-              )}
-
-              {msg.actions && msg.actions.length > 0 && (
-                <div className="suggested-actions-container">
-                  <div className="suggested-actions-header">
-                    <span className="suggested-actions-title">Recommended Actions</span>
-                    <div className="suggested-actions-line" />
-                  </div>
-                  <div className="suggested-actions-grid">
-                    {msg.actions.map((act, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleSend(null, act)}
-                        className="suggested-action-btn"
-                      >
-                        {getActionIcon(act)}
-                        <span className="truncate">{act}</span>
-                      </button>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
           ))}
 
+          {reasoning && (
+            <div className="af-reasoning">
+              <Loader2 size={12} className="animate-spin" />
+              {reasoning}
+            </div>
+          )}
+
+          {workflowState === 'orchestrating' && <TypingIndicator />}
+
+          <div className="flex flex-col gap-2 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-2">
+
+
+          </div>
 
           <div ref={chatEndRef} />
         </div>
@@ -1662,7 +919,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         <div className="af-input-area">
           <form onSubmit={handleSend} className="relative group flex items-center gap-2">
             <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
-            
+
             <input
               type="file"
               ref={fileInputRef}
@@ -1677,13 +934,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
-                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
+                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 pl-6 pr-12 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+
+              <button
+                type="submit"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform"
+              >
                 <Send size={20} />
               </button>
             </div>
           </form>
+          {/* <div className="mt-4 flex flex-wrap gap-2">
+             <div className="flex items-center gap-2 mb-2 w-full">
+               <div className="h-[1px] flex-1 bg-white/5"></div>
+               <span className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">Quick Actions</span>
+               <div className="h-[1px] flex-1 bg-white/5"></div>
+             </div>
+             
+             {SUGGESTIONS.slice(0, 3).map((s, i) => (
+               <button 
+                key={i} 
+                onClick={() => setInputValue(s.text)}
+                className="px-3 py-1.5 rounded-full border border-white/5 bg-white/5 text-[9px] font-bold uppercase text-slate-400 hover:bg-white/10 transition-all"
+               >
+                 {s.label}
+               </button>
+             ))}
+          </div> */}
         </div>
       </section>
 

@@ -612,3 +612,7 @@ def evaluate_quote_graph(line_items: list[dict], opportunity_id: str = "", price
         "salesforce_response": response.json()
     }, indent=2)
 
+if __name__ == "__main__":
+    # Start the standard MCP stdio server
+    mcp.run()
+

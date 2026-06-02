@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings, ArrowLeft, ArrowRight, BrainCircuit,
   CheckCircle2, Package, TrendingUp, Sparkles, Database,
   Eye, ExternalLink, Search, LayoutDashboard, FileText,
-  ZoomIn, ZoomOut, Paperclip, MapPin, Layers, ShieldCheck, PlusCircle, Sun, Moon
+  ZoomIn, ZoomOut, MapPin, Layers, ShieldCheck, PlusCircle, Sun, Moon
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -36,7 +36,7 @@ const getActionIcon = (label) => {
   return <Sparkles size={14} className="text-indigo-500 flex-shrink-0" />;
 };
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
   const [rightWidth, setRightWidth] = useState(500);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
@@ -102,9 +102,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
   // Deal History States
   const [dealHistoryData, setDealHistoryData] = useState(null);
-  const [dealHistoryAccount, setDealHistoryAccount] = useState('');
+  const [dealHistoryAccount, setDealHistoryAccount] = useState('Edge Communications');
   const [dealHistoryLoading, setDealHistoryLoading] = useState(false);
-  const [dealHistoryFilter, setDealHistoryFilter] = useState('All');
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
@@ -112,49 +111,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const pendingSelectionRef = useRef(null);
   const pendingUpdateRef = useRef(false);
   const pendingCreationRef = useRef(false);
-  const fileInputRef = useRef(null);
-  const [isUploading, setIsUploading] = useState(false);
-
   const dealHistoryLoadingRef = useRef(false);
   const isSummarizeRequestRef = useRef(false);
   const isWinRateRequestRef = useRef(false);
-  const isDealHistoryRequestRef = useRef(false);
   const isQuoteWinRateRequestRef = useRef(false);
   const summarizeTimeoutsRef = useRef([]);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
     summarizeTimeoutsRef.current = [];
   };
-
-  const connectWebSocket = useCallback(() => {
-    if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
-    const socket = new WebSocket('ws://localhost:8001/ws/orchestrate');
-    socket.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        handleWsMessageRef.current?.(data);
-      } catch (err) {
-        console.error('[WS] parse error', err);
-      }
-    };
-    socket.onclose = () => {
-      setTimeout(connectWebSocket, 3000);
-    };
-    socket.onerror = () => {
-      socket.close();
-    };
-    ws.current = socket;
-  }, []);
-
-  useEffect(() => {
-    if (workflowState === 'completed') {
-      if (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current) {
-        setWorkspaceView('preview');
-      }
-    }
-  }, [workflowState]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -167,14 +132,17 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   });
 
   useEffect(() => {
-    connectWebSocket();
-    return () => {
-      if (ws.current) {
-        ws.current.onclose = null;
-        ws.current.close();
+    ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
+    ws.current.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        handleWsMessageRef.current?.(data);
+      } catch (err) {
+        console.error('[WS] parse error', err);
       }
     };
-  }, [connectWebSocket]);
+    return () => ws.current?.close();
+  }, []);
 
   const handleWsMessage = (data) => {
     switch (data.type) {
@@ -209,7 +177,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               };
             } else {
               if (n.coordinator === 'active') n.coordinator = 'done';
-              for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+              for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
                 if (n[k] && n[k].state === 'active') {
                   n[k] = { ...n[k], state: 'done' };
                   if (n[k].tools) {
@@ -377,18 +345,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
-          const name = data.agent;
           const n = { ...prev };
           if (name === 'Deal_Manager') {
             n.coordinator = 'active';
-          } else if (
-            name === 'Requirements_Parser' ||
-            name === 'Catalog_Scout' ||
-            name === 'Quote_Architect' ||
-            name === 'Quote_Updator' ||
-            name === 'Quote_Analyst'
-          ) {
-            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          } else if (name === 'Catalog_Scout' || name === 'Quote_Architect' || name === 'Quote_Updator' || name === 'Quote_Analyst') {
+            for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
               if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
@@ -456,7 +417,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
             if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
@@ -481,7 +442,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
             if (n[k] && n[k].tools && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
@@ -495,49 +456,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         });
         try {
           const parsed = JSON.parse(data.data);
-          
-          if (data.tool === 'get_quote_line_items' && parsed.quote_id) {
-            // Automatically switch to preview when Quote Updator fetches line items
-            fetch(`${config.API_BASE_URL}/api/quote-preview/${parsed.quote_id}`)
-              .then(res => res.json())
-              .then(d => {
-                setPreviewData(d);
-                setWorkspaceView('preview');
-              })
-              .catch(err => console.error('Error fetching quote preview:', err));
-          }
-
-          if ((data.tool === 'search_catalog' || data.tool === 'parse_transcript_to_requirements' || data.tool === 'parse_requirements_doc' || data.tool === 'map_requirements_to_catalog') && parsed.results && parsed.results.length > 0) {
+          if (data.tool === 'search_catalog' && parsed.results) {
             pendingResultsRef.current = parsed.results;
-
-            if (parsed.requirements) {
-              const newSelected = new Set();
-              const newConfigs = {};
-
-              parsed.requirements.forEach(req => {
-                const need = req.extracted_need;
-                const mappedList = req.mapped_catalog_products;
-
-                if (mappedList && mappedList.length > 0) {
-                  if (req.confidence === 'High' || req.confidence === 'Medium') {
-                    const p = mappedList[0];
-                    newSelected.add(p.id);
-                    newConfigs[p.id] = {
-                      qty: need.quantity || 1,
-                      discount: need.discount || 0
-                    };
-                  }
-                }
-              });
-
-              setSelectedProducts(prev => new Set([...prev, ...newSelected]));
-              setProductConfigs(prev => ({ ...prev, ...newConfigs }));
-            }
           }
           if (data.tool === 'get_deal_history') {
             if (parsed.status === 'success' || parsed.quotes) {
               setDealHistoryData(parsed.quotes || []);
-              setDealHistoryAccount(parsed.accountName || '');
+              setDealHistoryAccount(parsed.accountName || 'Edge Communications');
+              setWorkspaceView('preview');
             }
           }
           if (data.tool === 'evaluate_quote_graph') {
@@ -557,19 +483,18 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             });
             */
 
-            // Fetch quote number and auto-redirect to preview
+            // Fetch quote number to replace ID in future messages
             fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
               .then(res => res.json())
               .then(d => {
                 if (d.records?.[0]?.QuoteNumber) {
                   setQuoteNumberMap(prev => ({ ...prev, [qId]: d.records[0].QuoteNumber }));
                 }
-                setPreviewData(d);
-                setWorkspaceView('preview');
               })
               .catch(err => console.error('Error fetching quote number:', err));
 
             pendingCreationRef.current = true;
+            // handlePreview(qId);
           }
         } catch (_) { }
         break;
@@ -580,12 +505,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
       case 'FINAL_REPLY':
         setReasoning(null);
-        if (pendingResultsRef.current && pendingResultsRef.current.length > 0) {
+        if (pendingResultsRef.current) {
           addMessage({
             type: 'card',
             cardType: 'products',
             data: pendingResultsRef.current,
-            content: "Based on the document you uploaded, these are the products:"
+            content: "I've searched the catalog and found these products:"
           });
           pendingResultsRef.current = null;
         }
@@ -629,29 +554,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
             addMessage({ type: 'text', content: processedText, actions });
 
-            // Detect if AI is asking for a document upload
-            const lcText = processedText.toLowerCase();
-            if (
-              lcText.includes('upload') ||
-              lcText.includes('paste') ||
-              lcText.includes('share') ||
-              lcText.includes('document') ||
-              lcText.includes('transcript') ||
-              lcText.includes('file') ||
-              lcText.includes('sow') ||
-              lcText.includes('rfp') ||
-              lcText.includes('analyse') ||
-              lcText.includes('analyze') ||
-              lcText.includes('[action: show_upload_card]')
-            ) {
-              addMessage({
-                type: 'card',
-                cardType: 'upload',
-                content: "Upload your document to get started."
-              });
-            }
-
             // If AI asks which one to update or offers to update all, show "Update All" suggestion
+            const lcText = processedText.toLowerCase();
             if (lcText.includes('update') && (lcText.includes('which one') || lcText.includes('all of them') || lcText.includes('specific ones'))) {
               setShowUpdateAllSuggestion(true);
             }
@@ -697,35 +601,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
-    const detectAccountName = (inputStr) => {
-      const s = inputStr.toLowerCase();
-      if (s.includes('edge') || s.includes('communications')) return 'Edge Communications';
-      if (s.includes('aurobindo') || s.includes('pharma')) return 'Aurobindo Pharma R&D';
-      if (s.includes('pyramid') || s.includes('construction')) return 'Pyramid Construction Inc.';
-      if (s.includes('pfizer')) return 'Pfizer';
-      if (s.includes('moderna')) return 'Moderna';
-      if (s.includes('novartis')) return 'Novartis';
-      if (s.includes('roche')) return 'Roche';
-      if (s.includes('merck')) return 'Merck';
-      if (s.includes('genentech')) return 'Genentech';
-      if (s.includes('biogen')) return 'Biogen';
-      if (s.includes('gilead')) return 'Gilead';
-      return null;
-    };
+    // Auto redirect to orchestration flow (graph) when user sends any request
+    setWorkspaceView('graph');
 
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
-
-    // Set deal history filter based on command
-    if (cmd.includes('drafted quote') || cmd.includes('draft quote')) {
-      setDealHistoryFilter('Draft');
-    } else if (cmd.includes('accepted quote')) {
-      setDealHistoryFilter('Accepted');
-    } else if (cmd.includes('rejected quote')) {
-      setDealHistoryFilter('Rejected');
-    } else if (cmd.includes('deal history') || cmd.includes('all quote')) {
-      setDealHistoryFilter('All');
-    }
 
     if (cmd.includes('different account') || cmd.includes('list my accounts') || cmd.includes('list accounts')) {
       setDealHistoryData(null);
@@ -741,65 +621,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       });
     }
 
-    let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
-
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote');
-    
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter
-    if (!isWinRateRequest && !isStatusFilterRequest && isWinRateRequestRef.current && (
-        cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
-    )) {
-      isWinRateRequest = true;
-    }
+    const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
     isWinRateRequestRef.current = isWinRateRequest;
-
-    // A win rate request is a QUOTE win rate request if it explicitly mentions 'quote' or provides an ID/number
-    let isQuoteWinRateRequest = isWinRateRequest && (
-      cmd.includes('quote') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
-    );
-    // Persist quote mode if they are just answering follow-ups
-    if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {
-      isQuoteWinRateRequest = true;
-    }
-    // If they explicitly asked for an ACCOUNT win rate, or if an account is mentioned in the text, turn off quote mode
-    if (cmd.includes('account win rate') || (cmd.includes('account') && !cmd.includes('quote')) || detectAccountName(text)) {
-      isQuoteWinRateRequest = false;
-    }
+    const isQuoteWinRateRequest = isWinRateRequest && (cmd.includes('this quote') || cmd.includes('current quote') || cmd.includes('the quote'));
     isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
     const isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
-      isStatusFilterRequest || 
-      cmd.includes('deal history') || 
-      cmd.includes('previous quotes') || 
-      cmd.includes('historical quotes') || 
-      cmd.includes('detailed view of') ||
-      cmd.includes('view all deals') ||
-      cmd.includes('get all deals') ||
-      cmd.includes('show all deals') ||
-      cmd.includes('view all quotes') ||
-      cmd.includes('get all quotes') ||
-      cmd.includes('show all quotes') ||
-      cmd.includes('deal history of')
+      cmd.includes('deal history') || cmd.includes('previous quotes') || cmd.includes('historical quotes') || cmd.includes('detailed view of')
     );
 
     if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest) {
       setDealHistoryData(null);
+      setDealHistoryAccount('Edge Communications');
     }
-    setWorkspaceView('graph'); // Auto redirect to orchestration flow (graph) for all requests initially
-    isDealHistoryRequestRef.current = isDealHistoryRequest;
 
-    // Update global account tracker if any account is mentioned
-    const newlyDetectedAcc = detectAccountName(text);
-    if (newlyDetectedAcc) {
-      setDealHistoryAccount(newlyDetectedAcc);
-    }
+    const detectAccountName = (inputStr) => {
+      const s = inputStr.toLowerCase();
+      if (s.includes('edge') || s.includes('communications')) return 'Edge Communications';
+      if (s.includes('aurobindo') || s.includes('pharma')) return 'Aurobindo Pharma R&D';
+      if (s.includes('pyramid') || s.includes('construction')) return 'Pyramid Construction Inc.';
+      return null;
+    };
 
     // Lazy load deal history for win rate request if not loaded yet
     if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0)) {
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
+      const detectedAcc = detectAccountName(text);
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         setInputValue('');
@@ -859,7 +708,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
     // Lazy load deal history for summarization/prioritization if not loaded yet
     if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
+      const detectedAcc = detectAccountName(text);
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         setInputValue('');
@@ -903,38 +752,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     if (isDealHistoryRequest) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
       setInputValue('');
-      
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
-      setDealHistoryAccount(detectedAcc);
+      setDealHistoryData(null);
       setDealHistoryLoading(true);
       dealHistoryLoadingRef.current = true;
-      
-      try {
-        const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-          setDealHistoryData(data.quotes);
-          const quotesText = data.quotes.map(q => {
-            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-          }).join('\n');
-          
-          ws.current?.send(JSON.stringify({
-            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
-            module: selectedModule?.id || 'sales'
-          }));
-        } else {
-          setDealHistoryData([]);
-          ws.current?.send(JSON.stringify({ text: text, module: selectedModule?.id || 'sales' }));
-        }
-      } catch (err) {
-        console.error("Error fetching deal history proactively:", err);
-        setDealHistoryData([]);
-        ws.current?.send(JSON.stringify({ text: text, module: selectedModule?.id || 'sales' }));
-      } finally {
-        setDealHistoryLoading(false);
-        dealHistoryLoadingRef.current = false;
-      }
+      ws.current?.send(JSON.stringify({
+        text: text,
+        module: selectedModule?.id || 'sales'
+      }));
       return;
     }
 
@@ -942,32 +766,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
-      
-      // Check if user explicitly provided an ID or Number
-      const explicitNumMatch = text.match(/\b\d{8}\b/);
-      const explicitIdMatch = text.match(/\b0Q0[a-zA-Z0-9]{12,15}\b/);
-      
-      if (explicitIdMatch) {
-        quoteIdToPreview = explicitIdMatch[0];
-      } else if (explicitNumMatch) {
-        const foundQuote = (dealHistoryData || []).find(q => q.quoteNumber === explicitNumMatch[0]) || (quotes || []).find(q => q.quoteNumber === explicitNumMatch[0]);
-        if (foundQuote) quoteIdToPreview = foundQuote.id;
-      }
+      const latestFromState = quotes[quotes.length - 1]?.id;
 
-      if (!quoteIdToPreview) {
-        const latestFromState = quotes[quotes.length - 1]?.id;
-        if (latestFromState && latestFromState !== 'Generated') {
-          quoteIdToPreview = latestFromState;
-        } else {
-          // Fallback: search messages for a quote ID pattern (0Q0...)
-          const allContent = messages.map(m => m.content).join(' ');
-          const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
-          if (match) quoteIdToPreview = match[0];
-        }
+      if (latestFromState && latestFromState !== 'Generated') {
+        quoteIdToPreview = latestFromState;
+      } else {
+        // Fallback: search messages for a quote ID pattern (0Q0...)
+        const allContent = messages.map(m => m.content).join(' ');
+        const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
+        if (match) quoteIdToPreview = match[0];
       }
 
       if (quoteIdToPreview) {
-        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
+        setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         handlePreview(quoteIdToPreview);
         setInputValue('');
         return;
@@ -999,7 +810,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       }
     }
 
-    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
+    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
     ws.current?.send(JSON.stringify({
       text: finalMessage,
@@ -1017,57 +828,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     setBulkQty('');
     setBulkDiscount('');
   };
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const resp = await fetch(`${config.API_BASE_URL}/api/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await resp.json();
-
-      if (data.status === 'success') {
-        // Clear old selections, configs, and orchestration graph
-        setSelectedProducts(new Set());
-        setProductConfigs({});
-        setBulkQty('');
-        setBulkDiscount('');
-        setOrchestration(INIT_ORCH);
-
-        // Immediately notify the user in the UI
-        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
-
-        // FIX: Must enter orchestrating state before sending — otherwise the
-        // frontend state machine desyncs and FINAL_REPLY renders nothing.
-        setWorkflowState('orchestrating');
-
-        // Ensure the orchestration flow is visible
-        setWorkspaceView('graph');
-
-        // Send the extracted text (already truncated server-side) to the agent
-        ws.current?.send(JSON.stringify({
-          text: data.user_message,
-          module: selectedModule?.id || 'sales'
-        }));
-      } else {
-        addMessage({ type: 'text', content: `Error uploading file: ${data.message}` });
-      }
-    } catch (err) {
-      console.error('Upload error:', err);
-      addMessage({ type: 'text', content: `Error uploading file: ${err.message}` });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
 
   const extractQuoteId = (dataStr) => {
     const match = dataStr.match(/0Q0[a-zA-Z0-9]{12,15}/);
@@ -1112,7 +872,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     }
   };
 
-  const handleDealHistory = async (accountName = '', switchView = true) => {
+  const handleDealHistory = async (accountName = 'Edge Communications', switchView = true) => {
     // Guard: prevent concurrent/duplicate calls
     if (dealHistoryLoadingRef.current) return;
     dealHistoryLoadingRef.current = true;
@@ -1184,7 +944,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const listStr = selectedList.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
-    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
+    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     ws.current?.send(text);
 
     // Clear selections after confirm
@@ -1250,18 +1010,27 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+              <button
+                onClick={() => setWorkspaceView('graph')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Orchestration Flow
+              </button>
+              <button
+                onClick={() => setWorkspaceView('preview')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Record Preview
+              </button>
+            </div>
             <button
-              onClick={() => setWorkspaceView('graph')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              onClick={() => setIsDark(!isDark)}
+              className={`p-2 rounded-xl transition-all flex items-center justify-center border ${isDark ? 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10' : 'bg-black/5 border-black/5 text-slate-500 hover:text-indigo-500 hover:bg-black/10'}`}
+              title="Toggle Theme"
             >
-              Orchestration Flow
-            </button>
-            <button
-              onClick={() => setWorkspaceView('preview')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Record Preview
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
         </div>
@@ -1297,7 +1066,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           )}
           {workspaceView === 'preview' && (
-            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || dealHistoryData) ? (
+            (dealHistoryLoading || dealHistoryData) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
                   <WinRateBattleCard
@@ -1309,99 +1078,98 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   />
                 ) : (
                   <DealHistoryPanel
-                    data={dealHistoryData ? dealHistoryData.filter(q => dealHistoryFilter === 'All' || (q.status && q.status.toLowerCase() === dealHistoryFilter.toLowerCase())) : null}
+                    data={dealHistoryData}
                     accountName={dealHistoryAccount}
                     isLoading={dealHistoryLoading}
-                    filter={dealHistoryFilter}
                   />
                 )}
               </div>
             ) : (
-            <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-              {previewData ? (
-                <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-emerald-500/10 rounded-xl">
-                        <FileText size={20} className="text-emerald-500" />
+              <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
+                {previewData ? (
+                  <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl">
+                          <FileText size={20} className="text-emerald-500" />
+                        </div>
+                        <div>
+                          <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
+                          <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
+                        </div>
                       </div>
-                      <div>
-                        <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
-                        <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const qId = previewData.records?.[0]?.Id;
-                        const inst = previewData.instance_url || 'https://login.salesforce.com';
-                        if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
-                      }}
-                      className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
-                    >
-                      Open in Salesforce <ExternalLink size={14} />
-                    </button>
-                  </div>
-
-                  {/* Rich Details Table */}
-                  <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
-                    <div className="p-6 border-b border-white/5 bg-white/[0.02]">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
-                    </div>
-                    <div className="p-0">
-                      <table className="w-full text-left">
-                        <thead className="bg-white/[0.01] border-b border-white/5">
-                          <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                            <th className="px-6 py-4">Account</th>
-                            <th className="px-6 py-4">Opportunity</th>
-                            <th className="px-6 py-4 text-right">Grand Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="text-sm font-bold border-b border-white/5">
-                            <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
-                            <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                            <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+                      <button
+                        onClick={() => {
+                          const qId = previewData.records?.[0]?.Id;
+                          const inst = previewData.instance_url || 'https://login.salesforce.com';
+                          if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
+                        }}
+                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
+                      >
+                        Open in Salesforce <ExternalLink size={14} />
+                      </button>
                     </div>
 
-                    <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
-                    </div>
-                    <div className="p-0">
-                      <table className="w-full text-left">
-                        <thead className="bg-white/[0.01] border-b border-white/5">
-                          <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                            <th className="px-6 py-4">Product</th>
-                            <th className="px-6 py-4 text-center">Qty</th>
-                            <th className="px-6 py-4 text-right">Sales Price</th>
-                            <th className="px-6 py-4 text-center">Discount</th>
-                            <th className="px-6 py-4 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
-                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
-                              <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                              <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
-                              <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                              <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                    {/* Rich Details Table */}
+                    <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
+                      <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
+                      </div>
+                      <div className="p-0">
+                        <table className="w-full text-left">
+                          <thead className="bg-white/[0.01] border-b border-white/5">
+                            <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              <th className="px-6 py-4">Account</th>
+                              <th className="px-6 py-4">Opportunity</th>
+                              <th className="px-6 py-4 text-right">Grand Total</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            <tr className="text-sm font-bold border-b border-white/5">
+                              <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
+                              <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
+                              <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
+                      </div>
+                      <div className="p-0">
+                        <table className="w-full text-left">
+                          <thead className="bg-white/[0.01] border-b border-white/5">
+                            <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              <th className="px-6 py-4">Product</th>
+                              <th className="px-6 py-4 text-center">Qty</th>
+                              <th className="px-6 py-4 text-right">Sales Price</th>
+                              <th className="px-6 py-4 text-center">Discount</th>
+                              <th className="px-6 py-4 text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
+                              <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
+                                <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
+                                <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
+                                <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center opacity-20 py-40">
-                  <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
-                  <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="flex flex-col items-center opacity-20 py-40">
+                    <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
+                    <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
+                  </div>
+                )}
+              </div>
             )
           )}
         </div>
@@ -1589,30 +1357,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 </div>
               )}
 
-              {msg.type === 'card' && msg.cardType === 'upload' && (
-                <div className="af-card animate-in fade-in slide-in-from-bottom-2">
-                  <div className="p-6 bg-indigo-500/[0.03] border border-indigo-500/20 rounded-[1.5rem] shadow-xl shadow-indigo-500/5">
-                    <div className="flex items-center gap-4 mb-5">
-                      <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                        <FileText size={20} className="text-white" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">Requirements Analyst</span>
-                        <span className="text-[10px] font-medium text-slate-500">Document Analysis Service</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 text-white rounded-xl text-[12px] font-bold hover:bg-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
-                    >
-                      {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
-                      Click here to upload document
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {msg.type === 'card' && msg.cardType === 'quote' && (
                 <div className="af-card">
                   <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
@@ -1628,7 +1372,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                       Preview in Workspace <ExternalLink size={12} />
                     </button>
                   </div>
-
                 </div>
               )}
 
@@ -1655,34 +1398,74 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           ))}
 
+          {messages.length === 1 && (
+            <div className="pt-2 pb-6 space-y-4 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center gap-2 mb-4 px-1">
+                <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">Suggestions</span>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                {SUGGESTIONS.map((s, i) => (
+                  <div
+                    key={i}
+                    onClick={() => handleSuggestionClick(s.text)}
+                    className="p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group shadow-sm flex flex-col gap-1.5 backdrop-blur-md"
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.02)' : s.bg,
+                      borderColor: isDark ? 'rgba(255,255,255,0.05)' : s.border
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ background: s.color }} />
+                      <span className="text-[8.5px] font-black uppercase tracking-widest" style={{ color: s.color }}>{s.label}</span>
+                    </div>
+                    <div className="text-[11px] leading-relaxed text-[var(--text-main)] opacity-70 group-hover:opacity-100 font-medium">{s.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {reasoning && (
+            <div className="af-reasoning">
+              <Loader2 size={12} className="animate-spin" />
+              {reasoning}
+            </div>
+          )}
+
+          {workflowState === 'orchestrating' && <TypingIndicator />}
+
+          <div className="flex flex-col gap-2 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-2">
+            {selectedProducts.size > 0 && (
+              <div className="flex justify-start">
+                <button
+                  onClick={() => setInputValue('Create a quote for the selected products')}
+                  className="px-4 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-black uppercase text-indigo-500 hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                >
+                  ✨ Create a Quote
+                </button>
+              </div>
+            )}
+
+
+          </div>
 
           <div ref={chatEndRef} />
         </div>
 
         <div className="af-input-area">
-          <form onSubmit={handleSend} className="relative group flex items-center gap-2">
+          <form onSubmit={handleSend} className="relative group">
             <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
-            
             <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-              accept=".pdf,.docx,.txt,.xlsx,.xls"
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+              className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
             />
-
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
-                className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
-              />
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
-                <Send size={20} />
-              </button>
-            </div>
+            <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
+              <Send size={20} />
+            </button>
           </form>
         </div>
       </section>

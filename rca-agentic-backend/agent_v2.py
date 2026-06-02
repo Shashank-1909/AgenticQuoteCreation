@@ -232,31 +232,20 @@ def _build_quote_architect(toolset: McpToolset) -> LlmAgent:
         # coordinator's perspective. Deal_Manager re-routes every new message.
         disallow_transfer_to_parent=True,
         instruction="""
-You are the Quote Architect — a CPQ expert responsible for both creating and updating quotes.
+You are the Quote Architect — a Salesforce CPQ specialist responsible for creating validated, submitted quotes.
 
-------------------------------------------------------------
-CORE MODES
-------------------------------------------------------------
-You operate in TWO modes:
+Your job is to translate the user's quoting intent into a real Salesforce CPQ quote.
 
-1. CREATE MODE → Create new quote
-2. UPDATE MODE → Modify existing quote
+How to identify your tools:
+- Read each tool's description carefully. Each tool describes its purpose and when to call it.
+- The ACCOUNT TOOL is described as: fetches the current authenticated user's Salesforce accounts.
+- The OPPORTUNITY TOOL is described as: fetches open opportunities for a given account ID.
+- The PRICING TOOL is described as: resolves Product2 IDs to active PricebookEntry IDs and unit prices.
+  Its description will say it is a mandatory prerequisite before quote creation.
+- The QUOTE TOOL is described as: creates and submits a Quote Graph to Salesforce CPQ.
+  Its description will say it accepts line items with PricebookEntryIds.
+- Never call a tool by guessing its name — identify it by its stated purpose in its description.
 
-<<<<<<< HEAD
-Decide the mode based on user intent.
-
-------------------------------------------------------------
-TOOL USAGE
-------------------------------------------------------------
-- Identify tools by purpose, not name
-- Call tools only when required
-
-------------------------------------------------------------
-UI RULE (STRICT)
-------------------------------------------------------------
-- Always send a message BEFORE calling any tool
-- Selection lists (accounts, opportunities, quotes) must appear only in UI panel, not chat
-=======
 == QUOTE CREATION FLOW ==
 
 IMPORTANT: Before starting, check the conversation history! If the user has ALREADY confirmed an Account ID ('001...') and Opportunity ID ('006...') earlier in this session, SKIP Steps 1 and 2. Proceed directly to Step 3 using those existing IDs. Only ask for Account and Opportunity if they are missing or if the user explicitly asks to change them.
@@ -275,114 +264,15 @@ STEP 2 — OPPORTUNITY SELECTION:
   Wait for the user to reply with their selection.
   The user's selection will arrive as: "[Opportunity Name] (ID: 006xxxxxxxxxxxxxxx)"
   Extract the 18-character Opportunity ID (starts with '006') from that message.
->>>>>>> origin/ChangesByShashank
 
-------------------------------------------------------------
-CONTEXT MANAGEMENT
-------------------------------------------------------------
-Reuse session context:
+STEP 3 — RESOLVE PRICING:
+  Identify ALL the 18-character Product2 IDs the user wants quoted.
+  Product2 IDs always start with '01t'. Find them from the conversation history
+  (search results, user-selected products, or the current user message).
+  Use the pricing resolution tool (described as resolving Product2 IDs to active
+  PricebookEntry IDs and unit prices), passing ALL Product2 IDs as a list in one call.
+  If no active pricing is returned for any product, inform the user and do not proceed.
 
-<<<<<<< HEAD
-- AccountId
-- OpportunityId
-- QuoteId
-
-If user says:
-- "same quote"
-- "this quote"
-- "existing quote"
-
-→ Continue without asking again
-
-Only ask again if:
-- context is missing
-- or user explicitly changes it
-
-------------------------------------------------------------
-MODE DECISION
-------------------------------------------------------------
-
-If user intent is:
-- "create quote", "generate quote" → CREATE MODE
-- "update", "add", "remove", "discount", "rename" → UPDATE MODE
-
-------------------------------------------------------------
-CREATE MODE FLOW
-------------------------------------------------------------
-
-Step 1 — Account Selection (WAIT)
-Step 2 — Opportunity Selection (WAIT)
-Step 3 — Resolve Pricing (AUTO)
-Step 4 — Create Quote (AUTO)
-
-Rules:
-- Never auto-select account/opportunity
-- Wait for user selection
-- Once selected → complete remaining steps automatically
-- Do not wait after "Create Quote" action
-
-------------------------------------------------------------
-UPDATE MODE FLOW
-------------------------------------------------------------
-
-CASE 1 — Same Session (Quote exists):
-→ Directly perform update
-
-CASE 2 — No Quote Context:
-Step 1 — Account Selection (WAIT)
-Step 2 — Opportunity Selection (WAIT)
-Step 3 — Fetch Quotes (WAIT)
-Step 4 — User selects Quote
-Step 5 — Perform update (AUTO)
-
-------------------------------------------------------------
-PRICING RULE
-------------------------------------------------------------
-- Always resolve pricing before adding products
-- If pricing exists → proceed
-- If pricing missing:
-  → Stop
-  → Inform: "No active pricebook entry for this product"
-
-------------------------------------------------------------
-OPERATIONS
-------------------------------------------------------------
-- Add product → insert line item
-- Update quantity → modify line item
-- Apply discount → update pricing field
-- Remove product → delete line item
-- Rename quote → update quote
-
-Handle multiple operations in one flow.
-
-------------------------------------------------------------
-EXECUTION RULES
-------------------------------------------------------------
-- WAIT only for user selections
-- AUTO execute when data is available
-- Never assume selections
-- Never pause unnecessarily
-
-------------------------------------------------------------
-PRODUCT HANDLING
-------------------------------------------------------------
-- Use only Product IDs
-- If user gives product names → delegate to Catalog_Scout
-- Resume flow after IDs are available
-
-------------------------------------------------------------
-ERROR HANDLING
-------------------------------------------------------------
-- Do not proceed with missing data
-- Clearly explain issues
-- Do not retry automatically
-
-------------------------------------------------------------
-RESPONSE
-------------------------------------------------------------
-- Confirm action clearly
-- Keep response short
-=======
 STEP 4 — CREATE QUOTE:
   Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ),
   passing ALL resolved line items (one per product) AND the confirmed Opportunity ID from Step 2 (or from history).
@@ -396,7 +286,6 @@ STEP 4 — CREATE QUOTE:
   submit all line items together in a single quote creation call
 - If a Salesforce error occurs, explain it clearly and do not retry automatically
 - You do not search for products — that is exclusively the Catalog Scout's responsibility
->>>>>>> origin/ChangesByShashank
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,
@@ -422,7 +311,7 @@ Your role is to understand what the user is trying to accomplish and delegate to
 
 You have two specialists:
 - Catalog_Scout: handles anything related to finding, searching, filtering, or browsing products
-- Quote_Architect: handles anything related to creating or modifying CPQ quotes for specific products
+- Quote_Architect: handles anything related to creating CPQ quotes for specific products
 
 How to delegate:
 - Analyze the intent of the current user message in the context of the full conversation history
@@ -432,7 +321,6 @@ How to delegate:
 - **DEPENDENCY RULE**: The Quote_Architect CANNOT function unless the Catalog_Scout has ALREADY found the product in a previous turn. If the user asks to create a quote for a product that hasn't been searched for yet, you MUST delegate to Catalog_Scout to find it. Do not even mention the Quote_Architect until the product has been found.
 
 You are a coordinator only. You do not call tools, search for products, or create quotes directly.
-If the user's intent is ambiguous, you are ALLOWED to ask the user a clarifying question directly before delegating.
         """,
         sub_agents=[catalog_scout, quote_architect],
         before_model_callback=sequence_repair_hook,
@@ -461,19 +349,11 @@ async def lifespan(app: FastAPI):
     deal_manager    = _build_deal_manager(catalog_scout, quote_architect)
 
     # _root_runner  — Deal_Manager as root (initial routing, product search)
-<<<<<<< HEAD
-    # _quote_runner — Quote_Manager as root (direct access, skips Deal_Manager)
-    # Both share the same session_service so conversation history is preserved.
-    # -----------------------------------------------------------------------
-    _root_runner = Runner(
-        app_name="deal_manager_v2",
-=======
     # _quote_runner — Quote_Architect as root (direct access, skips Deal_Manager)
     # Both share the same session_service so conversation history is preserved
     # when the active runner switches mid-conversation.
     root_runner = Runner(
         app_name=APP_NAME,
->>>>>>> origin/ChangesByShashank
         agent=deal_manager,
         session_service=session_service,
     )
@@ -682,50 +562,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
     try:
         while True:
-<<<<<<< HEAD
-            user_input = await websocket.receive_text()
-
-            # --- Detect refinement query ---
-            def is_refinement_query(text: str) -> bool:
-                keywords = ["from above", "from previous", "in those", "that list", "among them"]
-                return any(k in text.lower() for k in keywords)
-
-            session_data = session_service.sessions.get(session_id)
-
-            if session_data:
-                last_results = session_data.state.get("last_product_results")
-
-                if is_refinement_query(user_input) and last_results:
-                    try:
-                        keyword = user_input.lower()
-
-                        filtered = [
-                            p for p in last_results.get("products", [])
-                            if keyword in json.dumps(p).lower()
-                        ]
-
-                        print(f"   [REFINE] Filtered {len(filtered)} products from memory")
-
-                        await websocket.send_json({
-                            "type": "TOOL_RESULT",
-                            "tool": "refined_search",
-                            "data": json.dumps({"products": filtered})
-                        })
-
-                        await websocket.send_json({
-                            "type": "FINAL_REPLY",
-                            "data": "Searched for required filters."
-                        })
-
-                        await websocket.send_json({"type": "STATE", "state": "completed"})
-                        continue
-
-                    except Exception as e:
-                        print(f"   [REFINE ERROR] {e}")
-                        
-=======
             user_input: str = await websocket.receive_text()
->>>>>>> origin/ChangesByShashank
             if not user_input.strip():
                 continue
 
@@ -742,108 +579,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             await websocket.send_json({"type": "STATE", "state": "orchestrating"})
 
             message = types.Content(role="user", parts=[types.Part(text=user_input)])
-<<<<<<< HEAD
-            current_agent = None
-
-            async for event in active_runner.run_async(
-                user_id="dev",
-                session_id=session_id,
-                new_message=message,
-            ):
-                # --- Agent transition ---
-                agent_name = getattr(event, "author", None)
-                if agent_name and agent_name != current_agent:
-                    current_agent = agent_name
-                    print(f"   [AGENT] {agent_name}")
-                    await websocket.send_json({"type": "AGENT_START", "agent": agent_name})
-
-                # --- Tool call (LLM → Tool) ---
-                for fn_call in (event.get_function_calls() or []):
-                    tool_name = getattr(fn_call, "name", "unknown")
-                    print(f"   [TOOL CALL] → {tool_name}")
-                    await websocket.send_json({"type": "TOOL_TRIGGER", "tool": tool_name})
-
-                # --- Tool response (Tool → LLM) ---
-                for fn_resp in (event.get_function_responses() or []):
-                    tool_name = getattr(fn_resp, "name", "")
-                    response_data = getattr(fn_resp, "response", {})
-                    text_content = ""
-                    if isinstance(response_data, dict):
-                        content_list = response_data.get("content", [])
-                        if content_list and isinstance(content_list, list):
-                            text_content = content_list[0].get("text", "")
-                        elif "output" in response_data:
-                            text_content = str(response_data.get("output", ""))
-                    print(f"   [TOOL RESULT] {tool_name} → {len(text_content)} chars")
-
-                    # --- Store last product search results for refinement ---
-                    if tool_name in ("keyword_search", "filter_search"):
-                        try:
-                            parsed = json.loads(text_content)
-                            session_service.sessions[session_id].state["last_product_results"] = parsed
-                            print(f"   [MEMORY] Stored last product results")
-                        except Exception as e:
-                            print(f"   [MEMORY] Store failed: {e}")
-
-                    # ── Emit structured picklist events and manage quote flow state ──
-                    if tool_name in ("get_my_accounts", "get_opportunities_for_account", "get_quotes_for_opportunity"):
-                        try:
-                            parsed = json.loads(text_content)
-                            if tool_name == "get_my_accounts" and parsed.get("accounts"):
-                                await websocket.send_json({
-                                    "type":          "USER_SELECTION_NEEDED",
-                                    "selection_for": "account",
-                                    "options":       parsed["accounts"],
-                                })
-                                print(f"   [PICKLIST] Account selection sent → {len(parsed['accounts'])} options")
-                                # Switch to direct QA runner for next turn (skip Deal_Manager)
-                                session_quote_active[session_id] = True
-                                print(f"   [FLOW] Session {session_id} → quote flow ACTIVE (direct runner)")
-                            elif tool_name == "get_opportunities_for_account" and parsed.get("opportunities") is not None:
-                                await websocket.send_json({
-                                    "type":          "USER_SELECTION_NEEDED",
-                                    "selection_for": "opportunity",
-                                    "options":       parsed["opportunities"],
-                                })
-                                print(f"   [PICKLIST] Opportunity selection sent → {len(parsed['opportunities'])} options")
-                                # Keep quote flow active for opportunity -> quote step
-                                session_quote_active[session_id] = True
-                            elif tool_name == "get_quotes_for_opportunity" and parsed.get("quotes") is not None:
-                                await websocket.send_json({
-                                    "type":          "USER_SELECTION_NEEDED",
-                                    "selection_for": "quote",
-                                    "options":       parsed["quotes"],
-                                })
-                                print(f"   [PICKLIST] Quote selection sent → {len(parsed['quotes'])} options")
-                                session_quote_active[session_id] = True
-                        except Exception as e:
-                            print(f"   [PICKLIST] Parse error: {e}")
-
-                    # When the quote is fully created, exit quote flow mode
-                    if tool_name == "evaluate_quote_graph" and "status\":\"success" in text_content:
-                        session_quote_active[session_id] = False
-                        print(f"   [FLOW] Session {session_id} → quote flow COMPLETE (back to coordinator)")
-
-                    payload = {"type": "TOOL_RESULT", "tool": tool_name, "data": text_content}
-                    if tool_name == "evaluate_quote_graph":
-                        try:
-                            parsed = json.loads(text_content)
-                            parsed["instance_url"] = _SF_INSTANCE_URL
-                            payload["data"] = json.dumps(parsed)
-                        except Exception:
-                            pass
-                    await websocket.send_json(payload)
-
-                # --- Final text reply ---
-                if event.is_final_response() and event.content:
-                    for part in event.content.parts or []:
-                        if hasattr(part, "text") and part.text:
-                            print(f"   [REPLY] {part.text[:120]}...")
-                            await websocket.send_json({"type": "FINAL_REPLY", "data": part.text})
-
-=======
             await _process_events(active_runner, message, session_id, websocket, _app_state)
->>>>>>> origin/ChangesByShashank
             await websocket.send_json({"type": "STATE", "state": "completed"})
 
     except WebSocketDisconnect:

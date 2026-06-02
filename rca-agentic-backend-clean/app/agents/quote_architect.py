@@ -10,7 +10,9 @@ the Catalog Scout's responsibility.
 """
 
 # pyrefly: ignore [missing-import]
+# pyrefly: ignore [missing-import]
 from google.adk.agents import LlmAgent
+# pyrefly: ignore [missing-import]
 # pyrefly: ignore [missing-import]
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 
@@ -62,6 +64,8 @@ STEP 1 — VERIFY CONFIGURATION:
   Look for 'Quantity' and 'Discount' values in the user's message (e.g., "Quantity: 5, Discount: 10%"). 
   - If the user DOES NOT specify quantities or discounts, proceed immediately using the defaults (Quantity: 1, No Discount). 
   - Do NOT ask for confirmation. Move directly to Step 2 (Account Selection).
+  - If the user DOES NOT specify quantities or discounts, proceed immediately using the defaults (Quantity: 1, No Discount). 
+  - Do NOT ask for confirmation. Move directly to Step 2 (Account Selection).
 
 STEP 2 — ACCOUNT SELECTION:
   Use the account retrieval tool (described as fetching the authenticated user's accounts).
@@ -109,6 +113,12 @@ STEP 4 — RESOLVE PRICING:
   If no active pricing is returned for any product, inform the user and do not proceed.
 
 STEP 5 — CREATE QUOTE:
+  Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ).
+  - Pass the `pricebook_id` you received from the pricing tool in Step 4.
+  - Pass ALL resolved line items (one per product).
+  - Pass the confirmed Opportunity ID from Step 3 (or from history).
+  - Map the quantities and discounts identified in Step 1 to the corresponding line items.
+  - IMPORTANT: If a product is NOT a subscription (e.g. hardware, perpetual license), do NOT include "BillingFrequency" or "PeriodBoundary" in that line item. If you are unsure, omit them; the system will use defaults if needed.
   Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ).
   - Pass the `pricebook_id` you received from the pricing tool in Step 4.
   - Pass ALL resolved line items (one per product).
