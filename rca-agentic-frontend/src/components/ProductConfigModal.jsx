@@ -69,19 +69,20 @@ const ProductConfigModal = ({ isOpen, onClose, products, onConfirm }) => {
   };
 
   const isMeta = config.theme === 'Meta';
+  const isThermofisher = config.theme === 'Thermofisher';
   const totalQuantity = items.reduce((acc, item) => acc + (parseInt(item.quantity) || 0), 0);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-2xl bg-black/70 modal-overlay transition-all duration-500 animate-in fade-in">
       <div className="bg-[var(--site-bg)] w-full max-w-5xl h-[85vh] rounded-[2rem] shadow-[0_32px_120px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col border border-white/10 relative">
         
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full blur-[100px] opacity-20 pointer-events-none ${isMeta ? 'bg-[#0084FF]' : 'bg-indigo-600'}`} />
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-[100px] opacity-10 pointer-events-none ${isMeta ? 'bg-[#31A24C]' : 'bg-purple-600'}`} />
+        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full blur-[100px] opacity-20 pointer-events-none ${isMeta ? 'bg-[#0084FF]' : isThermofisher ? 'bg-[#EE3124]' : 'bg-indigo-600'}`} />
+        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-[100px] opacity-10 pointer-events-none ${isMeta ? 'bg-[#31A24C]' : isThermofisher ? 'bg-[#B71234]' : 'bg-purple-600'}`} />
 
         {/* Header */}
         <div className="px-10 py-7 border-b border-white/10 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-5">
-            <div className={`p-3 rounded-2xl ${isMeta ? 'bg-[#0084FF]' : 'bg-indigo-600'} shadow-lg text-white`}>
+            <div className={`p-3 rounded-2xl ${isMeta ? 'bg-[#0084FF]' : isThermofisher ? 'bg-[#EE3124]' : 'bg-indigo-600'} shadow-lg text-white`}>
               <Settings size={20} strokeWidth={2.5} />
             </div>
             <div className="flex flex-col">
@@ -207,7 +208,7 @@ const ProductConfigModal = ({ isOpen, onClose, products, onConfirm }) => {
             <button 
               onClick={handleCreateQuote}
               disabled={Object.keys(errors).length > 0}
-              className={`px-10 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-xl ${Object.keys(errors).length > 0 ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed' : (isMeta ? 'bg-[#0084FF]' : 'bg-indigo-600') + ' text-white shadow-indigo-500/20'}`}
+              className={`px-10 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-xl ${Object.keys(errors).length > 0 ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed' : (isMeta ? 'bg-[#0084FF]' : isThermofisher ? 'bg-[#EE3124]' : 'bg-indigo-600') + ' text-white shadow-indigo-500/20'}`}
             >
               <Zap size={14} fill="currentColor" />
               Generate Quote

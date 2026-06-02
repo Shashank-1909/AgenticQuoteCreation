@@ -19,8 +19,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     {
       id: 1,
       role: 'assistant',
-      aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      aiName: config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI',
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
       type: 'text'
     }
   ]);
@@ -292,7 +292,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   };
 
   const addMessage = (msg) => {
-    const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
+    const aiName = config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI';
     setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
   };
 
@@ -570,7 +570,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? 'Meta Workspace' : config.theme === 'Thermofisher' ? 'Thermo Fisher Workspace' : 'Quoting Accelerator'}
               </h2>
             </div>
           </div>
@@ -716,13 +716,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
             {config.theme === 'Meta' ? (
               <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+            ) : config.theme === 'Thermofisher' ? (
+              <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-3 object-contain" />
             ) : (
               <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
             )}
           </div>
           <div className="flex flex-col">
             <h3 className="text-xs font-black uppercase tracking-tighter">
-              {config.theme === 'Meta' ? 'Meta Assistant' : 'Quoting Accelerator'}
+              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Assistant' : 'Quoting Accelerator'}
             </h3>
             <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
           </div>
@@ -929,7 +931,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 type="text"
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
-                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : config.theme === 'Thermofisher' ? 'Ask Thermo Fisher AI...' : 'Ask Quoting Accelerator...'}
                 className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
               <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">

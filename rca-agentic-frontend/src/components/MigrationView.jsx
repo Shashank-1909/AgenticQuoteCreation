@@ -16,7 +16,7 @@ const MigrationView = ({ onBack, selectedModule, isDark = false, setIsDark }) =>
     { 
       id: 1, 
       role: 'assistant', 
-      aiName: config.theme === 'Meta' ? 'Meta AI' : 'Migration Assistant',
+      aiName: config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Migration Assistant',
       content: `Hello! I'm your Migration Assistant for ${selectedModule?.title || 'Salesforce'}. I can help you analyze CPQ price rules and product rules, and migrate them to RCA. How can I help you today?`,
       type: 'text'
     }
@@ -81,7 +81,7 @@ const MigrationView = ({ onBack, selectedModule, isDark = false, setIsDark }) =>
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        aiName: config.theme === 'Meta' ? 'Meta AI' : 'Migration Assistant',
+        aiName: config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Migration Assistant',
         content: `I've received your request: "${userMsg.content}". Since this is a placeholder UI, I don't have backend connectivity for migration yet.`,
         type: 'text'
       }]);
@@ -162,6 +162,8 @@ const MigrationView = ({ onBack, selectedModule, isDark = false, setIsDark }) =>
            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
               {config.theme === 'Meta' ? (
                 <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+              ) : config.theme === 'Thermofisher' ? (
+                <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-3 object-contain" />
               ) : (
                 <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
               )}

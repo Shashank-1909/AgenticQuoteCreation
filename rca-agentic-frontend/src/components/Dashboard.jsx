@@ -10,34 +10,36 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
       value: '128',
       sub: '+12 this month',
       icon: Users,
-      color: config.theme === 'Meta' ? '#0064E0' : '#6366f1',
-      gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent'
+      color: config.theme === 'Meta' ? '#0064E0' : config.theme === 'Thermofisher' ? '#EE3124' : '#6366f1',
+      gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#EE3124]/10 via-[#EE3124]/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent'
     },
     { 
       label: t?.stats?.opportunities || 'Opportunities',
       value: '47',   
       sub: '8 closing soon',  
       icon: Network,     
-      color: config.theme === 'Meta' ? '#0081FB' : '#0ea5e9', 
-      gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent' 
+      color: config.theme === 'Meta' ? '#0081FB' : config.theme === 'Thermofisher' ? '#B71234' : '#0ea5e9', 
+      gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#B71234]/10 via-[#B71234]/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent' 
     },
     { 
       label: t?.stats?.quotes || 'Quotes',
       value: '38',
       sub: '5 pending review',
       icon: FileText,
-      color: config.theme === 'Meta' ? '#31A24C' : '#10b981',
-      gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent'
+      color: config.theme === 'Meta' ? '#31A24C' : config.theme === 'Thermofisher' ? '#EE3124' : '#10b981',
+      gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#EE3124]/10 via-[#EE3124]/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent'
     },
     { 
       label: t?.stats?.approvals || 'Approvals',
       value: '14',
       sub: '3 need actions',
       icon: ShieldCheck,
-      color: config.theme === 'Meta' ? '#f7b928' : '#f59e0b',
-      gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent'
+      color: config.theme === 'Meta' ? '#f7b928' : config.theme === 'Thermofisher' ? '#B71234' : '#f59e0b',
+      gradient: config.theme === 'Meta' ? 'from-yellow-500/10 via-yellow-500/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#B71234]/10 via-[#B71234]/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent'
     },
   ];
+  const isThermofisher = config.theme === 'Thermofisher';
+  const isMeta = config.theme === 'Meta';
 
   const quotes = [
     { id: 'Q-9210', opp: 'Quantum Tech Expansion', account: 'Quantum Tech Ltd', status: 'DRAFT', date: '2026-04-22' },
@@ -61,8 +63,8 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
 
       {/* ─── Gradient mesh ─── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-indigo-500/8 dark:bg-indigo-500/5 blur-[120px]" />
-        <div className="absolute -bottom-40 left-0 w-[600px] h-[600px] rounded-full bg-emerald-500/6 dark:bg-emerald-500/5 blur-[120px]" />
+        <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full ${isThermofisher ? 'bg-[#EE3124]/8 dark:bg-[#EE3124]/5' : isMeta ? 'bg-blue-500/8 dark:bg-blue-500/5' : 'bg-indigo-500/8 dark:bg-indigo-500/5'} blur-[120px]`} />
+        <div className={`absolute -bottom-40 left-0 w-[600px] h-[600px] rounded-full ${isThermofisher ? 'bg-[#B71234]/6 dark:bg-[#B71234]/5' : isMeta ? 'bg-green-500/6 dark:bg-green-500/5' : 'bg-emerald-500/6 dark:bg-emerald-500/5'} blur-[120px]`} />
       </div>
 
       <div className="relative z-10 flex flex-col h-full px-8 lg:px-14 py-6 lg:py-8 max-w-[1600px] mx-auto w-full">
@@ -82,6 +84,15 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
               <>
                 <img src={config.META_LOGO_URL} alt="Meta" className="h-10 object-contain" />
                 <div className="h-8 w-[1px] bg-slate-200 mx-2" />
+              </>
+            ) : config.theme === 'Thermofisher' ? (
+              <>
+                <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher Scientific" className="h-10 object-contain" />
+                <div className="h-8 w-[1px] bg-slate-200 mx-2" />
+                <div>
+                  <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">
+                    {t?.dashboard?.header || 'Deal Intelligence'}                  </h1>
+                </div>
               </>
             ) : (
               <>
@@ -139,17 +150,17 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
         {/* ── Recently Added Quotes Table ── */}
         <div className="flex-1 flex flex-col rounded-[24px] border border-[var(--glass-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-lg relative overflow-hidden" style={{ animation: 'float-up 0.5s ease-out 250ms both' }}>
 
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
 
           {/* Table Header */}
           <div className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-[var(--glass-border)]">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-indigo-500/10">
-                <FileText size={16} className="text-indigo-500" />
+              <div className={`p-1.5 rounded-lg ${isThermofisher ? 'bg-[#EE3124]/10' : isMeta ? 'bg-blue-500/10' : 'bg-indigo-500/10'}`}>
+                <FileText size={16} className={isThermofisher ? 'text-[#EE3124]' : isMeta ? 'text-blue-500' : 'text-indigo-500'} />
               </div>
               <h2 className="text-[12px] font-black uppercase tracking-widest text-[var(--text-main)]">Recently Added Quotes</h2>
             </div>
-            <button className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1.5 bg-indigo-500/5 px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">
+            <button className={`text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${isThermofisher ? 'text-[#EE3124] bg-[#EE3124]/5 hover:bg-[#EE3124]/10 hover:text-[#B71234]' : isMeta ? 'text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 hover:text-blue-600' : 'text-indigo-500 bg-indigo-500/5 hover:bg-indigo-500/10 hover:text-indigo-600'}`}>
               View All <ArrowUpRight size={13} />
             </button>
           </div>
@@ -173,7 +184,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
                     className="border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-border)] transition-colors group cursor-pointer"
                   >
                     <td className="px-8 py-4">
-                      <span className="font-mono font-bold text-indigo-500 dark:text-indigo-400 text-[12px] group-hover:text-indigo-600 transition-colors">
+                      <span className={`font-mono font-bold text-[12px] transition-colors ${isThermofisher ? 'text-[#EE3124] group-hover:text-[#B71234]' : isMeta ? 'text-blue-500 group-hover:text-blue-600' : 'text-indigo-500 group-hover:text-indigo-600'}`}>
                         {row.id}
                       </span>
                     </td>
@@ -196,9 +207,9 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
       <div className="fixed bottom-8 right-10 flex flex-col gap-3 items-end z-50">
         <button
           onClick={onLaunchAgentforce}
-          className="group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 py-4 px-8 rounded-2xl bg-emerald-500/10 hover:bg-emerald-600 hover:text-white transition-all shadow-xl hover:shadow-emerald-500/30 overflow-hidden backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105"
+          className={`group flex items-center gap-3 font-black text-[12px] uppercase tracking-widest py-4 px-8 rounded-2xl transition-all shadow-xl overflow-hidden backdrop-blur-md border border-[var(--glass-border)] hover:border-transparent scale-100 hover:scale-105 hover:text-white ${isThermofisher ? 'text-[#EE3124] bg-[#EE3124]/10 hover:bg-[#EE3124] hover:shadow-[#EE3124]/30' : isMeta ? 'text-blue-500 bg-blue-500/10 hover:bg-blue-600 hover:shadow-blue-500/30' : 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-600 hover:shadow-emerald-500/30'}`}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity ${isThermofisher ? 'bg-gradient-to-r from-[#EE3124] to-[#B71234]' : isMeta ? 'bg-gradient-to-r from-blue-500 to-green-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`} />
           <span className="relative z-10 flex items-center gap-2">
             <BrainCircuit size={16} className="group-hover:animate-pulse" />
             
