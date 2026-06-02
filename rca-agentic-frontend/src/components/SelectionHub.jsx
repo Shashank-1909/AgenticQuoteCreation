@@ -18,6 +18,12 @@ const modules = [
     gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#B71234]/10 via-[#B71234]/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent',
   },
   {
+    id: 'migration',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+    accent: config.theme === 'Meta' ? '#6B21A8' : '#8b5cf6',
+    gradient: config.theme === 'Meta' ? 'from-purple-700/10 via-purple-700/5 to-transparent' : 'from-violet-500/10 via-violet-500/5 to-transparent',
+  },
+  {
     id: 'oracle',
     logo: 'https://www.vectorlogo.zone/logos/oracle/oracle-icon.svg',
     accent: config.theme === 'Meta' ? '#F7B928' : config.theme === 'Thermofisher' ? '#B71234' : '#f59e0b',

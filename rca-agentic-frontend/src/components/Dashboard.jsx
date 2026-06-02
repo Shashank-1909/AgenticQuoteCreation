@@ -19,7 +19,7 @@ const Dashboard = ({ onBack, onLaunchChat, onLaunchAgentforce, selectedModule, l
       sub: '8 closing soon',  
       icon: Network,     
       color: config.theme === 'Meta' ? '#0081FB' : config.theme === 'Thermofisher' ? '#B71234' : '#0ea5e9', 
-      gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#B71234]/10 via-[#B71234]/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent' 
+      gradient: config.theme === 'Meta' ? 'from-sky-500/10 via-sky-500/5 to-transparent' : config.theme === 'Thermofisher' ? 'from-[#B71234]/10 via-[#B71234]/5 to-transparent' : 'from-sky-500/10 via-sky-500/5 to-transparent'
     },
     { 
       label: t?.stats?.quotes || 'Quotes',

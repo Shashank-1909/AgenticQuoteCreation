@@ -66,18 +66,18 @@ STEP 1 — VERIFY CONFIGURATION:
 STEP 2 — ACCOUNT SELECTION:
   Use the account retrieval tool (described as fetching the authenticated user's accounts).
   
-  CHECK: Does the user's original message explicitly name a specific Account 
-  (e.g., "...for the [ACCOUNT NAME] account", "...under [COMPANY NAME]")?
+  CHECK: Does the user's message or session history explicitly confirm a specific Account ID ('001...') or Account name?
   
-  - YES (account name found in message):
-    Find the account whose name exactly matches what the user said.
+  - YES (account found):
+    Find the account whose name/ID exactly matches what the user said.
     Do NOT show the panel. Do NOT wait for user input.
     Confirm silently to the user: "Matched account: [Account Name] (ID: 001...). Proceeding."
     Extract that 18-character Account ID and move to Step 3.
   
-  - NO (no account name in message):
+  - NO (no account found):
     Tell the user: "I've loaded your accounts — please select one."
-    Wait for the user to reply with their selection.
+    IMMEDIATELY STOP EXECUTING AND RETURN. Do NOT call any other tools (like opportunity retrieval, pricing, or quote creation) in this turn. Wait for the user to reply with their selection.
+    IMPORTANT FOR SUGGESTIONS: When asking the user to select an account, your `[ACTIONS: ...]` block MUST contain the names of the loaded accounts (e.g. `[ACTIONS: Select [Account 1] | Select [Account 2] | Select [Account 3]]`). Do NOT use generic recommendations here.
     The user's selection will arrive as: "[Account Name] (ID: 001xxxxxxxxxxxxxxx)"
     Extract the 18-character Account ID (starts with '001') from that message.
 
@@ -85,18 +85,18 @@ STEP 3 — OPPORTUNITY SELECTION:
   Use the opportunity retrieval tool (described as fetching open opportunities for an account),
   passing the Account ID extracted in Step 2.
 
-  CHECK: Does the user's original message explicitly name a specific Opportunity
-  (e.g., "...under the [OPPORTUNITY NAME] opportunity", "...for the [OPP NAME] deal")?
+  CHECK: Does the user's message or session history explicitly confirm a specific Opportunity ID ('006...') or Opportunity name?
 
-  - YES (opportunity name found in message):
-    Find the opportunity whose name exactly matches what the user said.
+  - YES (opportunity found):
+    Find the opportunity whose name/ID exactly matches what the user said.
     Do NOT show the panel. Do NOT wait for user input.
     Confirm silently to the user: "Matched opportunity: [Opportunity Name] (ID: 006...). Proceeding."
     Extract that 18-character Opportunity ID and move to Step 4.
 
-  - NO (no opportunity name in message):
+  - NO (no opportunity found):
     Tell the user: "I've loaded the open opportunities — please select one."
-    Wait for the user to reply with their selection.
+    IMMEDIATELY STOP EXECUTING AND RETURN. Do NOT call any other tools (like pricing or quote creation) in this turn. Wait for the user to reply with their selection.
+    IMPORTANT FOR SUGGESTIONS: When asking the user to select an opportunity, your `[ACTIONS: ...]` block MUST contain the names of the loaded opportunities (e.g. `[ACTIONS: Select [Opportunity 1] | Select [Opportunity 2]]`). Do NOT use generic recommendations here.
     The user's selection will arrive as: "[Opportunity Name] (ID: 006xxxxxxxxxxxxxxx)"
     Extract the 18-character Opportunity ID (starts with '006') from that message.
 
@@ -130,12 +130,12 @@ STEP 5 — CREATE QUOTE:
 
 DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters.
-- These suggestions must be dynamically determined based on the user's intent and context. Do NOT hardcode standard recommendations.
-- Every suggested action MUST be a fully working capability of this system that corresponding agents can execute (e.g. creating/updating a quote, searching products, viewing deal history).
-- If suggesting a category filter/search, you MUST ONLY suggest one of the 3 valid categories in the Salesforce org: "GCP", "META", or "ThermoFisher". Do NOT add the word "category" to these names (e.g., recommend "Filter by GCP" or "Find META products", NOT "Filter by GCP category"). Do NOT suggest or invent any other category names.
-- NEVER repeat the user's exact original request as a suggestion. Always suggest DIFFERENT next steps.
-- Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` or `[ACTIONS: Option 1 | Option 2 | Option 3 | Option 4]` at the very end of your message.
-- Example: `[ACTIONS: Filter by GCP | Create a quote for these products | Start a new search]`
+- These suggestions MUST be highly contextual to the operation you just completed. Do NOT hardcode standard recommendations.
+- ACTIONABILITY: Every suggested action MUST be a fully working capability of this system that corresponding agents can actually execute (e.g. creating/updating a quote, searching products, viewing deal history, analyzing win rates). Do NOT hallucinate capabilities.
+- NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
+- NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
+- Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
+- Example: `[ACTIONS: Update this quote | Apply a discount | View quote win probability]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

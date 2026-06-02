@@ -547,7 +547,7 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
-def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
+def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str) -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -557,24 +557,27 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
     reject the request. If you get a validation error, read it carefully and fix the payload.
 
     Args:
-        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
-                      MUST be provided. You receive this from resolve_pricebook_entries.
-        opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
-                        Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
-                        If not provided, the quote will be created without an Opportunity link.
-        line_items: One dict per product, each containing:
-                    - Product2Id (from search results)
-                    - PricebookEntryId (from pricebook resolution tool)
-                    - Quantity (default 1)
-                    - UnitPrice (from pricebook resolution tool)
-                    - Discount (numeric percentage, e.g., 10 for 10%)
-                    - StartDate / EndDate (optional, defaults applied automatically)
-                    - BillingFrequency (REQUIRED if SellingModelType from pricebook resolution is 'Evergreen' or 'Term-Defined'. Set to 'Monthly')
+      pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
+                    MUST be provided. You receive this from resolve_pricebook_entries.
+      opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
+                      Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
+                      This parameter is REQUIRED.
+      line_items: One dict per product, each containing:
+                  - Product2Id (from search results)
+                  - PricebookEntryId (from pricebook resolution tool)
+                  - Quantity (default 1)
+                  - UnitPrice (from pricebook resolution tool)
+                  - Discount (numeric percentage, e.g., 10 for 10%)
+                  - StartDate / EndDate (optional, defaults applied automatically)
+                  - BillingFrequency (REQUIRED if SellingModelType from pricebook resolution is 'Evergreen' or 'Term-Defined'. Set to 'Monthly')
 
     After calling: Return the Quote ID from the response to the user. If the response
                    includes a record ID, the quote was successfully created in Salesforce.
     """
     import re
+    if not opportunity_id or not opportunity_id.strip():
+        raise ValueError("opportunity_id is required to create a CPQ quote.")
+
     headers, instance_url = get_salesforce_auth()
 
     # Sanitize opportunity_id — extract 18-char ID if full string passed

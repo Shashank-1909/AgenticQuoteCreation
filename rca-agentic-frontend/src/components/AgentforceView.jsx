@@ -123,8 +123,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
   // Deal History States
   const [dealHistoryData, setDealHistoryData] = useState(null);
-  const [dealHistoryAccount, setDealHistoryAccount] = useState('Edge Communications');
+  const [dealHistoryAccount, setDealHistoryAccount] = useState('');
   const [dealHistoryLoading, setDealHistoryLoading] = useState(false);
+  const [dealHistoryFilter, setDealHistoryFilter] = useState('All');
 
   const chatEndRef = useRef(null);
   const ws = useRef(null);
@@ -138,12 +139,43 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const dealHistoryLoadingRef = useRef(false);
   const isSummarizeRequestRef = useRef(false);
   const isWinRateRequestRef = useRef(false);
+  const isDealHistoryRequestRef = useRef(false);
   const isQuoteWinRateRequestRef = useRef(false);
   const summarizeTimeoutsRef = useRef([]);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
     summarizeTimeoutsRef.current = [];
   };
+
+  const connectWebSocket = useCallback(() => {
+    if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    const socket = new WebSocket('ws://localhost:8001/ws/orchestrate');
+    socket.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        handleWsMessageRef.current?.(data);
+      } catch (err) {
+        console.error('[WS] parse error', err);
+      }
+    };
+    socket.onclose = () => {
+      setTimeout(connectWebSocket, 3000);
+    };
+    socket.onerror = () => {
+      socket.close();
+    };
+    ws.current = socket;
+  }, []);
+
+  useEffect(() => {
+    if (workflowState === 'completed') {
+      if (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current) {
+        setWorkspaceView('preview');
+      }
+    }
+  }, [workflowState]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,17 +188,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   });
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
-    ws.current.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        handleWsMessageRef.current?.(data);
-      } catch (err) {
-        console.error('[WS] parse error', err);
+    connectWebSocket();
+    return () => {
+      if (ws.current) {
+        ws.current.onclose = null;
+        ws.current.close();
       }
     };
-    return () => ws.current?.close();
-  }, []);
+  }, [connectWebSocket]);
 
   const handleWsMessage = (data) => {
     switch (data.type) {
@@ -487,6 +516,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         });
         try {
           const parsed = JSON.parse(data.data);
+          if (data.tool === 'get_quote_line_items' && parsed.quote_id) {
+            // Automatically switch to preview when Quote Updator fetches line items
+            fetch(`${config.API_BASE_URL}/api/quote-preview/${parsed.quote_id}`)
+              .then(res => res.json())
+              .then(d => {
+                setPreviewData(d);
+                setWorkspaceView('preview');
+              })
+              .catch(err => console.error('Error fetching quote preview:', err));
+          }
           if ((data.tool === 'search_catalog' || data.tool === 'parse_transcript_to_requirements' || data.tool === 'parse_requirements_doc' || data.tool === 'map_requirements_to_catalog') && parsed.results && parsed.results.length > 0) {
             pendingResultsRef.current = parsed.results;
 
@@ -517,8 +556,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           if (data.tool === 'get_deal_history') {
             if (parsed.status === 'success' || parsed.quotes) {
               setDealHistoryData(parsed.quotes || []);
-              setDealHistoryAccount(parsed.accountName || 'Edge Communications');
-              setWorkspaceView('preview');
+              setDealHistoryAccount(parsed.accountName || '');
             }
           }
           if (data.tool === 'evaluate_quote_graph') {
@@ -538,18 +576,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             });
             */
 
-            // Fetch quote number to replace ID in future messages
+            // Fetch quote number and auto-redirect to preview
             fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
               .then(res => res.json())
               .then(d => {
                 if (d.records?.[0]?.QuoteNumber) {
                   setQuoteNumberMap(prev => ({ ...prev, [qId]: d.records[0].QuoteNumber }));
                 }
+                setPreviewData(d);
+                setWorkspaceView('preview');
               })
               .catch(err => console.error('Error fetching quote number:', err));
 
             pendingCreationRef.current = true;
-            // handlePreview(qId);
           }
         } catch (_) { }
         break;
@@ -677,11 +716,35 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     const text = overrideText || inputValue.trim();
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
 
-    // Auto redirect to orchestration flow (graph) when user sends any request
-    setWorkspaceView('graph');
+    const detectAccountName = (inputStr) => {
+      const s = inputStr.toLowerCase();
+      if (s.includes('edge') || s.includes('communications')) return 'Edge Communications';
+      if (s.includes('aurobindo') || s.includes('pharma')) return 'Aurobindo Pharma R&D';
+      if (s.includes('pyramid') || s.includes('construction')) return 'Pyramid Construction Inc.';
+      if (s.includes('pfizer')) return 'Pfizer';
+      if (s.includes('moderna')) return 'Moderna';
+      if (s.includes('novartis')) return 'Novartis';
+      if (s.includes('roche')) return 'Roche';
+      if (s.includes('merck')) return 'Merck';
+      if (s.includes('genentech')) return 'Genentech';
+      if (s.includes('biogen')) return 'Biogen';
+      if (s.includes('gilead')) return 'Gilead';
+      return null;
+    };
 
     // Support dynamic preview/summary commands
     const cmd = text.toLowerCase();
+
+    // Set deal history filter based on command
+    if (cmd.includes('drafted quote') || cmd.includes('draft quote')) {
+      setDealHistoryFilter('Draft');
+    } else if (cmd.includes('accepted quote')) {
+      setDealHistoryFilter('Accepted');
+    } else if (cmd.includes('rejected quote')) {
+      setDealHistoryFilter('Rejected');
+    } else if (cmd.includes('deal history') || cmd.includes('all quote')) {
+      setDealHistoryFilter('All');
+    }
 
     if (cmd.includes('different account') || cmd.includes('list my accounts') || cmd.includes('list accounts')) {
       setDealHistoryData(null);
@@ -697,11 +760,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       });
     }
 
+    let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
+
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
+    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote');
     
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers
-    if (!isWinRateRequest && isWinRateRequestRef.current && (
+    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter
+    if (!isWinRateRequest && !isStatusFilterRequest && isWinRateRequestRef.current && (
         cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
     )) {
       isWinRateRequest = true;
@@ -716,8 +781,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {
       isQuoteWinRateRequest = true;
     }
-    // If they explicitly asked for an ACCOUNT win rate, turn off quote mode
-    if (cmd.includes('account win rate') || (cmd.includes('account') && !cmd.includes('quote'))) {
+    // If they explicitly asked for an ACCOUNT win rate, or if an account is mentioned in the text, turn off quote mode
+    if (cmd.includes('account win rate') || (cmd.includes('account') && !cmd.includes('quote')) || detectAccountName(text)) {
       isQuoteWinRateRequest = false;
     }
     isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
@@ -725,25 +790,35 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
     const isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
-      cmd.includes('deal history') || cmd.includes('previous quotes') || cmd.includes('historical quotes') || cmd.includes('detailed view of')
+      isStatusFilterRequest || 
+      cmd.includes('deal history') || 
+      cmd.includes('previous quotes') || 
+      cmd.includes('historical quotes') || 
+      cmd.includes('detailed view of') ||
+      cmd.includes('view all deals') ||
+      cmd.includes('get all deals') ||
+      cmd.includes('show all deals') ||
+      cmd.includes('view all quotes') ||
+      cmd.includes('get all quotes') ||
+      cmd.includes('show all quotes') ||
+      cmd.includes('deal history of')
     );
 
     if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest) {
       setDealHistoryData(null);
-      setDealHistoryAccount('Edge Communications');
     }
+    setWorkspaceView('graph'); // Auto redirect to orchestration flow (graph) for all requests initially
+    isDealHistoryRequestRef.current = isDealHistoryRequest;
 
-    const detectAccountName = (inputStr) => {
-      const s = inputStr.toLowerCase();
-      if (s.includes('edge') || s.includes('communications')) return 'Edge Communications';
-      if (s.includes('aurobindo') || s.includes('pharma')) return 'Aurobindo Pharma R&D';
-      if (s.includes('pyramid') || s.includes('construction')) return 'Pyramid Construction Inc.';
-      return null;
-    };
+    // Update global account tracker if any account is mentioned
+    const newlyDetectedAcc = detectAccountName(text);
+    if (newlyDetectedAcc) {
+      setDealHistoryAccount(newlyDetectedAcc);
+    }
 
     // Lazy load deal history for win rate request if not loaded yet
     if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0)) {
-      const detectedAcc = detectAccountName(text);
+      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         setInputValue('');
@@ -803,7 +878,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
     // Lazy load deal history for summarization/prioritization if not loaded yet
     if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
-      const detectedAcc = detectAccountName(text);
+      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         setInputValue('');
@@ -847,13 +922,37 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     if (isDealHistoryRequest) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
       setInputValue('');
-      setDealHistoryData(null);
+      
+      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
+      setDealHistoryAccount(detectedAcc);
       setDealHistoryLoading(true);
       dealHistoryLoadingRef.current = true;
-      sendPayload(JSON.stringify({
-        text: text,
-        module: selectedModule?.id || 'sales'
-      }));
+      try {
+        const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
+        const data = await resp.json();
+        if (data.status === 'success') {
+          setDealHistoryData(data.quotes);
+          const quotesText = data.quotes.map(q => {
+            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+          }).join('\n');
+          
+          ws.current?.send(JSON.stringify({
+            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+            module: selectedModule?.id || 'sales'
+          }));
+        } else {
+          setDealHistoryData([]);
+          ws.current?.send(JSON.stringify({ text: text, module: selectedModule?.id || 'sales' }));
+        }
+      } catch (err) {
+        console.error("Error fetching deal history proactively:", err);
+        setDealHistoryData([]);
+        ws.current?.send(JSON.stringify({ text: text, module: selectedModule?.id || 'sales' }));
+      } finally {
+        setDealHistoryLoading(false);
+        dealHistoryLoadingRef.current = false;
+      }
       return;
     }
 
@@ -861,15 +960,28 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
-      const latestFromState = quotes[quotes.length - 1]?.id;
+      
+      // Check if user explicitly provided an ID or Number
+      const explicitNumMatch = text.match(/\b\d{8}\b/);
+      const explicitIdMatch = text.match(/\b0Q0[a-zA-Z0-9]{12,15}\b/);
+      
+      if (explicitIdMatch) {
+        quoteIdToPreview = explicitIdMatch[0];
+      } else if (explicitNumMatch) {
+        const foundQuote = (dealHistoryData || []).find(q => q.quoteNumber === explicitNumMatch[0]) || (quotes || []).find(q => q.quoteNumber === explicitNumMatch[0]);
+        if (foundQuote) quoteIdToPreview = foundQuote.id;
+      }
 
-      if (latestFromState && latestFromState !== 'Generated') {
-        quoteIdToPreview = latestFromState;
-      } else {
-        // Fallback: search messages for a quote ID pattern (0Q0...)
-        const allContent = messages.map(m => m.content).join(' ');
-        const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
-        if (match) quoteIdToPreview = match[0];
+      if (!quoteIdToPreview) {
+        const latestFromState = quotes[quotes.length - 1]?.id;
+        if (latestFromState && latestFromState !== 'Generated') {
+          quoteIdToPreview = latestFromState;
+        } else {
+          // Fallback: search messages for a quote ID pattern (0Q0...)
+          const allContent = messages.map(m => m.content).join(' ');
+          const match = allContent.match(/0Q0[a-zA-Z0-9]{12,15}/);
+          if (match) quoteIdToPreview = match[0];
+        }
       }
 
       if (quoteIdToPreview) {
@@ -1018,7 +1130,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     }
   };
 
-  const handleDealHistory = async (accountName = 'Edge Communications', switchView = true) => {
+  const handleDealHistory = async (accountName = '', switchView = true) => {
     // Guard: prevent concurrent/duplicate calls
     if (dealHistoryLoadingRef.current) return;
     dealHistoryLoadingRef.current = true;
@@ -1223,9 +1335,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                   />
                 ) : (
                   <DealHistoryPanel
-                    data={dealHistoryData}
+                    data={dealHistoryData ? dealHistoryData.filter(q => dealHistoryFilter === 'All' || (q.status && q.status.toLowerCase() === dealHistoryFilter.toLowerCase())) : null}
                     accountName={dealHistoryAccount}
                     isLoading={dealHistoryLoading}
+                    filter={dealHistoryFilter}
                   />
                 )}
               </div>
@@ -1569,8 +1682,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               )}
             </div>
           ))}
-
-
 
           {reasoning && (
             <div className="af-reasoning">

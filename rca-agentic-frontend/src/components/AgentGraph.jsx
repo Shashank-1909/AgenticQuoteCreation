@@ -156,6 +156,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
       if (idx === 2) return GW * 0.62;
       return GW * 0.85;
     }
+    if (total === 5) {
+      if (idx === 0) return GW * 0.10;
+      if (idx === 1) return GW * 0.30;
+      if (idx === 2) return GW * 0.50;
+      if (idx === 3) return GW * 0.70;
+      return GW * 0.90;
+    }
     return GW / 2;
   };
 
