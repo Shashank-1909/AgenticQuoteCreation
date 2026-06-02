@@ -72,7 +72,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       id: 1,
       role: 'assistant',
       aiName: config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI',
-      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator'} Assistant. How can I help you today?`,
       type: 'text',
       isGreeting: true
     }
@@ -1318,7 +1318,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           </div>
           <div className="flex flex-col">
             <h3 className="text-xs font-black uppercase tracking-tighter">
-              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Assistant' : 'Quoting Accelerator'}
+              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales Assistant' : 'Quoting Accelerator'}
             </h3>
             <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
           </div>
