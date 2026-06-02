@@ -9,6 +9,7 @@ dependencies visible, prevents hidden coupling, and makes testing easy.
 
 from dataclasses import dataclass, field
 
+# pyrefly: ignore [missing-import]
 from google.adk.runners import Runner
 
 
@@ -19,6 +20,8 @@ class AppState:
     root_runner:   Runner  # Deal_Manager as root (initial routing, product search)
     quote_runner:  Runner  # Quote_Architect as root (direct access, skips Deal_Manager)
     update_runner: Runner  # Quote_Updator as root (direct access, skips Deal_Manager)
+    parser_runner: Runner  # Requirements_Parser as root (direct document parsing bypass)
+    scout_runner:  Runner  # Catalog_Scout as root (direct catalog search mapping bypass)
 
     # Tracks which sessions are mid-quote-creation.
     # True  → use quote_runner (Quote_Architect directly, Deal_Manager bypassed)

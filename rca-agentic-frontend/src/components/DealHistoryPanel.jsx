@@ -114,7 +114,7 @@ function QuoteCard({ quote, accountName }) {
   );
 }
 
-export default function DealHistoryPanel({ data, accountName, onQuickReply, isLoading }) {
+export default function DealHistoryPanel({ data, accountName, onQuickReply, isLoading, filter = 'All' }) {
   if (isLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-400 animate-pulse">
@@ -128,7 +128,7 @@ export default function DealHistoryPanel({ data, accountName, onQuickReply, isLo
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-400">
         <Sparkles size={32} className="text-slate-300" />
-        <span className="text-xs font-semibold">No quote history found for {accountName}.</span>
+        <span className="text-xs font-semibold">No {filter !== 'All' ? filter.toLowerCase() + ' ' : ''}quote history found for {accountName}.</span>
       </div>
     );
   }
@@ -136,9 +136,11 @@ export default function DealHistoryPanel({ data, accountName, onQuickReply, isLo
   return (
     <div className="h-full overflow-y-auto px-6 py-6" style={{ scrollbarWidth: 'thin' }}>
       <div className="mb-5 animate-in fade-in slide-in-from-top-2">
-        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Deal History</div>
+        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+          {filter !== 'All' ? `${filter} Deal History` : 'Deal History'}
+        </div>
         <h2 className="text-lg font-black text-slate-700">{accountName}</h2>
-        <p className="text-[11px] text-slate-400 mt-0.5">{data.length} quote{data.length !== 1 ? 's' : ''} found across all opportunities</p>
+        <p className="text-[11px] text-slate-400 mt-0.5">{data.length} {filter !== 'All' ? filter.toLowerCase() + ' ' : ''}quote{data.length !== 1 ? 's' : ''} found</p>
       </div>
 
       {data.map((quote, i) => (

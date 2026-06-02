@@ -24,6 +24,7 @@ from app.core.config import APP_NAME, SERVER_PORT
 from app.core.state import AppState
 from app.tools.mcp_factory import build_mcp_toolset
 from app.agents.catalog_scout import build_catalog_scout
+from app.agents.requirements_parser import build_requirements_parser
 from app.agents.quote_architect import build_quote_architect
 from app.agents.quote_updator import build_quote_updator
 from app.agents.quote_analyst import build_quote_analyst
@@ -44,16 +45,29 @@ async def lifespan(app: FastAPI):
     logger.info("Starting MCP server connections...")
 
     # Each sub-agent gets its own isolated MCP subprocess with a strict bounded context
-    mcp_scout     = build_mcp_toolset("scout")
+    mcp_scout_dm  = build_mcp_toolset("scout")
+    mcp_scout_parser = build_mcp_toolset("scout")
+    mcp_parser    = build_mcp_toolset("parser")
     mcp_architect = build_mcp_toolset("architect")
     mcp_updator   = build_mcp_toolset("updator")
     mcp_analyst   = build_mcp_toolset("analyst")
 
-    catalog_scout   = build_catalog_scout(mcp_scout)
+    catalog_scout_dm   = build_catalog_scout(mcp_scout_dm)
+    catalog_scout_parser = build_catalog_scout(mcp_scout_parser)
+    
+    # Deal_Manager's tree: Requirements_Parser must NOT have Catalog_Scout as a sub-agent
+    # because Deal_Manager already has it as a sub-agent (prevents duplicate name error).
+    requirements_parser_dm = build_requirements_parser(mcp_parser, catalog_scout=None)
+    
     quote_architect = build_quote_architect(mcp_architect)
     quote_updator   = build_quote_updator(mcp_updator)
     quote_analyst   = build_quote_analyst(mcp_analyst)
-    deal_manager    = build_deal_manager(catalog_scout, quote_architect, quote_updator, quote_analyst)
+    
+    deal_manager    = build_deal_manager(requirements_parser_dm, catalog_scout_dm, quote_architect, quote_updator, quote_analyst)
+
+    # Standalone parser_runner's tree: Requirements_Parser MUST have Catalog_Scout as a 
+    # sub-agent in order to transfer to it, since it is the root agent here.
+    requirements_parser_standalone = build_requirements_parser(mcp_parser, catalog_scout=catalog_scout_parser)
 
     # _root_runner   — Deal_Manager as root (initial routing, product search)
     # _quote_runner  — Quote_Architect as root (direct, skips Deal_Manager)
@@ -75,19 +89,32 @@ async def lifespan(app: FastAPI):
         agent=quote_updator,
         session_service=session_service,
     )
+    parser_runner = Runner(
+        app_name=APP_NAME,      # SAME app_name = shared session history!
+        agent=requirements_parser_standalone,
+        session_service=session_service,
+    )
+    scout_runner = Runner(
+        app_name=APP_NAME,      # SAME app_name = shared session history!
+        agent=catalog_scout_dm,
+        session_service=session_service,
+    )
 
     state = AppState(
         root_runner=root_runner,
         quote_runner=quote_runner,
         update_runner=update_runner,
+        parser_runner=parser_runner,
+        scout_runner=scout_runner,
     )
     ws_module.set_app_state(state)
 
     logger.info("✅ Deal_Manager coordinator initialized")
-    logger.info("✅ Catalog_Scout ready (MCP subprocess #1)")
-    logger.info("✅ Quote_Architect ready (MCP subprocess #2)")
-    logger.info("✅ Quote_Updator ready (MCP subprocess #3)")
-    logger.info("✅ Quote_Analyst ready (MCP subprocess #4)")
+    logger.info("✅ Requirements_Parser ready (MCP subprocess #1 — parser)")
+    logger.info("✅ Catalog_Scout ready (MCP subprocess #2 — scout)")
+    logger.info("✅ Quote_Architect ready (MCP subprocess #3 — architect)")
+    logger.info("✅ Quote_Updator ready (MCP subprocess #4 — updator)")
+    logger.info("✅ Quote_Analyst ready (MCP subprocess #5 — analyst)")
     logger.info("✅ Quote_Architect direct runner ready (bypasses Deal_Manager)")
     logger.info("✅ Quote_Updator direct runner ready (bypasses Deal_Manager)")
     logger.info("✅ Runner configured — stable ADK 1.28.0")
@@ -96,7 +123,7 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown: release all MCP subprocess connections ──────────────────
     logger.info("Closing MCP connections...")
-    for toolset in [mcp_scout, mcp_architect, mcp_updator, mcp_analyst]:
+    for toolset in [mcp_scout_dm, mcp_scout_parser, mcp_parser, mcp_architect, mcp_updator, mcp_analyst]:
         try:
             result = toolset.close()
             if hasattr(result, "__await__"):
@@ -104,4 +131,3 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("MCP toolset close warning: %s", exc)
     logger.info("Shutdown complete.")
-

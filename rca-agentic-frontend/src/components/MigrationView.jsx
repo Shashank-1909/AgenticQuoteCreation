@@ -134,7 +134,7 @@ const MigrationView = ({ onBack, selectedModule, isDark = false, setIsDark }) =>
           </div>
         </div>
 
-        <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0a0a0a]">
+        <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
           <div className="text-center opacity-50">
             <ArrowRightLeft size={48} className="mx-auto mb-4 text-indigo-500" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500">

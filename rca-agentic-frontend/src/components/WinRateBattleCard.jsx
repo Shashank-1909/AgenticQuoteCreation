@@ -14,9 +14,9 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 
   const confidence =
     totalResolved >= 10 ? { label: 'High Confidence', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' } :
-    totalResolved >= 4  ? { label: 'Medium Confidence', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-500' } :
-    totalResolved >= 1  ? { label: 'Low Confidence', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', dot: 'bg-orange-500' } :
-                          { label: 'No Data', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500' };
+      totalResolved >= 4 ? { label: 'Medium Confidence', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-500' } :
+        totalResolved >= 1 ? { label: 'Low Confidence', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', dot: 'bg-orange-500' } :
+          { label: 'No Data', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500' };
 
   return (
     <div className={`mb-6 rounded-2xl border transition-all duration-300 overflow-hidden ${open ? 'border-indigo-200 shadow-md' : 'border-slate-200'} bg-white`}>
@@ -101,9 +101,8 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How Statuses Are Classified</span>
             </div>
             <div className="text-[11px] text-slate-700 space-y-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-              <p><strong className="text-slate-900 font-black tracking-wide">WON:</strong> Closed Won · Approved · Accepted · Presented — these represent positive deal outcomes where the customer agreed.</p>
-              <p><strong className="text-slate-900 font-black tracking-wide">LOST:</strong> Closed Lost · Rejected · Expired — these represent deals that didn't close, were declined, or timed out.</p>
-              <p><strong className="text-slate-900 font-black tracking-wide">EXCLUDED:</strong> Draft · In Review — still in progress. They are shown in the history list but not counted in the win rate percentage.</p>
+              <p><strong className="text-slate-900 font-black tracking-wide">WON:</strong>  Accepted — these represent positive deal outcomes where the customer agreed.</p>
+              <p><strong className="text-slate-900 font-black tracking-wide">LOST:</strong>  Rejected — these represent deals that didn't close, were declined, or timed out.</p>
             </div>
           </div>
 
@@ -148,10 +147,10 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                 {totalResolved >= 10
                   ? `With ${totalResolved} resolved quotes, this win rate is statistically reliable for this account.`
                   : totalResolved >= 4
-                  ? `With only ${totalResolved} resolved quotes, this rate gives a directional signal but more deals would improve accuracy.`
-                  : totalResolved >= 1
-                  ? `Only ${totalResolved} resolved quote${totalResolved !== 1 ? 's' : ''} found. Treat this estimate with caution — more history is needed for a reliable prediction.`
-                  : `No resolved quotes found. The win rate cannot be meaningfully calculated yet for this account.`}
+                    ? `With only ${totalResolved} resolved quotes, this rate gives a directional signal but more deals would improve accuracy.`
+                    : totalResolved >= 1
+                      ? `Only ${totalResolved} resolved quote${totalResolved !== 1 ? 's' : ''} found. Treat this estimate with caution — more history is needed for a reliable prediction.`
+                      : `No resolved quotes found. The win rate cannot be meaningfully calculated yet for this account.`}
               </p>
             </div>
           </div>
@@ -164,6 +163,8 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function WinRateBattleCard({ data, accountName, isLoading, isQuoteMode, messages }) {
+  const [historyTab, setHistoryTab] = useState('accepted');
+
   if (isLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 text-slate-400 py-12">
@@ -224,12 +225,12 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
   let isQuoteReady = false;
   let parsedQuoteExplanation = null;
   let dynamicPlaybook = [];
-  
+
   if (messages && messages.length > 0) {
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     if (assistantMessages.length > 0) {
       const lastContent = assistantMessages[assistantMessages.length - 1].content || '';
-      
+
       // Always try to parse the Playbook regardless of mode
       const playbookMatch = lastContent.match(/<PLAYBOOK>([\s\S]*?)<\/PLAYBOOK>/i);
       if (playbookMatch) {
@@ -260,6 +261,51 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
   const displayWinRate = isQuoteMode && isQuoteReady ? parsedQuoteWinRate : winRate;
   const isCalculatingQuote = isQuoteMode && !isQuoteReady;
 
+  // --- DYNAMIC COMPETITIVE INTEL MAP ---
+  const competitiveIntelMap = {
+    'GCP': [
+      {
+        title: 'Competitor Threat: GCP Direct',
+        description: `${accountName || 'This account'} often uses GCP Direct to try and get a lower price. Talk about our built-in Salesforce features and 24/7 support instead of arguing about price.`,
+        color: 'rose'
+      }
+    ],
+    'META': [
+      {
+        title: 'Preferred Category: META Systems',
+        description: `Customers are usually happier when buying META products. These deals also close much faster (9 days instead of 24 days).`,
+        color: 'indigo'
+      }
+    ],
+    'ThermoFisher': [
+      {
+        title: 'Competitor Threat: LabCorp Direct',
+        description: `They usually ask LabCorp for a backup price. Remind them that ThermoFisher connects much better with their existing Salesforce setup.`,
+        color: 'rose'
+      },
+      {
+        title: 'High Retention Rate',
+        description: `95% of customers renew ThermoFisher products. Focus on how much money they will save over 3 years, rather than giving a big discount today.`,
+        color: 'indigo'
+      }
+    ],
+    'default': [
+      {
+        title: 'Competitor Threat: Aggressive Discounter',
+        description: `Expect them to ask for a price match against cheaper options. Keep your price firm by reminding them how fast we can set everything up and how good our support is.`,
+        color: 'rose'
+      }
+    ]
+  };
+
+  let currentIntel = competitiveIntelMap['default'];
+  if (primaryProduct) {
+    const prodLower = primaryProduct.toLowerCase();
+    if (prodLower.includes('gcp')) currentIntel = competitiveIntelMap['GCP'];
+    else if (prodLower.includes('meta')) currentIntel = competitiveIntelMap['META'];
+    else if (prodLower.includes('thermofisher') || prodLower.includes('thermo')) currentIntel = competitiveIntelMap['ThermoFisher'];
+  }
+
   return (
     <div className="h-full overflow-y-auto px-6 py-6 custom-scrollbar bg-slate-50/50">
       {/* Header Banner */}
@@ -283,7 +329,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
 
       {/* Grid of Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        
+
         {/* Dynamic Win Rate Circle Gauge */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center justify-center">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-1.5 self-start">
@@ -317,7 +363,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
               </>
             )}
           </div>
-          
+
           {!isQuoteMode && (
             <div className="flex gap-4 text-[10px] font-bold text-slate-500 mt-2">
               <span className="flex items-center gap-1 text-emerald-600">
@@ -396,7 +442,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
 
       {/* Strategic Playbook & Competitive Position */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        
+
         {/* Playbook advice */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
@@ -430,7 +476,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-3">
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl h-fit">
                     <Percent size={16} />
@@ -448,62 +494,82 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         </div>
 
         {/* Competitive Positioning */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
-            <ShieldAlert size={14} className="text-rose-500" /> Competitive Intel
-          </h3>
-          <div className="space-y-4">
-            <div className="p-4 bg-rose-50/50 rounded-2xl border border-rose-100">
-              <h4 className="text-xs font-black text-slate-800 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Competitor Threat: GCP Direct
-              </h4>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                Edge Communications frequently leverages GCP Direct as a pricing leverage. Emphasize native Salesforce integrations and support guarantees to bypass commoditized pricing battles.
-              </p>
-            </div>
-
-            <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-              <h4 className="text-xs font-black text-slate-800 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Preferred Category: META Systems
-              </h4>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                When quoting products for META, customer satisfaction ratings are historically higher, contributing to faster deal cycles (Avg 9 days vs 24 days).
-              </p>
+        {isQuoteMode && (
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
+              <ShieldAlert size={14} className="text-rose-500" /> Competitive Intel
+            </h3>
+            <div className="space-y-4">
+              {currentIntel.map((intel, idx) => (
+                <div key={idx} className={`p-4 bg-${intel.color}-50/50 rounded-2xl border border-${intel.color}-100`}>
+                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full bg-${intel.color}-500`} /> {intel.title}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    {intel.description}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
       </div>
 
       {/* Quote History list */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
-          Quote History mapping ({quotes.length} total)
-        </h3>
+        <div className="flex items-center justify-between mb-4 border-b pb-3 border-slate-100">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
+            Quote History mapping
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setHistoryTab('accepted')}
+              className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${historyTab === 'accepted'
+                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-200'
+                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-100'
+                }`}
+            >
+              Accepted ({wonQuotes.length})
+            </button>
+            <button
+              onClick={() => setHistoryTab('rejected')}
+              className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${historyTab === 'rejected'
+                  ? 'bg-rose-500/10 text-rose-600 border border-rose-200'
+                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-100'
+                }`}
+            >
+              Rejected ({lostQuotes.length})
+            </button>
+          </div>
+        </div>
         <div className="space-y-3">
-          {quotes.map((q, i) => (
-            <div key={q.id || i} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100/70 transition-all border border-slate-100">
-              <div className="flex flex-col">
-                <span className="text-[11px] font-black text-slate-800">{q.name}</span>
-                <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{q.quoteNumber || q.id?.slice(0, 10)} • {q.opportunityName}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right flex flex-col">
-                  <span className="text-[11px] font-black text-slate-800">{formatCurrency(q.grandTotal)}</span>
-                  {q.discount > 0 && <span className="text-[9px] text-slate-400 font-bold">{q.discount}% disc.</span>}
+          {(historyTab === 'accepted' ? wonQuotes : lostQuotes).length > 0 ? (
+            (historyTab === 'accepted' ? wonQuotes : lostQuotes).map((q, i) => (
+              <div key={q.id || i} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100/70 transition-all border border-slate-100">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black text-slate-800">{q.name}</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{q.quoteNumber || q.id?.slice(0, 10)} • {q.opportunityName}</span>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                  ['Closed Won', 'Approved', 'Accepted', 'Presented'].includes(q.status)
-                    ? 'bg-emerald-500/10 text-emerald-600'
-                    : ['Closed Lost', 'Rejected', 'Expired'].includes(q.status)
-                    ? 'bg-rose-500/10 text-rose-600'
-                    : 'bg-slate-500/10 text-slate-600'
-                }`}>
-                  {q.status}
-                </span>
+                <div className="flex items-center gap-4">
+                  <div className="text-right flex flex-col">
+                    <span className="text-[11px] font-black text-slate-800">{formatCurrency(q.grandTotal)}</span>
+                    {q.discount > 0 && <span className="text-[9px] text-slate-400 font-bold">{q.discount}% disc.</span>}
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${historyTab === 'accepted' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
+                    }`}>
+                    {q.status}
+                  </span>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-6">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                No {historyTab} quotes found for this account.
+              </span>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

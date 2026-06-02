@@ -57,6 +57,7 @@ const App = () => {
   const [view, setView] = useState('selection'); // selection, dashboard, chat, agentforce
   const [selectedModule, setSelectedModule] = useState(null);
   const [isDark, setIsDark] = useState(false);
+  const [language, setLanguage] = useState('en');
 
   // Sync theme with document class
   useEffect(() => {
@@ -91,15 +92,23 @@ const App = () => {
       {/* Main View Router */}
       <main className="relative z-10">
         {view === 'selection' && (
-          <SelectionHub onSelect={handleSelect} isDark={isDark} setIsDark={setIsDark} />
+          <SelectionHub 
+            onSelect={handleSelect} 
+            isDark={isDark}
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
         )}
         
         {view === 'dashboard' && (
           <Dashboard
+            selectedModule={selectedModule}
             onLaunchChat={handleLaunchChat}
             onLaunchAgentforce={handleLaunchAgentforce}
             onBack={() => setView('selection')}
             onEditQuote={(id) => console.log('Edit quote', id)}
+            language={language}
           />
         )}
         
@@ -109,25 +118,31 @@ const App = () => {
             selectedModule={selectedModule} 
             isDark={isDark} 
             setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
           />
         )}
 
-        {view === 'agentforce' && (
-          selectedModule?.id === 'migration' ? (
-            <MigrationView 
-              onBack={() => setView('dashboard')} 
-              selectedModule={selectedModule} 
-              isDark={isDark} 
-              setIsDark={setIsDark}
-            />
-          ) : (
-            <AgentforceView 
-              onBack={() => setView('dashboard')} 
-              selectedModule={selectedModule} 
-              isDark={isDark} 
-              setIsDark={setIsDark}
-            />
-          )
+        {view === 'agentforce' && selectedModule?.id !== 'migration' && (
+          <AgentforceView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
+        )}
+
+        {view === 'agentforce' && selectedModule?.id === 'migration' && (
+          <MigrationView 
+            onBack={() => setView('dashboard')} 
+            selectedModule={selectedModule} 
+            isDark={isDark} 
+            setIsDark={setIsDark}
+            language={language}
+            setLanguage={setLanguage}
+          />
         )}
       </main>
     </div>

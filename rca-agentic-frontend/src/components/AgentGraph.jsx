@@ -32,7 +32,7 @@ const getShiftedToolPositions = (agentCx, agentOffset, tools, offsets) => {
 // ─────────────────────────────────────────────────────────────
 // ORCHESTRATION GRAPH
 // ─────────────────────────────────────────────────────────────
-const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) => {
+const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }) => {
   // Theme-aware SVG opacity + stroke helpers — light mode needs higher values to be visible
   const ch = isDark ? 0.22 : 0.75;   // coordinator channel lit opacity
   const cq = isDark ? 0.06 : 0.28;   // coordinator channel quiet opacity
@@ -46,9 +46,10 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   const dr = isDark ? 4 : 5;      // leading dot radius
   const tdr = isDark ? 3 : 4;      // tool leading dot radius
 
-  const { coordinator, Catalog_Scout: scout, Quote_Architect: arch, Quote_Updator: updator, Quote_Analyst: analyst } = orchestration;
+  const { coordinator, Requirements_Parser: parser, Catalog_Scout: scout, Quote_Architect: arch, Quote_Updator: updator, Quote_Analyst: analyst } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
+  const pActive = parser?.state === 'active', pDone = parser?.state === 'done';
   const sActive = scout.state === 'active', sDone = scout.state === 'done';
   const aActive = arch.state === 'active', aDone = arch.state === 'done';
   const uActive = updator.state === 'active', uDone = updator.state === 'done';
@@ -110,17 +111,20 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   }, [draggedId]);
 
   // Agent is composing its reply: it's still active but no tool is currently running
+  const parserComposing = pActive && parser.tools.length > 0 && !parser.tools.some(t => t.state === 'active');
   const scoutComposing = sActive && scout.tools.length > 0 && !scout.tools.some(t => t.state === 'active');
   const archComposing = aActive && arch.tools.length > 0 && !arch.tools.some(t => t.state === 'active');
   const updatorComposing = uActive && updator.tools.length > 0 && !updator.tools.some(t => t.state === 'active');
   const analystComposing = anActive && analyst?.tools?.length > 0 && !analyst.tools.some(t => t.state === 'active');
 
   // DM→Agent line flows ONLY during the brief handoff window:
+  const parserHandoffActive  = pActive && parser.tools.length  === 0 && parser.routedByDm;
   const scoutHandoffActive = sActive && scout.tools.length === 0 && scout.routedByDm;
   const archHandoffActive  = aActive && arch.tools.length  === 0 && arch.routedByDm;
   const updatorHandoffActive = uActive && updator.tools.length === 0 && updator.routedByDm;
   const analystHandoffActive = anActive && analyst?.tools?.length === 0 && analyst.routedByDm;
 
+  const showParser  = parser?.state !== 'idle' && parser?.state !== undefined;
   const showScout = scout.state !== 'idle';
   const showArch = arch.state !== 'idle';
   const showUpdator = updator.state !== 'idle';
@@ -128,6 +132,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
   // ── Dynamic agent positions ──────────────────────────────
   const visibleKeys = [];
+  if (showParser)  visibleKeys.push('parser');
   if (showScout) visibleKeys.push('scout');
   if (showArch) visibleKeys.push('arch');
   if (showUpdator) visibleKeys.push('updator');
@@ -137,7 +142,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
     const total = visibleKeys.length;
     if (total === 0) return GW / 2;
     const idx = visibleKeys.indexOf(agentKey);
-    if (idx === -1) return GW / 2; // Shouldn't happen if showXYZ is true
+    if (idx === -1) return GW / 2;
     if (total === 1) return GW / 2;
     if (total === 2) return idx === 0 ? GW * 0.3 : GW * 0.7;
     if (total === 3) {
@@ -151,6 +156,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
       if (idx === 2) return GW * 0.62;
       return GW * 0.85;
     }
+    if (total === 5) {
+      if (idx === 0) return GW * 0.10;
+      if (idx === 1) return GW * 0.30;
+      if (idx === 2) return GW * 0.50;
+      if (idx === 3) return GW * 0.70;
+      return GW * 0.90;
+    }
     return GW / 2;
   };
 
@@ -161,6 +173,12 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   const dmTopPos = dmTop + coordinatorOffset.y;
   const dmBotX = GW / 2 + coordinatorOffset.x;
   const dmBotY = dmTopPos + DM_H;
+
+  const parserOffset = offsets['parser'] || { x: 0, y: 0 };
+  const parserCx  = getAgentCx('parser') + parserOffset.x;
+  const parserLeft  = parserCx  - NODE_W / 2;
+  const parserTopY = NODE_TOP + parserOffset.y;
+  const parserBotY = parserTopY + NODE_H;
 
   const scoutOffset = offsets['scout'] || { x: 0, y: 0 };
   const scoutCx = getAgentCx('scout') + scoutOffset.x;
@@ -187,12 +205,15 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
   const analystBotY = analystTopY + NODE_H;
 
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
+  // ── Dynamic SVG paths (coordinator → each agent) ─────────
+  const pathToParser  = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + parserTopY) / 2} ${parserCx}   ${(dmBotY + parserTopY) / 2} ${parserCx}   ${parserTopY}`;
   const pathToScout   = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + scoutTopY) / 2} ${scoutCx} ${(dmBotY + scoutTopY) / 2} ${scoutCx}   ${scoutTopY}`;
   const pathToArch    = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + archTopY) / 2} ${archCx}    ${(dmBotY + archTopY) / 2} ${archCx}    ${archTopY}`;
   const pathToUpdator = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + updatorTopY) / 2} ${updatorCx} ${(dmBotY + updatorTopY) / 2} ${updatorCx} ${updatorTopY}`;
   const pathToAnalyst = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + analystTopY) / 2} ${analystCx} ${(dmBotY + analystTopY) / 2} ${analystCx} ${analystTopY}`;
 
-  // ── Dynamic tool positions (relative to agent cx and offset) ─────────
+  // ── Dynamic tool positions (relative to agent cx) ─────────
+  const parserToolPos  = getShiftedToolPositions(parserCx, parserOffset, parser?.tools || [], offsets);
   const scoutToolPos   = getShiftedToolPositions(scoutCx, scoutOffset, scout.tools, offsets);
   const archToolPos    = getShiftedToolPositions(archCx, archOffset, arch.tools, offsets);
   const updatorToolPos = getShiftedToolPositions(updatorCx, updatorOffset, updator.tools, offsets);
@@ -228,6 +249,15 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          {/* Gradient: DM indigo → Parser emerald */}
+          <linearGradient id="grad-parser"
+            x1={GW / 2} y1={DM_ACTIVE_BOT}
+            x2={parserCx} y2={NODE_TOP}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
+            <stop offset="100%" stopColor={config.theme === 'Meta' ? '#00B2A9' : '#34d399'} />
+          </linearGradient>
 
           {/* Gradient: DM indigo → Scout cyan  (follows the bezier direction) */}
           <linearGradient id="grad-scout"
@@ -270,6 +300,39 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
         {graphReady && (
           <>
+            {/* DM → Requirements Parser — Circuit Trace: 3 layers (emerald) */}
+            {showParser && (
+              <>
+                {/* L1: Ghost channel — always visible, dim */}
+                <path id="pcp" d={pathToParser}
+                  stroke="url(#grad-parser)"
+                  strokeWidth={csw} fill="none"
+                  strokeOpacity={cLit ? ch : cq}
+                  style={{ transition: pathTransition }}
+                />
+                {/* L2: Flowing dashes — handoff only */}
+                {parserHandoffActive && (
+                  <path d={pathToParser}
+                    stroke="url(#grad-parser)"
+                    strokeWidth={dsw} fill="none"
+                    style={{
+                      strokeDasharray: '6 18',
+                      animation: 'flowDash 0.65s linear infinite',
+                      transition: pathTransition
+                    }}
+                  />
+                )}
+                {/* L3: Leading dot — handoff only */}
+                {parserHandoffActive && (
+                  <circle r={dr} fill={config.theme === 'Meta' ? '#00B2A9' : '#34d399'}>
+                    <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
+                      <mpath href="#pcp" />
+                    </animateMotion>
+                  </circle>
+                )}
+              </>
+            )}
+
             {/* DM → Scout  — Circuit Trace: 3 layers */}
             {showScout && (
               <>
@@ -369,6 +432,37 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
               </>
             )}
 
+            {/* Parser → tool curves — Circuit Trace style (emerald) */}
+            {(parser?.tools ?? []).slice(0, 4).map((tool, i) => {
+              const tp = parserToolPos[i];
+              const pid = `pp${i}`;
+              const d = makeDynamicToolPath(parserCx, parserBotY, tp);
+              const toolActive = tool.state === 'active';
+              const toolDone = tool.state === 'done';
+              return (
+                <React.Fragment key={tool.name}>
+                  <path id={pid} d={d}
+                    stroke="#34d399" strokeWidth={tsw} fill="none"
+                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
+                    style={pathTransitionStyle}
+                  />
+                  {toolActive && (
+                    <path d={d}
+                      stroke="#34d399" strokeWidth={tdsw} fill="none"
+                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
+                    />
+                  )}
+                  {toolActive && (
+                    <circle r={tdr} fill="#34d399" filter="url(#glow-cyan)">
+                      <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
+                        <mpath href={`#${pid}`} />
+                      </animateMotion>
+                    </circle>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
             {/* DM → Analyst  — Circuit Trace: 3 layers (green) */}
             {showAnalyst && (
               <>
@@ -401,8 +495,6 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
                 )}
               </>
             )}
-
-
 
             {/* Scout → tool curves — Circuit Trace style */}
             {scout.tools.slice(0, 4).map((tool, i) => {
@@ -564,13 +656,37 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
         }}
       >
         <NodeCard
-          label="Deal Manager" subLabel={cActive ? 'Routing…' : cDone ? 'Dispatched' : 'Coordinator'}
+          label={t?.nodes?.dealManager || "Deal Manager"} subLabel={cActive ? (t?.nodes?.routing || 'Routing…') : cDone ? (t?.nodes?.dispatched || 'Dispatched') : (t?.nodes?.coordinator || 'Coordinator')}
           icon={Network} w={DM_W} h={DM_H} borderRadius={16}
           accentColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} 
           glowColor={config.theme === 'Meta' ? 'rgba(0,100,224,0.5)' : 'rgba(99,102,241,0.5)'}
           isIdle={!cActive && !cDone} isActive={cActive} isDone={cDone}
         />
       </div>
+
+      {/* Requirements Parser — emerald, appears when activated */}
+      {graphReady && showParser && (
+        <div style={{
+          position: 'absolute',
+          left: parserLeft, top: NODE_TOP,
+          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
+          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+        }}>
+          <NodeCard
+            label={t?.nodes?.requirementsParser || "Req. Parser"}
+            subLabel={pActive ? (parserComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
+            icon={ClipboardList} w={NODE_W} h={NODE_H} borderRadius={16}
+            accentColor={config.theme === 'Meta' ? '#00B2A9' : '#34d399'}
+            glowColor={config.theme === 'Meta' ? 'rgba(0,178,169,0.5)' : 'rgba(52,211,153,0.5)'}
+            isIdle={false} isActive={pActive} isDone={pDone}
+          />
+          <div style={{
+            textAlign: 'center', fontSize: 7.5, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: '#34d39955', marginTop: 8,
+          }}>{t?.nodes?.requirementsParser || "Req. Parser"}</div>
+        </div>
+      )}
 
       {/* Agent cards — appear only when activated, shift horizontally dynamically */}
       {graphReady && showScout && (
@@ -587,8 +703,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           }}
         >
           <NodeCard
-            label="Catalog Scout"
-            subLabel={sActive ? (scoutComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            label={t?.nodes?.catalogScout || "Catalog Scout"}
+            subLabel={sActive ? (scoutComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
             icon={Search} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#0081FB' : '#22d3ee'} 
             glowColor={config.theme === 'Meta' ? 'rgba(0,129,251,0.5)' : 'rgba(6,182,212,0.5)'}
@@ -598,7 +714,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#22d3ee55', marginTop: 8,
-          }}>Catalog Scout</div>
+          }}>{t?.nodes?.catalogScout || "Catalog Scout"}</div>
         </div>
       )}
 
@@ -617,8 +733,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           }}
         >
           <NodeCard
-            label="Quote Builder"
-            subLabel={aActive ? (archComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            label={t?.nodes?.quoteBuilder || "Quote Builder"}
+            subLabel={aActive ? (archComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
             icon={FileText} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#31A24C' : '#fbbf24'} 
             glowColor={config.theme === 'Meta' ? 'rgba(49,162,76,0.5)' : 'rgba(245,158,11,0.5)'}
@@ -628,7 +744,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#fbbf2455', marginTop: 8,
-          }}>Quote Builder</div>
+          }}>{t?.nodes?.quoteBuilder || "Quote Builder"}</div>
         </div>
       )}
 
@@ -647,8 +763,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
           }}
         >
           <NodeCard
-            label="Quote Modifier"
-            subLabel={uActive ? (updatorComposing ? 'Composing reply…' : 'Executing…') : 'Completed'}
+            label={t?.nodes?.quoteModifier || "Quote Modifier"}
+            subLabel={uActive ? (updatorComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
             icon={Pencil} w={NODE_W} h={NODE_H} borderRadius={16}
             accentColor={config.theme === 'Meta' ? '#9B59B6' : '#a78bfa'}
             glowColor={config.theme === 'Meta' ? 'rgba(155,89,182,0.5)' : 'rgba(167,139,250,0.5)'}
@@ -658,7 +774,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
             textAlign: 'center', fontSize: 7.5, fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: '#a78bfa55', marginTop: 8,
-          }}>Quote Modifier</div>
+          }}>{t?.nodes?.quoteModifier || "Quote Modifier"}</div>
         </div>
       )}
 
@@ -694,6 +810,17 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true }) =
 
 
       {/* Tool circles — per-tool active/done state */}
+      {graphReady && (parser?.tools ?? []).slice(0, 4).map((tool, i) => {
+        const tp = parserToolPos[i];
+        return (
+          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool.name)} color="#34d399"
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark}
+            style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+          />
+        );
+      })}
+
       {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
         const tp = scoutToolPos[i];
         return (

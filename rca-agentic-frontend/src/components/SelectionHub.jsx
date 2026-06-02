@@ -1,25 +1,30 @@
 import React from 'react';
 import { Settings, CheckCircle2, Database, ArrowRight, Bot, Sparkles, ChevronRight, Sun, Moon } from 'lucide-react';
+import LanguageToggle from './LanguageToggle';
 import { config } from '../config';
+import { translations } from '../translations';
 
 const modules = [
   {
     id: 'cpq',
-    title: 'Salesforce CPQ',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
     accent: config.theme === 'Meta' ? '#0064E0' : '#6366f1',
     gradient: config.theme === 'Meta' ? 'from-blue-700/10 via-blue-700/5 to-transparent' : 'from-indigo-500/10 via-indigo-500/5 to-transparent',
   },
   {
     id: 'rca',
-    title: 'Salesforce RCA',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
     accent: config.theme === 'Meta' ? '#31A24C' : '#10b981',
     gradient: config.theme === 'Meta' ? 'from-green-600/10 via-green-600/5 to-transparent' : 'from-emerald-500/10 via-emerald-500/5 to-transparent',
   },
   {
+    id: 'migration',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg',
+    accent: config.theme === 'Meta' ? '#6B21A8' : '#8b5cf6',
+    gradient: config.theme === 'Meta' ? 'from-purple-700/10 via-purple-700/5 to-transparent' : 'from-violet-500/10 via-violet-500/5 to-transparent',
+  },
+  {
     id: 'oracle',
-    title: 'Oracle CPQ',
     logo: 'https://www.vectorlogo.zone/logos/oracle/oracle-icon.svg',
     accent: config.theme === 'Meta' ? '#F7B928' : '#f59e0b',
     gradient: config.theme === 'Meta' ? 'from-yellow-600/10 via-yellow-600/5 to-transparent' : 'from-amber-500/10 via-amber-500/5 to-transparent',
@@ -34,13 +39,14 @@ const modules = [
   },
 ];
 
-const stats = [
-  { value: '10×', label: 'Faster Quoting' },
-  { value: '+10%', label: 'Win Rate Uplift' },
-  { value: '95%', label: 'Risk Reduction' },
-];
-
-const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
+const SelectionHub = ({ onSelect, isDark, setIsDark, language, setLanguage }) => {
+  const t = translations[language] || translations['en'];
+  const stats = [
+    { value: '10×', label: (t && t.stats && t.stats.accounts) || 'Accounts' },
+    { value: '+10%', label: (t && t.stats && t.stats.opportunities) || 'Opportunities' },
+    { value: '95%', label: (t && t.stats && t.stats.quotes) || 'Quotes' },
+  ];
+  return (
   <div className={`h-screen w-full overflow-hidden flex flex-col bg-[var(--site-bg)] text-[var(--text-main)] transition-colors duration-500 relative ${config.theme === 'Meta' ? 'meta-theme' : ''}`}>
 
     {/* ─── Gradient mesh ─── */}
@@ -101,6 +107,7 @@ const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
           >
             {isDark ? <Sun size={14} /> : <Moon size={14} />}
           </button>
+          <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
         </div>
       </nav>
 
@@ -117,12 +124,13 @@ const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
         {/* Headline + sub */}
         <div className="flex items-end justify-between gap-8">
           <div>
+            <h1 className="text-2xl lg:text-[28px] font-black tracking-tight text-[var(--text-main)] leading-none mb-1">{t.dashboard.header}</h1>
             <h1 className="text-2xl lg:text-[38px] font-black leading-[1.1] tracking-tight text-[var(--text-main)] mb-2">
-              Explore our CPQ Agnostic<br />
-              <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">Agentic Quote Accelerator</span>
+              {t.selectionHub.explore}<br />
+              <span className="bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 bg-clip-text text-transparent">{t.selectionHub.headline}</span>
             </h1>
             <p className="text-[var(--text-muted)] text-xs lg:text-[13px] max-w-lg leading-relaxed opacity-80">
-              {config.theme === 'Meta' ? config.META_TAGLINE : "Agivant's Agentic AI engines autonomously configure, validate, and synchronize your revenue stack — with zero manual intervention."}
+              {t.selectionHub.tagline}
             </p>
           </div>
           {/* Decorative agentic node graphic */}
@@ -169,12 +177,12 @@ const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
               <div className="flex items-start justify-between mb-6">
                 <div className="h-12 px-4 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
                   style={{ background: m.accent + '08', border: `1px solid ${m.accent}20` }}>
-                  <img src={m.logo} alt={m.title} className="h-6 w-auto object-contain" />
+                  <img src={m.logo} alt={m.id} className="h-6 w-auto object-contain" />
                 </div>
               </div>
 
               {/* Text */}
-              <h3 className="text-lg font-black text-[var(--text-main)] mb-5 tracking-tight transition-colors group-hover:text-[var(--text-main)]">{m.title}</h3>
+              <h3 className="text-lg font-black text-[var(--text-main)] mb-5 tracking-tight transition-colors group-hover:text-[var(--text-main)]">{t?.modules?.[m.id] ?? m.id}</h3>
 
               {/* CTA */}
               <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-widest transition-colors duration-200" style={{ color: m.accent }}>
@@ -202,5 +210,6 @@ const SelectionHub = ({ onSelect, isDark, setIsDark }) => (
     </div>
   </div>
 );
+};
 
 export default SelectionHub;

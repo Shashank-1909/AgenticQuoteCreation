@@ -1,8 +1,27 @@
 import os
+import sys
 import json
 import requests
+
+# Redirect sys.stderr to a file to prevent subprocess standard error pipe deadlocks on Windows
+class FileLogger:
+    def __init__(self, filepath="server.log"):
+        self.filepath = filepath
+    def write(self, message):
+        try:
+            with open(self.filepath, "a", encoding="utf-8") as f:
+                f.write(message)
+        except Exception:
+            pass
+    def flush(self):
+        pass
+
+sys.stderr = FileLogger()
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -17,8 +36,29 @@ mcp = FastMCP("Salesforce RCA Deal Management MCP Server")
 FIELD_VALUE_INDEX: dict = {}
 _INDEX_BUILT = False
 
+# Global GenAI Client Initialization
+def _get_genai_client():
+    raw_val = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false")
+    use_vertex = raw_val.replace('"', '').replace("'", "").strip().lower() == "true"
+    if use_vertex:
+        project_id = (os.getenv("GOOGLE_CLOUD_PROJECT") or "").replace('"', '').replace("'", "").strip()
+        location_id = (os.getenv("GOOGLE_CLOUD_LOCATION") or "us-central1").replace('"', '').replace("'", "").strip()
+        return genai.Client(
+            vertexai=True,
+            project=project_id,
+            location=location_id
+        )
+    return genai.Client()
+
+_genai_client = _get_genai_client()
+
+_AUTH_CACHE = None
 def get_salesforce_auth():
-    """Helper function to load auth state written by auth.py"""
+    """Helper function to load auth state written by auth.py with simple caching."""
+    global _AUTH_CACHE
+    if _AUTH_CACHE:
+        return _AUTH_CACHE
+
     import json
     token_file = "auth.json"
     if not os.path.exists(token_file):
@@ -31,7 +71,8 @@ def get_salesforce_auth():
         "Authorization": f"Bearer {auth_data['access_token']}",
         "Content-Type": "application/json"
     }
-    return headers, auth_data['instance_url']
+    _AUTH_CACHE = (headers, auth_data['instance_url'])
+    return _AUTH_CACHE
 
 
 def search_catalog(
@@ -83,7 +124,7 @@ def search_catalog(
         payload["searchTerm"] = search_term
         
     try:
-        response = requests.post(endpoint, headers=headers, json=payload)
+        response = requests.post(endpoint, headers=headers, json=payload, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -145,7 +186,7 @@ def get_searchable_custom_fields() -> str:
     endpoint = f"{instance_url}/services/data/v66.0/connect/pcm/index/configurations?includeMetadata=false&fieldTypes=Custom"
     
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -193,7 +234,7 @@ def get_picklist_values(field_api_name: str) -> str:
     endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA/{field_api_name}"
     
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -269,7 +310,7 @@ def check_field_values(candidates: list[str]) -> str:
             
             # Step 1: Get custom field API names from the index configuration
             cfg_endpoint = f"{instance_url}/services/data/v66.0/connect/pcm/index/configurations?includeMetadata=false&fieldTypes=Custom"
-            cfg_resp = requests.get(cfg_endpoint, headers=headers)
+            cfg_resp = requests.get(cfg_endpoint, headers=headers, timeout=30)
             valid_fields = set()
             if cfg_resp.status_code == 200:
                 for config in cfg_resp.json().get("indexConfigurations", []):
@@ -279,7 +320,7 @@ def check_field_values(candidates: list[str]) -> str:
             
             # Step 2: Query the UI API strictly for all Picklist values on Product2
             ui_endpoint = f"{instance_url}/services/data/v65.0/ui-api/object-info/Product2/picklist-values/012000000000000AAA"
-            ui_resp = requests.get(ui_endpoint, headers=headers)
+            ui_resp = requests.get(ui_endpoint, headers=headers, timeout=30)
             if ui_resp.status_code == 200:
                 picklist_field_values = ui_resp.json().get("picklistFieldValues", {})
                 for field_api_name, field_data in picklist_field_values.items():
@@ -358,7 +399,7 @@ def resolve_pricebook_entries(product_ids: list[str]) -> str:
     endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
     
     try:
-        response = requests.get(endpoint, headers=headers)
+        response = requests.get(endpoint, headers=headers, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
         
@@ -506,8 +547,7 @@ def get_opportunities_for_account(account_id: str) -> str:
         "message":       f"Found {len(opps)} open opportunities. Waiting for user selection.",
     })
 
-
-def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str = "") -> str:
+def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_id: str) -> str:
     """
     Submits a Salesforce CPQ Quote Graph to create a draft quote with line items.
 
@@ -517,23 +557,27 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
     reject the request. If you get a validation error, read it carefully and fix the payload.
 
     Args:
-        pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
-                      MUST be provided. You receive this from resolve_pricebook_entries.
-        opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
-                        Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
-                        If not provided, the quote will be created without an Opportunity link.
-        line_items: One dict per product, each containing:
-                    - Product2Id (from search results)
-                    - PricebookEntryId (from pricebook resolution tool)
-                    - Quantity (default 1)
-                    - UnitPrice (from pricebook resolution tool)
-                    - Discount (numeric percentage, e.g., 10 for 10%)
-                    - StartDate / EndDate (optional, defaults applied automatically)
+      pricebook_id: The Salesforce Pricebook2 ID to associate with the quote.
+                    MUST be provided. You receive this from resolve_pricebook_entries.
+      opportunity_id: The 18-character Salesforce Opportunity ID (starts with '006').
+                      Extract this from the user's opportunity selection: '[Opp Name] (ID: 006xxx)'.
+                      This parameter is REQUIRED.
+      line_items: One dict per product, each containing:
+                  - Product2Id (from search results)
+                  - PricebookEntryId (from pricebook resolution tool)
+                  - Quantity (default 1)
+                  - UnitPrice (from pricebook resolution tool)
+                  - Discount (numeric percentage, e.g., 10 for 10%)
+                  - StartDate / EndDate (optional, defaults applied automatically)
+                  - BillingFrequency (REQUIRED if SellingModelType from pricebook resolution is 'Evergreen' or 'Term-Defined'. Set to 'Monthly')
 
     After calling: Return the Quote ID from the response to the user. If the response
                    includes a record ID, the quote was successfully created in Salesforce.
     """
     import re
+    if not opportunity_id or not opportunity_id.strip():
+        raise ValueError("opportunity_id is required to create a CPQ quote.")
+
     headers, instance_url = get_salesforce_auth()
 
     # Sanitize opportunity_id — extract 18-char ID if full string passed
@@ -542,6 +586,17 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         match = re.search(r'(006[A-Za-z0-9]{15})', opportunity_id)
         clean_opp_id = match.group(1) if match else opportunity_id.strip()
 
+    # Fallback for pricebook_id if not provided
+    if not pricebook_id:
+        sys.stderr.write("[DEBUG] No pricebook_id provided, querying for Standard Pricebook...\n")
+        query = "SELECT Id FROM Pricebook2 WHERE IsStandard = true AND IsActive = true LIMIT 1"
+        pb_resp = requests.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": query})
+        if pb_resp.status_code == 200:
+            records = pb_resp.json().get("records", [])
+            if records:
+                pricebook_id = records[0]["Id"]
+                sys.stderr.write(f"[DEBUG] Found Standard Pricebook: {pricebook_id}\n")
+    
     quote_record = {
         "attributes": {
             "method": "POST",
@@ -582,14 +637,17 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             "QuoteId": "@{refQuote.id}",
             "Product2Id": item["Product2Id"],
             "PricebookEntryId": item["PricebookEntryId"],
-            "PeriodBoundary": "Anniversary",
-            "BillingFrequency": "",
             "Quantity": qty,
             "UnitPrice": item.get("UnitPrice", 100),
             "Discount": discount,
             "StartDate": item.get("StartDate", "2025-01-01"),
             "EndDate": item.get("EndDate", "2026-01-01")
         }
+
+        # Only add subscription-specific fields if they are provided
+        for field in ["BillingFrequency", "PeriodBoundary"]:
+            if field in item:
+                record_item[field] = item[field]
 
         for k, v in item.items():
             if k not in ["Product2Id", "PricebookEntryId", "Quantity", "UnitPrice", "Discount", "StartDate", "EndDate"]:
@@ -620,7 +678,7 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
 
     import json
     try:
-        response = requests.post(endpoint, headers=headers, json=payload)
+        response = requests.post(endpoint, headers=headers, json=payload, timeout=30)
     except Exception as e:
         return f"Request Error: {str(e)}"
 
@@ -657,8 +715,6 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         "quote_number": quote_number,
         "salesforce_response": salesforce_resp
     }, indent=2)
-
-
 def get_quote_preview(quote_id: str) -> str:
     """
     Fetches detailed preview data for a specific Salesforce Quote, 
@@ -999,6 +1055,398 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         "salesforce_response": resp.json(),
     }, indent=2)
 
+
+
+
+def search_products(search_term: str, region: str = None, page_size: int = 15) -> str:
+    """
+    Searches Salesforce products by name or keyword using direct SOQL on the Product2 object.
+    Used internally by the parser tools (parse_transcript_to_requirements, parse_requirements_doc)
+    and as a reliable fallback when search_catalog returns empty results.
+
+    When to call: Use this whenever you need a simple keyword product lookup, or when
+    called internally from parser tools. If multiple products are returned, present them
+    to the user and ask which one to proceed with BEFORE creating a quote.
+
+    Args:
+        search_term: Product name or keyword to search for.
+        region: Optional region/entity name to filter by Family, ProductCode, or Name.
+        page_size: Maximum results to return. Default is 15.
+    """
+    headers, instance_url = get_salesforce_auth()
+
+    terms = search_term.replace('"', '').replace("'", '').split()
+    if not terms:
+        terms = [search_term]
+
+    conditions = [" AND ".join([f"Name LIKE '%{t}%'" for t in terms])]
+
+    if region:
+        conditions.append(
+            f"(Family = '{region}' OR ProductCode LIKE '%{region}%' OR Name LIKE '%{region}%')"
+        )
+
+    final_conditions = " AND ".join(f"({c})" for c in conditions)
+
+    query = f"""
+    SELECT Id, Name, ProductCode, Family, IsActive
+    FROM Product2
+    WHERE {final_conditions}
+    AND IsActive = true
+    LIMIT {page_size}
+    """
+
+    from urllib.parse import quote as url_quote
+    endpoint = f"{instance_url}/services/data/v65.0/query/?q={url_quote(query)}"
+
+    try:
+        response = requests.get(endpoint, headers=headers, timeout=30)
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Request Error: {str(e)}"})
+
+    if response.status_code not in [200, 201]:
+        return json.dumps({"status": "error", "message": f"Salesforce Error {response.status_code}: {response.text}"})
+
+    data = response.json()
+    results = []
+    for item in data.get("records", []):
+        results.append({
+            "name": item.get("Name", "Unknown Name"),
+            "id": item.get("Id", "Unknown ID"),
+            "code": item.get("ProductCode", "No Code"),
+            "category": item.get("Family", "General")
+        })
+
+    return json.dumps({
+        "status": "success",
+        "searchTerm": search_term,
+        "count": len(results),
+        "results": results,
+        "instruction": (
+            "If multiple products were found, present them to the user and ask which one "
+            "they want to select. If only one was found, ask for confirmation before "
+            "proceeding to pricing."
+        )
+    }, indent=2)
+
+
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class RequirementItem(BaseModel):
+    product_name: str = Field(description="The exact name of the product or service needed.")
+    quantity: int = Field(default=1, description="The quantity requested. Default to 1 if not specified.")
+    discount: float = Field(default=0.0, description="The discount percentage requested, e.g. 10.0 for 10%. Default to 0.0.")
+
+class RequirementsPayload(BaseModel):
+    requirements: List[RequirementItem]
+
+
+def _call_gemini_direct(
+    prompt: str,
+    mime_type: str = "application/json",
+    temperature: float = 0.0,
+    response_schema: any = None
+) -> str:
+    """
+    Helper to make a Gemini API call using the official, pre-configured GenAI Client.
+    Bypasses raw REST requests and manual credential refreshes to avoid Windows grandchild pipe deadlocks.
+    """
+    sys.stderr.write("[DEBUG] _call_gemini_direct: Calling Gemini via official Client...\n")
+    try:
+        client = _get_genai_client()
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type=mime_type,
+                temperature=temperature,
+                response_schema=response_schema,
+            )
+        )
+        if response and response.text:
+            sys.stderr.write("[DEBUG] _call_gemini_direct: Call succeeded.\n")
+            return response.text.strip()
+        else:
+            raise ValueError("Empty response received from Gemini.")
+    except Exception as e:
+        sys.stderr.write(f"[DEBUG] _call_gemini_direct Error: {str(e)}\n")
+        raise e
+
+
+def parse_transcript_to_requirements(transcript_text: str) -> str:
+    """
+    Extracts product requirements and customer intent from a call transcript or meeting notes.
+    """
+    sys.stderr.write(f"\n[DEBUG] Parsing transcript ({len(transcript_text)} chars)...\n")
+    
+    # Slice if too long to prevent LLM hang
+    if len(transcript_text) > 15000:
+        transcript_text = transcript_text[:15000] + "... [truncated]"
+
+    prompt = (
+        "Extract all product/service requirements from the following call transcript. "
+        "For each item, identify its name, quantity, and discount (if mentioned)."
+        f"\n\nTranscript:\n{transcript_text}"
+    )
+
+    try:
+        sys.stderr.write("[DEBUG] Calling Gemini directly for transcript parsing via Pydantic schema...\n")
+        raw_text = _call_gemini_direct(prompt, response_schema=RequirementsPayload)
+        data = json.loads(raw_text)
+        requirements = data.get("requirements", [])
+        sys.stderr.write(f"[DEBUG] LLM extraction complete: {len(requirements)} items.\n")
+    except Exception as e:
+        sys.stderr.write(f"[DEBUG] LLM extraction error: {str(e)}\n")
+        requirements = []
+        
+    return json.dumps(requirements, indent=2)
+
+
+def parse_requirements_doc(document_content: str) -> str:
+    """
+    Extracts requirements from RFP/SOW documents and maps them to the catalog.
+    """
+    sys.stderr.write(f"\n[DEBUG] parse_requirements_doc: Processing {len(document_content)} characters...\n")
+
+    prompt = (
+        "Extract all product/service requirements from the following document. "
+        "For each item, identify its exact product name, quantity, and discount (if specified)."
+        f"\n\nDocument:\n{document_content[:20000]}"
+    )
+
+    try:
+        sys.stderr.write("[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...\n")
+        raw = _call_gemini_direct(prompt, response_schema=RequirementsPayload)
+        data = json.loads(raw)
+        all_requirements = data.get("requirements", [])
+        sys.stderr.write(f"[DEBUG] Gemini extracted {len(all_requirements)} items.\n")
+    except Exception as e:
+        sys.stderr.write(f"[DEBUG] Gemini extraction error: {str(e)}\n")
+        return json.dumps({"status": "error", "message": f"Error analyzing document: {str(e)}"})
+
+    # Deduplicate
+    unique_reqs = {}
+    for r in all_requirements:
+        name = r.get("product_name", "").strip()
+        if name and name.lower() not in unique_reqs:
+            unique_reqs[name.lower()] = {
+                "product_name": name,
+                "quantity": r.get("quantity", 1),
+                "discount": r.get("discount", 0.0)
+            }
+
+    transformed = list(unique_reqs.values())
+    sys.stderr.write(f"[DEBUG] Extraction complete. Total unique requirements: {len(transformed)}\n")
+
+    return json.dumps(transformed, indent=2)
+   
+
+def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
+    """
+    Internal helper — searches Salesforce Product2 via SOQL directly (no MCP overhead).
+    Returns a list of product dicts (name, id, code, category).
+    Must NOT be decorated with @mcp.tool().
+    """
+    try:
+        headers, instance_url = get_salesforce_auth()
+        terms = [t for t in prod_name.replace('"', '').replace("'", "").split() if len(t) > 2]
+        if not terms:
+            terms = [prod_name]
+        # Escape single quotes for SOQL safety
+        safe_terms = [t.replace("'", "\\'") for t in terms[:3]]
+        
+        from urllib.parse import quote as url_quote
+        
+        # Try STRICT search first (AND)
+        where_clause = " AND ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
+        query = (
+            f"SELECT Id, Name, ProductCode, Family FROM Product2 "
+            f"WHERE ({where_clause}) AND IsActive = true LIMIT {page_size}"
+        )
+        sys.stderr.write(f"[DEBUG] _search_product_direct: Querying '{prod_name}' (STRICT) -> {query}\n")
+        
+        resp = requests.get(
+            f"{instance_url}/services/data/v65.0/query/?q={url_quote(query)}",
+            headers=headers,
+            timeout=20,
+        )
+        
+        recs = []
+        if resp.status_code == 200:
+            recs = resp.json().get("records", [])
+            
+        # Fallback to LOOSE search (OR) if strict yields no results and we have multiple terms
+        if not recs and len(safe_terms) > 1:
+            where_clause_loose = " OR ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
+            query_loose = (
+                f"SELECT Id, Name, ProductCode, Family FROM Product2 "
+                f"WHERE ({where_clause_loose}) AND IsActive = true LIMIT 500"
+            )
+            sys.stderr.write(f"[DEBUG] _search_product_direct: Fallback Querying '{prod_name}' (LOOSE) -> {query_loose}\n")
+            resp_loose = requests.get(
+                f"{instance_url}/services/data/v65.0/query/?q={url_quote(query_loose)}",
+                headers=headers,
+                timeout=20,
+            )
+            if resp_loose.status_code == 200:
+                recs = resp_loose.json().get("records", [])
+
+        # Final Fallback: if even loose search failed (total typo like 'Stndard Usr'), fetch active catalog to fuzzy match locally
+        if not recs:
+            query_all = "SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150"
+            sys.stderr.write(f"[DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> {query_all}\n")
+            resp_all = requests.get(
+                f"{instance_url}/services/data/v65.0/query/?q={url_quote(query_all)}",
+                headers=headers,
+                timeout=20,
+            )
+            if resp_all.status_code == 200:
+                recs = resp_all.json().get("records", [])
+
+        sys.stderr.write(f"[DEBUG] _search_product_direct: Found {len(recs)} matches for '{prod_name}'\n")
+        return [
+            {"name": r.get("Name", ""), "id": r.get("Id", ""), "code": r.get("ProductCode", ""), "category": r.get("Family", "General")}
+            for r in recs
+        ]
+    except Exception as e:
+        sys.stderr.write(f"[DEBUG] _search_product_direct exception for '{prod_name}': {str(e)}\n")
+        return []
+
+
+def map_requirements_to_catalog(requirements: list) -> str:
+    """
+    Maps a list of extracted product requirements to actual Salesforce catalog products.
+    Each requirement must have a 'product_name' key and optionally a 'quantity' key.
+
+    When to call: After manually extracting requirements when you already have a list
+    of product names to search for. For automatic document/transcript analysis,
+    use parse_requirements_doc or parse_transcript_to_requirements instead.
+
+    Args:
+        requirements: List of dicts with 'product_name' and optional 'quantity'.
+                      Example: [{"product_name": "Laptop", "quantity": 2}]
+    """
+    if not isinstance(requirements, list):
+        return json.dumps({"status": "error", "message": "requirements must be a list."})
+    return _map_requirements_to_catalog(requirements)
+
+
+def _map_requirements_to_catalog(requirements: list) -> str:
+    """
+    Internal implementation — shared by parse_requirements_doc, parse_transcript_to_requirements,
+    and the public map_requirements_to_catalog tool.
+    Uses _search_product_direct (plain function, no MCP) to avoid deadlocks.
+    """
+    ignored_names = {"product name", "product_name", "quantity", "discount", "price"}
+    valid_reqs = []
+    for r in requirements:
+        if isinstance(r, dict) and r.get("product_name", "").strip():
+            name = r.get("product_name", "").strip()
+            if name.lower() not in ignored_names:
+                valid_reqs.append(r)
+        elif isinstance(r, str) and r.strip():
+            name = r.strip()
+            if name.lower() not in ignored_names:
+                valid_reqs.append({"product_name": name})
+    
+    requirements = valid_reqs[:12]
+
+    if not requirements:
+        return json.dumps({"status": "empty", "message": "No valid product names to search."})
+
+    sys.stderr.write(f"[DEBUG] _map_requirements_to_catalog: mapping {len(requirements)} items\n")
+
+    all_catalog_products = []
+    mapped_requirements = []
+    seen_ids = set()
+
+    def _search_one(req):
+        name = req.get("product_name", "").strip()
+        return req, _search_product_direct(name, page_size=5)
+
+    # FIX: Run sequentially to prevent deadlocks in MCP execution
+    results = [_search_one(req) for req in requirements]
+
+    for req, products_found in results:
+        req_name = req.get("product_name", "").strip()
+        
+        scored_products = []
+        for p in products_found:
+            p_name = p.get("name", "").strip()
+            
+            # Exact lowercase match
+            if p_name.lower() == req_name.lower():
+                score = 1.0
+            else:
+                import difflib
+                req_words = req_name.lower().split()
+                p_words = p_name.lower().split()
+                
+                # Token-level fuzzy match (resolves length-mismatched typos like 'Qest 3' vs 'Meta Quest 3')
+                word_scores = []
+                for rw in req_words:
+                    best_word_score = 0
+                    for pw in p_words:
+                        if rw in pw or pw in rw:
+                            best_word_score = max(best_word_score, min(len(rw), len(pw)) / max(len(rw), len(pw)))
+                        else:
+                            best_word_score = max(best_word_score, difflib.SequenceMatcher(None, rw, pw).ratio())
+                    word_scores.append(best_word_score)
+                
+                token_score = sum(word_scores) / len(req_words) if req_words else 0
+                fuzzy_score = difflib.SequenceMatcher(None, req_name.lower(), p_name.lower()).ratio()
+                
+                # Take the highest of the full string match vs the token average
+                score = max(token_score, fuzzy_score)
+                
+            scored_products.append((p, score))
+            
+        # Sort products by score descending
+        scored_products.sort(key=lambda x: x[1], reverse=True)
+        
+        # Determine confidence and filter
+        if scored_products:
+            best_score = scored_products[0][1]
+            if best_score >= 0.75:
+                # Accurate match (including typos): filter out unrelated and HIGHLIGHT ONLY THAT
+                filtered_products = [item[0] for item in scored_products if item[1] >= best_score - 0.1]
+                confidence = "High" if len(filtered_products) == 1 else "Medium"
+            else:
+                # No accurate match: give keyword matches in the list, but DO NOT highlight (Low confidence)
+                filtered_products = [item[0] for item in scored_products if item[1] > 0]
+                confidence = "Low"
+        else:
+            filtered_products = []
+            confidence = "Low"
+
+        mapped_requirements.append({
+            "extracted_need": req,
+            "mapped_catalog_products": filtered_products,
+            "confidence": confidence,
+        })
+        for p in filtered_products:
+            if p["id"] not in seen_ids:
+                all_catalog_products.append(p)
+                seen_ids.add(p["id"])
+
+    sys.stderr.write(f"[DEBUG] Mapping complete — {len(all_catalog_products)} unique products found\n")
+
+    status = "success" if all_catalog_products else "empty"
+    return json.dumps({
+        "status": status,
+        "message": f"Mapped {len(requirements)} requirements to {len(all_catalog_products)} catalog products.",
+        "requirements": mapped_requirements,
+        "results": all_catalog_products,
+        "count": len(all_catalog_products),
+        "next_steps": (
+            "Present the mapped products to the user and ask them to confirm which ones to quote."
+            if all_catalog_products else
+            "No catalog matches found. Ask the user to describe the products differently or search manually."
+        ),
+    }, indent=2)
+
 agent_type = os.environ.get("MCP_AGENT_TYPE", "all")
 
 if agent_type in ["scout", "all"]:
@@ -1006,6 +1454,7 @@ if agent_type in ["scout", "all"]:
     mcp.add_tool(get_searchable_custom_fields)
     mcp.add_tool(get_picklist_values)
     mcp.add_tool(check_field_values)
+    mcp.add_tool(map_requirements_to_catalog)
 
 if agent_type in ["architect", "all"]:
     mcp.add_tool(resolve_pricebook_entries)
@@ -1019,6 +1468,10 @@ if agent_type in ["updator", "all"]:
     mcp.add_tool(manage_quote_line_items)
     mcp.add_tool(get_my_accounts)
     mcp.add_tool(get_opportunities_for_account)
+
+if agent_type in ["parser", "all"]:
+    mcp.add_tool(parse_requirements_doc)
+    mcp.add_tool(parse_transcript_to_requirements)
 
 if agent_type in ["analyst", "all"]:
     mcp.add_tool(get_deal_history)

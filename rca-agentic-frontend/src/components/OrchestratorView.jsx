@@ -3,7 +3,7 @@ import {
   Send, Loader2, Zap, Settings,
   ExternalLink, ArrowRight, Database,
   Search, FileText, ArrowLeft, Eye, CheckCircle2, Package, TrendingUp,
-  Sparkles, ClipboardList, Sun, Moon
+  Sparkles, ClipboardList, Sun, Moon, Globe, Paperclip
 } from 'lucide-react';
 import { config } from '../config';
 import SelectionPanel from './SelectionPanel';
@@ -14,11 +14,22 @@ import ProductConfigModal from './ProductConfigModal';
 import {
   GW, INIT_ORCH, SUGGESTIONS
 } from '../constants';
+import { translations } from '../translations';
 
-const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark }) => {
+const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, language, setLanguage }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const t = translations[language] || translations['en'];
+  const translatedModuleTitle = selectedModule ? (t.modules?.[selectedModule.id] || selectedModule.title) : 'Salesforce RCA';
+
   const [messages, setMessages] = useState([
-    { id: 1, role: 'assistant', content: `Command Center Online. Awaiting instructions for ${selectedModule?.title || 'Salesforce RCA'}.` }
+    { id: 1, role: 'assistant', content: `${t.commandCenterOnline}${translatedModuleTitle}.` }
   ]);
+
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id === 1) {
+      setMessages([{ id: 1, role: 'assistant', content: `${t.commandCenterOnline}${translatedModuleTitle}.` }]);
+    }
+  }, [language, selectedModule]);
   const [inputValue, setInputValue] = useState('');
   const [workflowState, setWorkflowState] = useState('idle');
   const [orchestration, setOrchestration] = useState(INIT_ORCH);
@@ -141,11 +152,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
 
   const adjustZoom = (delta) => setUserZoom(prev => Math.min(2, Math.max(0.5, prev + delta)));
 
+  const handleWsMessageRef = useRef(null);
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
-    ws.current.onopen = () => console.log('[WS] Connected to main.py');
+    handleWsMessageRef.current = handleWsMessage;
+  });
 
-    ws.current.onmessage = (ev) => {
+  const handleWsMessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
 
@@ -501,6 +513,16 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
       }
     };
 
+  useEffect(() => {
+    ws.current = new WebSocket('ws://localhost:8001/ws/orchestrate');
+    ws.current.onopen = () => console.log('[WS] Connected to main.py');
+
+    ws.current.onmessage = (ev) => {
+      if (handleWsMessageRef.current) {
+        handleWsMessageRef.current(ev);
+      }
+    };
+
     return () => { if (ws.current) ws.current.close(); };
   }, []);
 
@@ -612,9 +634,84 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
     }
 
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(finalMessage);
+      const payload = language !== 'en' ? `${finalMessage} [System Context: ${t.languageContext}]` : finalMessage;
+      ws.current.send(payload);
     } else {
       setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: 'Backend disconnected.' }]);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const placeholderId = Date.now();
+    const aiName = 'Agivant AI';
+
+    // Show temporary progress bubble
+    setMessages(prev => [...prev, {
+      id: placeholderId,
+      role: 'assistant',
+      aiName,
+      content: language === 'es' ? `Subiendo "${file.name}"... Por favor, espera mientras analizo los requisitos.` :
+               `Uploading "${file.name}"... Please wait while I analyze the requirements.`,
+      type: 'text'
+    }]);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:8001/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        // Replace progress bubble with success and send user message
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'user',
+          content: `${t.documentUploaded || 'Document Uploaded'}: ${file.name}`,
+          type: 'text'
+        }]);
+
+        if (!graphActive) setGraphActive(true);
+        if (workflowState === 'idle') {
+          setResults([]); setQuotes([]); setOrchestration(INIT_ORCH);
+          pendingResultsRef.current = null; setComposingReply(false);
+        }
+
+        // Send file contents to agent via WS
+        ws.current?.send(result.user_message);
+      } else {
+        // Show upload failure message
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          role: 'assistant',
+          aiName,
+          content: `${t.uploadFailed || 'Upload failed'}: ${result.message}`,
+          type: 'text'
+        }]);
+      }
+    } catch (err) {
+      console.error('File upload error:', err);
+      setMessages(prev => prev.filter(m => m.id !== placeholderId));
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: 'assistant',
+        aiName,
+        content: language === 'es' ? `Error al subir el archivo. Asegúrate de que el servidor esté en ejecución.` :
+                 `Error uploading file. Make sure the backend server is running.`,
+        type: 'text'
+      }]);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -671,7 +768,8 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
     setVaultHistory(prev => [...prev, configItem]);
 
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
+    const payload = language !== 'en' ? `${text} [System Context: ${t.languageContext}]` : text;
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(payload);
     setIsConfigOpen(false);
     setSelectedProducts(new Set());
   };
@@ -742,7 +840,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                 <div className="flex items-center gap-2 mb-2.5">
                   <div className={`w-1 h-2.5 rounded-full ${msg.role === 'user' ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300 dark:bg-slate-700'}`} />
                   <div className={`text-[8.5px] uppercase font-black tracking-[0.2em] ${msg.role === 'user' ? 'text-indigo-500' : 'text-slate-500 italic'}`}>
-                    {msg.role === 'user' ? 'Commander' : config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI'}
+                    {msg.role === 'user' ? t.commander : config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI'}
                   </div>
                 </div>
                 <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${msg.role === 'user' ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg' : 'glass-card text-[var(--text-main)] shadow-xl border-white/5'}`}>
@@ -761,7 +859,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
               <div className="pt-2 pb-6 space-y-4">
                 <div className="flex items-center gap-2 mb-4 px-1">
                   <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                  <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">Suggestions</span>
+                  <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-500">{t.suggestions}</span>
                 </div>
                 {SUGGESTIONS.map((s, i) => (
                   <div key={i} onClick={() => handleSuggestionClick(s.text)} className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group shadow-sm" style={{ background: isDark ? 'rgba(255,255,255,0.02)' : s.bg, borderColor: isDark ? 'rgba(255,255,255,0.05)' : s.border }}>
@@ -781,7 +879,31 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
             <form onSubmit={handleSend} className="group">
               <div className="relative flex items-center">
                 <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
-                <input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} placeholder={leftWidth > 150 ? 'Send instruction…' : '…'} disabled={isBusy} className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-6 pr-14 text-[11px] font-medium outline-none text-[var(--text-main)] transition-all z-10 shadow-inner focus:border-indigo-500/50" />
+                
+                {/* Hidden File Input */}
+                <input 
+                  type="file" 
+                  id="orch-file-upload" 
+                  accept=".pdf,.docx,.txt,.xlsx,.xls" 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                  disabled={isUploading}
+                />
+                
+                {/* Paperclip Button */}
+                <label 
+                  htmlFor="orch-file-upload" 
+                  className={`absolute left-4 z-20 cursor-pointer text-slate-400 hover:text-indigo-500 transition-colors flex items-center justify-center p-1.5 rounded-lg hover:bg-white/5 ${isUploading ? 'animate-pulse pointer-events-none' : ''}`}
+                  title="Upload requirement document (PDF, DOCX, TXT, XLSX, XLS)"
+                >
+                  {isUploading ? (
+                    <Loader2 size={16} className="animate-spin text-indigo-500" />
+                  ) : (
+                    <Paperclip size={16} />
+                  )}
+                </label>
+
+                <input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} placeholder={leftWidth > 150 ? t.sendInstruction : '…'} disabled={isBusy} className="w-full bg-[var(--site-bg)] dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-12 pr-14 text-[11px] font-medium outline-none text-[var(--text-main)] transition-all z-10 shadow-inner focus:border-indigo-500/50" />
                 <button type="submit" className="absolute right-3.5 p-2.5 text-indigo-600 hover:scale-110 transition-transform z-20 flex items-center justify-center">
                   <Send size={16} />
                 </button>
@@ -803,13 +925,13 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                 <div className="flex items-center gap-4">
                   {onBack && <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 transition-all"><ArrowLeft size={16} /></button>}
                   <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
-                    <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">Orchestration</span>
-                    <span className="text-slate-400 dark:text-white/40 font-bold">Flow</span>
+                    <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">{t.orchestration}</span>
+                    <span className="text-slate-400 dark:text-white/40 font-bold">{t.flow}</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-3 bg-slate-500/5 dark:bg-black/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5 shadow-inner hover:bg-slate-500/10 transition-all">
-                    <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Minimap</span>
+                    <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">{t.minimap}</span>
                     <button onClick={() => setShowMinimap(!showMinimap)} className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showMinimap ? 'bg-indigo-500 ring-indigo-400/30' : 'bg-slate-300 dark:bg-slate-700'}`}>
                       <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all duration-300 ${showMinimap ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                     </button>
@@ -827,26 +949,53 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                     ) : (
                       <Moon size={14} className="text-indigo-500" />
                     )}
-                    <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Theme</span>
+                    <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">{t.theme}</span>
                   </button>
+
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10" />
+
+                  <div className="relative group">
+                    <button className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-500/5 dark:bg-black/5 border border-slate-200 dark:border-white/5 hover:bg-slate-500/10 transition-all shadow-sm">
+                      <Globe size={14} className="text-indigo-500" />
+                      <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">
+                        {language === 'en' ? 'EN' : language === 'es' ? 'ES' : language === 'zh' ? '中文' : ''}
+                      </span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                      {[
+                        { code: 'en', label: 'English' },
+                        { code: 'es', label: 'Español' },
+                        { code: 'zh', label: '中文' },
+                        
+                      ].map(lang => (
+                        <button 
+                          key={lang.code} 
+                          onClick={() => setLanguage(lang.code)} 
+                          className={`w-full text-left px-4 py-2.5 text-[11px] font-bold hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors ${language === lang.code ? 'text-indigo-600 bg-indigo-50/50 dark:bg-indigo-500/5' : 'text-slate-600 dark:text-slate-300'}`}
+                        >
+                          {lang.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className={`flex-1 w-full overflow-hidden flex flex-col items-center justify-center relative dot-grid ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`} onMouseDown={handlePanStart} onMouseMove={handlePanMove} onMouseUp={handlePanEnd} onMouseLeave={handlePanEnd}>
                 <div style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${graphScale * userZoom})`, transformOrigin: 'center center', width: GW, flexShrink: 0, transition: isPanning ? 'none' : 'transform 0.1s ease-out' }}>
-                  <AgentGraph orchestration={orchestration} graphActive={graphActive} graphReady={graphReady} isDark={isDark} />
+                  <AgentGraph orchestration={orchestration} graphActive={graphActive} graphReady={graphReady} isDark={isDark} t={t} />
                 </div>
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--glass-border)] p-2 rounded-2xl z-40 shadow-2xl transition-all hover:scale-105 active:scale-95">
                   <button onClick={() => adjustZoom(-0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">-</button>
                   <div className="px-4 text-[10px] font-black text-[var(--text-main)] w-16 text-center">{Math.round(userZoom * 100)}%</div>
                   <button onClick={() => adjustZoom(0.1)} className="p-3 hover:bg-white/10 rounded-xl text-[var(--text-muted)] transition-all">+</button>
                   <div className="w-[1px] h-6 bg-[var(--glass-border)] mx-2" />
-                  <button onClick={() => { setUserZoom(1); setPan({ x: 0, y: 0 }); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">Reset</button>
+                  <button onClick={() => { setUserZoom(1); setPan({ x: 0, y: 0 }); }} className="px-4 py-2 hover:bg-indigo-500/10 rounded-xl text-[9px] font-black uppercase text-indigo-500 transition-all">{t.reset}</button>
                 </div>
                 {showMinimap && (
                   <div className="absolute top-8 right-8 w-44 h-52 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-3xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden z-40 pointer-events-none shadow-2xl animate-in zoom-in-95">
                     <div className="absolute inset-0 opacity-40 p-4">
-                      <div className="scale-[0.28] origin-top-left"><AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} /></div>
+                      <div className="scale-[0.28] origin-top-left"><AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} t={t} /></div>
                     </div>
                     <div className="absolute border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.4)]" style={{ left: 20 - (pan.x * 0.28) / (graphScale * userZoom), top: 20 - (pan.y * 0.28) / (graphScale * userZoom), width: 140 / userZoom, height: 160 / userZoom }} />
                   </div>
@@ -880,15 +1029,15 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
               <div className="w-1.5 h-4 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
               {rightWidth > 140 && (
                 <div className="flex flex-col">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white leading-none">Insights</h2>
-                  <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Data Vault 01</span>
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white leading-none">{t.insights}</h2>
+                  <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{t.dataVault}</span>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-4">
               {rightWidth > 180 && (
                 <div className="flex items-center gap-3 bg-slate-500/5 dark:bg-black/5 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5 shadow-inner mr-2 hover:bg-slate-500/10 transition-all">
-                  <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">Flow</span>
+                  <span className="text-[8.5px] font-bold uppercase text-slate-500 tracking-wider">{t.flow}</span>
                   <button onClick={() => setShowOrchestration(!showOrchestration)} className={`w-9 h-4.5 rounded-full relative transition-all duration-300 ring-1 ring-inset ${showOrchestration ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}>
                     <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all duration-300 ${showOrchestration ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                   </button>
@@ -896,7 +1045,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
               )}
               {vaultHistory.length > 0 && rightWidth > 180 && (
                 <button onClick={toggleSelectAll} className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 p-1 px-2 rounded-lg hover:bg-indigo-500/5 transition-all">
-                  {selectedProducts.size > 0 ? 'Reset' : 'Select All'}
+                  {selectedProducts.size > 0 ? t.reset : t.selectAll}
                 </button>
               )}
             </div>
@@ -909,7 +1058,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/search:text-indigo-500 transition-colors" />
                 <input
                   type="text"
-                  placeholder="Filter results..."
+                  placeholder={t.filterResults}
                   value={vaultSearchQuery}
                   onChange={(e) => setVaultSearchQuery(e.target.value)}
                   className="w-full bg-black/10 border border-white/5 rounded-xl py-2 pl-9 pr-3 text-[10px] font-bold text-[var(--text-main)] outline-none focus:border-indigo-500/30 transition-all placeholder-slate-600 shadow-inner"
@@ -922,7 +1071,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
             {vaultHistory.length === 0 && !isBusy && (
               <div className="h-full flex flex-col items-center justify-center text-center opacity-10 py-20">
                 <Database size={38} strokeWidth={1} className="mb-5" />
-                {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking_widest">Awaiting Streams</p>}
+                {rightWidth > 190 && <p className="text-[10px] font-black uppercase tracking_widest">{t.awaitingStreams}</p>}
               </div>
             )}
 
@@ -943,7 +1092,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                           <div className={`w-1 h-3 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)] ${selectedInThisBatch > 0 ? 'bg-indigo-500' : 'bg-slate-400 opacity-50'}`} />
                           {rightWidth > 190 && (
                             <h3 className={`text-[8.5px] font-black uppercase tracking-[0.3em] transition-colors ${selectedInThisBatch > 0 ? 'text-indigo-500' : 'text-[var(--text-muted)]'}`}>
-                              {selectedInThisBatch > 0 ? `${selectedInThisBatch} Products Selected` : 'Products Found'}
+                              {selectedInThisBatch > 0 ? `${selectedInThisBatch} ${t.productsSelected}` : t.productsFound}
                             </h3>
                           )}
                         </div>
@@ -984,7 +1133,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                     <div className="glass-card rounded-[1.25rem] border-white/5 p-4 shadow-xl">
                       <div className="flex items-center gap-3 mb-2.5">
                         <div style={{ width: 4, height: 12, borderRadius: 99, background: accentColor, opacity: 0.5 }} />
-                        <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">Confirmed {isOpp ? 'Opportunity' : 'Account'}</div>
+                        <div className="text-[8.5px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)]">{isOpp ? t.confirmedOpportunity : t.confirmedAccount}</div>
                       </div>
                       <div className="px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl hover:bg-white/[0.06] transition-all">
                         <div className="flex items-center gap-2.5">
@@ -994,7 +1143,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark })
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <div className="text-[11px] font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{sel.name}</div>
-                              <div className="px-1.5 py-0.5 rounded-md bg-white/5 text-[7px] font-black uppercase text-indigo-500">SAVED</div>
+                              <div className="px-1.5 py-0.5 rounded-md bg-white/5 text-[7px] font-black uppercase text-indigo-500">{t.saved}</div>
                             </div>
                             {sel.detail && sel.detail !== '—' && <div className="text-[8.5px] font-black uppercase tracking-[0.12em] opacity-60" style={{ color: accentColor }}>{sel.detail}</div>}
                           </div>
