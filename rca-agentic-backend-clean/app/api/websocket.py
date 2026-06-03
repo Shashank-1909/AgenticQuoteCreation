@@ -359,19 +359,23 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if "\n" in doc_body:
                     doc_body = doc_body.split("\n", 1)[1].strip()
 
-                parsed_reqs = _parse_document_inline(doc_body)
+                parsed_reqs = None
+                # Call Gemini parser first as it handles general discounts and unstructured structures perfectly.
+                logger.info("Calling direct Gemini parser...")
+                try:
+                    from server import parse_requirements_doc
+                    raw_json_str = parse_requirements_doc(doc_body)
+                    parsed_json = json.loads(raw_json_str)
+                    if isinstance(parsed_json, list) and parsed_json:
+                        parsed_reqs = parsed_json
+                        logger.info("Direct Gemini parser succeeded in extracting %d items.", len(parsed_reqs))
+                except Exception as parse_err:
+                    logger.warning("Direct Gemini parser failed: %s", parse_err)
 
+                # Fallback to local regex strategies if Gemini failed or returned nothing
                 if parsed_reqs is None:
-                    logger.info("Regex strategies returned no clean matches — calling direct Gemini parser...")
-                    try:
-                        from server import parse_requirements_doc
-                        raw_json_str = parse_requirements_doc(doc_body)
-                        parsed_json = json.loads(raw_json_str)
-                        if isinstance(parsed_json, list) and parsed_json:
-                            parsed_reqs = parsed_json
-                            logger.info("Direct Gemini parser succeeded in extracting %d items.", len(parsed_reqs))
-                    except Exception as parse_err:
-                        logger.warning("Direct Gemini parser failed: %s", parse_err)
+                    logger.info("Gemini parser failed or returned empty - falling back to regex strategies...")
+                    parsed_reqs = _parse_document_inline(doc_body)
 
                 if parsed_reqs is not None:
                     # Ignore header elements if any got parsed

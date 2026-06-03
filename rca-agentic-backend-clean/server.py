@@ -1918,7 +1918,10 @@ def parse_transcript_to_requirements(transcript_text: str) -> str:
 
     prompt = (
         "Extract all product/service requirements from the following call transcript. "
-        "For each item, identify its name, quantity, and discount (if mentioned)."
+        "For each item, identify its name, quantity, and discount.\n"
+        "If the transcript mentions a general discount rule (for example, '12% discount on all consumables', "
+        "'10% institutional discount has been applied to consumables', or similar), you MUST apply that discount percentage "
+        "to all matching products in the list.\n"
         f"\n\nTranscript:\n{transcript_text}"
     )
 
@@ -1943,7 +1946,9 @@ def parse_requirements_doc(document_content: str) -> str:
 
     prompt = (
         "Extract all product/service requirements from the following document. "
-        "For each item, identify its exact product name, quantity, and discount (if specified).\n"
+        "For each item, identify its exact product name, quantity, and discount.\n"
+        "If the document mentions a general discount rule (for example, 'A 12% institutional discount has been applied to consumables', "
+        "'10% discount on all consumables', or similar), you MUST apply that discount percentage to all matching products in the list.\n"
         "IMPORTANT: Do NOT extract table headers, index columns, serial numbers, or row numbers (such as 'S.No', '1', '2', etc.) as product names. "
         "The product name must be the actual name of the product or service being requested."
         f"\n\nDocument:\n{document_content[:20000]}"
