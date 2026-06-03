@@ -77,26 +77,26 @@ STEP 2 — ACCOUNT SELECTION:
   - NO (no account found):
     Tell the user: "I've loaded your accounts — please select one."
     IMMEDIATELY STOP EXECUTING AND RETURN. Do NOT call any other tools (like opportunity retrieval, pricing, or quote creation) in this turn. Wait for the user to reply with their selection.
-    IMPORTANT FOR SUGGESTIONS: When asking the user to select an account, your `[ACTIONS: ...]` block MUST contain the names of the loaded accounts (e.g. `[ACTIONS: Select [Account 1] | Select [Account 2] | Select [Account 3]]`). Do NOT use generic recommendations here.
+    IMPORTANT FOR SUGGESTIONS: When asking the user to select an account, your `[ACTIONS: ...]` block MUST contain the names of the loaded accounts, limited to at most 3 items to ensure suggestions remain between 2 and 4 (e.g. `[ACTIONS: Select [Account 1] | Select [Account 2] | Select [Account 3]]`). Do NOT use generic recommendations here.
     The user's selection will arrive as: "[Account Name] (ID: 001xxxxxxxxxxxxxxx)"
     Extract the 18-character Account ID (starts with '001') from that message.
-
+ 
 STEP 3 — OPPORTUNITY SELECTION:
   Use the opportunity retrieval tool (described as fetching open opportunities for an account),
   passing the Account ID extracted in Step 2.
-
+ 
   CHECK: Does the user's message or session history explicitly confirm a specific Opportunity ID ('006...') or Opportunity name?
-
+ 
   - YES (opportunity found):
     Find the opportunity whose name/ID exactly matches what the user said.
     Do NOT show the panel. Do NOT wait for user input.
     Confirm silently to the user: "Matched opportunity: [Opportunity Name] (ID: 006...). Proceeding."
     Extract that 18-character Opportunity ID and move to Step 4.
-
+ 
   - NO (no opportunity found):
     Tell the user: "I've loaded the open opportunities — please select one."
     IMMEDIATELY STOP EXECUTING AND RETURN. Do NOT call any other tools (like pricing or quote creation) in this turn. Wait for the user to reply with their selection.
-    IMPORTANT FOR SUGGESTIONS: When asking the user to select an opportunity, your `[ACTIONS: ...]` block MUST contain the names of the loaded opportunities (e.g. `[ACTIONS: Select [Opportunity 1] | Select [Opportunity 2]]`). Do NOT use generic recommendations here.
+    IMPORTANT FOR SUGGESTIONS: When asking the user to select an opportunity, your `[ACTIONS: ...]` block MUST contain the names of the loaded opportunities, limited to at most 3 items to ensure suggestions remain between 2 and 4 (e.g. `[ACTIONS: Select [Opportunity 1] | Select [Opportunity 2] | Select [Opportunity 3]]`). Do NOT use generic recommendations here.
     The user's selection will arrive as: "[Opportunity Name] (ID: 006xxxxxxxxxxxxxxx)"
     Extract the 18-character Opportunity ID (starts with '006') from that message.
 

@@ -444,9 +444,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
       case 'TOOL_TRIGGER':
         if (data.tool === 'get_deal_history') {
-          isDealHistoryRequestRef.current = true;
-          isWinRateRequestRef.current = false;
-          isSummarizeRequestRef.current = false;
+          if (!isWinRateRequestRef.current && !isSummarizeRequestRef.current) {
+            isDealHistoryRequestRef.current = true;
+            isWinRateRequestRef.current = false;
+            isSummarizeRequestRef.current = false;
+          }
           // Trigger get_my_accounts first to represent going to accounts
           setOrchestration(prev => {
             const n = { ...prev };
@@ -577,9 +579,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             }
           }
           if (data.tool === 'get_deal_history') {
-            isDealHistoryRequestRef.current = true;
-            isWinRateRequestRef.current = false;
-            isSummarizeRequestRef.current = false;
+            if (!isWinRateRequestRef.current && !isSummarizeRequestRef.current) {
+              isDealHistoryRequestRef.current = true;
+              isWinRateRequestRef.current = false;
+              isSummarizeRequestRef.current = false;
+            }
             if (parsed.status === 'success' || parsed.quotes) {
               setDealHistoryData(parsed.quotes || []);
               setDealHistoryAccount(parsed.accountName || '');
@@ -804,18 +808,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
     
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
+    // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
     const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
-    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview') && (
-        cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
-    )) {
+    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
       isWinRateRequest = true;
     }
     isWinRateRequestRef.current = isWinRateRequest;
 
-    // A win rate request is a QUOTE win rate request if it explicitly mentions 'quote' or provides an ID/number
+    // A win rate request is a QUOTE win rate request if it mentions 'quote', 'deal', 'probability', 'chance', 'likelihood', 'predict', 'this' or provides an ID/number
     let isQuoteWinRateRequest = isWinRateRequest && (
-      cmd.includes('quote') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
+      cmd.includes('quote') || cmd.includes('deal') || cmd.includes('probability') || cmd.includes('chance') || cmd.includes('likelihood') || cmd.includes('predict') || cmd.includes('this') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
     );
     // Persist quote mode if they are just answering follow-ups
     if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {

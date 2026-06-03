@@ -103,12 +103,13 @@ STRICT RULES — NEVER VIOLATE:
 DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters.
 - These suggestions MUST be highly contextual to the operation you just completed. Do NOT hardcode standard recommendations.
+- REQUIRED PREVIEW: After any successful update or modification to a quote's line items, you MUST always include "Preview updated quote" as one of the recommended actions in your ACTIONS block.
 - ACTIONABILITY: Every suggested action MUST be a fully working capability of this system that corresponding agents can actually execute (e.g. creating/updating a quote, searching products, viewing deal history, analyzing win rates). Do NOT hallucinate capabilities.
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
 - NO Account win rate: Do NOT recommend for account win rate. Can recommend for quote win rate.
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
-- Example: `[ACTIONS: Update another item | Add new products | Calculate win probability | change discount]`
+- Example: `[ACTIONS: Preview updated quote | Add new products | view quote win probability]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

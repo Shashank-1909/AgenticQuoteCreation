@@ -1804,3 +1804,64 @@ Processing request of type CallToolRequest
 [06/03/26 18:03:47] INFO     Processing request of type ListToolsRequest                                  server.py:720
 [06/03/26 18:15:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
 [06/03/26 18:17:43] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 21:47:24] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 21:48:36] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 22:00:45] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'PCR Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%PCR%' AND Name LIKE '%Master%' AND Name LIKE '%Mix%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'PCR Master Mix'
+[DEBUG] _search_product_direct: Querying 'qPCR SYBR Green Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%SYBR%' AND Name LIKE '%Green%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR SYBR Green Master Mix'
+[DEBUG] _search_product_direct: Querying 'NanoDrop Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%NanoDrop%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'NanoDrop Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Culture Media – DMEM' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Culture%' AND Name LIKE '%Media%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'Cell Culture Media – DMEM'
+[DEBUG] _search_product_direct: Querying 'Fetal Bovine Serum' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Fetal%' AND Name LIKE '%Bovine%' AND Name LIKE '%Serum%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Fetal Bovine Serum'
+[DEBUG] Mapping complete — 6 unique products found
+[06/03/26 22:01:29] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:01:43] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:01:57] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:02:12] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'PCR Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%PCR%' AND Name LIKE '%Master%' AND Name LIKE '%Mix%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'PCR Master Mix'
+[DEBUG] _search_product_direct: Querying 'qPCR SYBR Green Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%SYBR%' AND Name LIKE '%Green%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR SYBR Green Master Mix'
+[DEBUG] _search_product_direct: Querying 'NanoDrop Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%NanoDrop%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'NanoDrop Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Culture Media – DMEM' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Culture%' AND Name LIKE '%Media%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'Cell Culture Media – DMEM'
+[DEBUG] _search_product_direct: Querying 'Fetal Bovine Serum' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Fetal%' AND Name LIKE '%Bovine%' AND Name LIKE '%Serum%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Fetal Bovine Serum'
+[DEBUG] Mapping complete — 6 unique products found
+[06/03/26 22:02:45] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:02:59] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:03:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:03:31] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:03:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:04:05] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:04:24] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:05:10] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:30:01] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:30:19] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:31:07] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:31:17] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:31:53] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:32:07] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:32:53] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:36:36] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:36:45] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:37:47] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:38:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:38:33] INFO     Processing request of type CallToolRequest                                   server.py:720
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_8be6726cfb", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/03/26 22:38:48] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:39:39] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:41:29] INFO     Processing request of type ListToolsRequest                                  server.py:720
