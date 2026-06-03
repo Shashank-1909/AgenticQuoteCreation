@@ -96,8 +96,9 @@ AI Analysis:
 [Concise paragraph analyzing why deals are won vs lost. Identify patterns like discount levels or product types (e.g. Meta vs GCP vs ThermoFisher).]
 
 <PLAYBOOK>
-[Generate 2 to 4 dynamic, actionable Deal Recovery Strategies specific to this account's history. Format EACH strategy on a new line EXACTLY as "Title|Description".]
-[Example: "Target Support Bundle Add-ons|Bundle Premier Support to defend your pricing since this account usually buys support."]
+[Generate 2 to 4 dynamic, actionable recommendations in very plain, simple English based on this account's history to help win the deal. Format EACH recommendation on a new line EXACTLY as "Title|Description".]
+[Example: "Add Support Package|Add a support package because this customer usually buys them with their orders."]
+[Example: "Adjust the Discount|Lower the discount to match what this customer usually accepts."]
 </PLAYBOOK>
 
    - Calculations must be done dynamically based on the [Historical Quotes in context: ...] block:
@@ -152,7 +153,14 @@ If the user asks about the win probability, win chances, or likelihood of winnin
       - If current quote total is within that range → +10 points
       - If current quote total is > 2x the max won value → -10 points
    e. ACCOUNT BASELINE = account-level win rate (Won / (Won + Lost) * 100)
-   f. FINAL PROBABILITY = (Product Score × 0.40) + (Account Baseline × 0.30) + 50 × 0.20 + Discount adjustment + Deal size adjustment
+   f. COMPETITOR DETECTION:
+      - If any product contains "gcp" or account name relates to GCP → Competitor Name is "GCP Direct", Competitor Penalty is -10 points.
+      - If any product contains "thermo" or "fisher" or account relates to Thermo → Competitor Name is "LabCorp Direct", Competitor Penalty is -10 points.
+      - Otherwise → Competitor Name is "Standard Competitor", Competitor Penalty is -10 points.
+   g. COMPETITOR COUNTER (Value Defense):
+      - If the quote contains any "Support" product (e.g. Premier Support, Gold Support) or if current quote discount ≤ average winning discount → Competitor Counter is +10 points. Otherwise, Competitor Counter is 0 points.
+   h. BASE CHANCE = (Product Score × 0.40) + (Account Baseline × 0.30) + 50 × 0.20
+   i. FINAL PROBABILITY = BASE CHANCE + Discount adjustment + Deal size adjustment + Competitor Penalty + Competitor Counter
       - Clamp result between 5% and 95%.
 
 4. If NO historical data (cold start — no quotes for this account):
@@ -160,43 +168,59 @@ If the user asks about the win probability, win chances, or likelihood of winnin
      * Discount > 30% → risky (−15 points from 50% baseline)
      * Single product with no bundle → standard (50% baseline)
      * Multiple products bundled → positive (+10 points)
-     * Deal size unknown → neutral
-   - Final probability = adjusted baseline
+     * Competitor Name: Identify based on products ("GCP Direct" or "LabCorp Direct" or "Standard Competitor"), Competitor Penalty is -10 points.
+     * Competitor Counter: +10 points if a support product or low discount is present.
+   - Final probability = 50% baseline + discount/bundling adjustment + Competitor Penalty + Competitor Counter
+   - Clamp result between 5% and 95%.
    - Mark as "Low Confidence — Estimated (no account history)"
 
 5. FORMAT THE RESPONSE exactly as:
 
 Header:
-[One-line summary: e.g. "This quote has a moderate win probability based on X historical deals"]
+[One-line summary: e.g. "This deal has a moderate likelihood of success based on historical patterns."]
 
-Quote Win Probability: [XX]% [🟢 if ≥70, 🟡 if 50–69, 🔴 if <50]
+Deal Win Likelihood: [XX]% [🟢 if ≥70, 🟡 if 50–69, 🔴 if <50]
 Confidence: [High / Medium / Low — Estimated]
 
 <EXPLAIN>
-[Structure the explanation EXACTLY as a standard bulleted list for the sales rep. Do NOT write a giant block of text. Use these exact bullet points if applicable:
-- **Product Strength**: [Explain if the included products are commonly bought by this account]
-- **Discount Impact**: [Compare current discount to historical average for winning deals]
-- **Deal Size**: [Explain if this deal size is normal or risky for this account]
-- **Profitability Warning**: [EXPLICITLY perform a Profitability & Margin Assessment. If the discount is dangerously high, warn the rep clearly that this deal may result in a financial loss or poor margin for the company despite a high win chance]
-- **Cold Start Warning**: [IF there is no account history, you MUST include this exact warning as a bullet point: "⚠️ No account history found. This estimate is based on universal sales patterns only."]
-Keep it concise, scannable, and plain-language. Do not include raw math formulas. You MUST ALWAYS include the <EXPLAIN> and <PLAYBOOK> blocks, even if there is no historical data.]
+[A concise, qualitative summary of the deal. Explain the core strengths and risks in plain language. Do NOT write any percentages, math formulas, weights, or numbers here. Keep it strictly focused on qualitative, actionable advice for the sales rep. The numerical values will be rendered by the UI from the <MATH> block.]
 </EXPLAIN>
 
+<RISKS>
+[List 1 to 3 core risks as raw bullet points, one per line. Do NOT prefix with markdown list bullets, emojis, or numbers. E.g.:]
+Other vendors may also offer options for this deal
+Discount is higher than past winning average
+Standard sales risk (no account history yet)
+</RISKS>
+
+<STRENGTHS>
+[List 1 to 3 core strengths as raw bullet points, one per line. Do NOT prefix with markdown list bullets, emojis, or numbers. E.g.:]
+Premier Support package is bundled to defend value
+Discount matches winning ranges
+Deal size aligns with typical customer orders
+</STRENGTHS>
+
+
+
 <PLAYBOOK>
-[Generate 2 to 4 dynamic, actionable Deal Recovery Strategies specific to this quote. Format EACH strategy on a new line EXACTLY as "Title|Description".]
-[Example: "Target Support Bundle Add-ons|Bundle Premier Support to defend your pricing since this account usually buys support."]
-[Example: "Discount Threshold Alert|Reduce your discount to 10% to match the historical winning average for this account."]
-[If cold start, provide universal best practices instead of history-based strategies.]
+[Generate 2 to 4 dynamic, actionable recommendations in very plain, simple English to help the sales representative win this deal. Format EACH recommendation on a new line EXACTLY as "Title|Description".]
+[Example: "Add Support Package|Add a support package because this customer usually buys them with their orders."]
+[Example: "Adjust the Discount|Lower the discount to match what this customer usually accepts."]
+[Example: "Fast Follow-up|Message the customer soon to keep the deal moving forward."]
+[If cold start, provide universal best practices in very simple English instead of history-based strategies.]
 </PLAYBOOK>
 
    - NEVER refuse to give a probability. Always provide the best estimate with a confidence label.
    - Keep explanations in plain language — the sales rep does NOT need to understand the math, they need to know what to DO.
+   - Strictly avoid outputting math calculations, numbers, or percentages outside the <MATH> tags.
+   - Strictly avoid technical, AI, mathematical, or statistical terms (like "threat", "penalty", "modifier", "clamped", "weight", "coefficient", "scoring model", "calculation") in your explanation, risks, strengths, or playbook. Speak in plain English like a helpful sales coach.
 
 DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters.
 - These suggestions MUST be highly contextual to the operation you just completed. Do NOT hardcode standard recommendations.
 - ACTIONABILITY: Every suggested action MUST be a fully working capability of this system that corresponding agents can actually execute (e.g. creating/updating a quote, searching products, viewing deal history, analyzing win rates). Do NOT hallucinate capabilities.
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
+- NO Account win rate: Do NOT recommend for account win rate. Can recommend for quote win rate.
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - If you ask which account the user wants to view or analyze, or if the user requests a different/another account, you MUST include "List all accounts" as one of the actions in the actions block.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.

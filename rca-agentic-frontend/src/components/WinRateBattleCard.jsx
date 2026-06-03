@@ -9,8 +9,150 @@ function formatCurrency(val) {
 }
 
 // ── Explainability Accordion ─────────────────────────────────────────────────
-function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation }) {
+function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages, previewData, selectedProducts }) {
   const [open, setOpen] = useState(false);
+
+  const getContributionFactors = () => {
+    const parseVal = (str) => {
+      if (!str) return 0;
+      const match = str.match(/[-+]?\d+/);
+      return match ? parseInt(match[0], 10) : 0;
+    };
+
+    const finalProb = isQuoteMode && parsedMath ? parseVal(parsedMath["Final Probability"]) : (winRate || 73);
+    const baseChance = isQuoteMode && parsedMath ? parseVal(parsedMath["Base Chance"]) : 68;
+    const discountMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Discount Modifier"]) : 5;
+    const dealSizeMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Deal Size Modifier"]) : 10;
+    const competitorPenalty = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Penalty"]) : -7;
+    const competitorCounter = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Counter"]) : 10;
+
+    // Extract successfully purchased products from history
+    const wonProductNames = new Set();
+    wonQuotes.forEach(q => {
+      (q.lineItems || []).forEach(li => {
+        if (li.name) wonProductNames.add(li.name.trim().toLowerCase());
+      });
+    });
+
+    // Extract current products
+    let currentProductNames = [];
+
+    // 1. First try: Get products from previewData (the active quote)
+    if (previewData && previewData.records && previewData.records[0] && previewData.records[0].QuoteLineItems) {
+      previewData.records[0].QuoteLineItems.forEach(li => {
+        if (li.Product2 && li.Product2.Name) {
+          currentProductNames.push(li.Product2.Name.trim().toLowerCase());
+        }
+      });
+    }
+
+    // 2. Second try: Get products from selectedProducts (currently configured items)
+    if (currentProductNames.length === 0 && selectedProducts && selectedProducts.size > 0 && messages) {
+      const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
+      const allProds = productMessages.flatMap(m => m.data || []);
+      selectedProducts.forEach(id => {
+        const prod = allProds.find(p => p.id === id);
+        if (prod && prod.name) {
+          currentProductNames.push(prod.name.trim().toLowerCase());
+        }
+      });
+    }
+
+    // 3. Fallback: Parse assistant messages
+    if (currentProductNames.length === 0 && messages && messages.length > 0) {
+      const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
+      const lines = lastAssistantMsg.split('\n');
+      lines.forEach(line => {
+        const match = line.match(/^\s*[-•*]\s*([^:-|]+)/);
+        if (match) {
+          const name = match[1].trim();
+          if (name && name.length > 3 && !['deal', 'win', 'confidence', 'starting', 'final', 'why', 'these', 'factor', 'strong', 'healthy', 'products', 'opportunity', 'competitor', 'discount', 'base', 'chance', 'playbook', 'recommend', 'target', 'highlight', 'avoid', 'reduce'].some(word => name.toLowerCase().includes(word))) {
+            const lower = name.toLowerCase();
+            if (lower.includes('cloud') || lower.includes('support') || lower.includes('license') || lower.includes('infrastructure') || lower.includes('service') || lower.includes('gcp') || lower.includes('labcorp') || lower.includes('direct') || lower.includes('platform')) {
+              currentProductNames.push(lower);
+            }
+          }
+        }
+      });
+    }
+
+    const totalProds = currentProductNames.length;
+    const newProdsList = currentProductNames.filter(p => {
+      return ![...wonProductNames].some(wonP => p.includes(wonP) || wonP.includes(p));
+    });
+    const newProdsCount = newProdsList.length;
+
+    let productsNewName = "Products Are New For This Customer";
+    let productsNewExplanation = "New products introduce uncertainty";
+    let productsNewContrib = competitorPenalty !== 0 ? competitorPenalty : -7;
+
+    if (totalProds > 0) {
+      if (newProdsCount === 0) {
+        productsNewName = "Products Are Familiar to Customer";
+        productsNewExplanation = "All selected products match previous successful orders";
+        productsNewContrib = 0;
+      } else if (newProdsCount < totalProds) {
+        productsNewName = "Some Products Are New to Customer";
+        productsNewExplanation = `${newProdsCount} of ${totalProds} products have not been purchased before`;
+        const basePenalty = competitorPenalty !== 0 ? competitorPenalty : -10;
+        productsNewContrib = Math.round(basePenalty * (newProdsCount / totalProds));
+      } else {
+        productsNewName = "Products Are New For This Customer";
+        productsNewExplanation = "New products introduce uncertainty";
+        productsNewContrib = competitorPenalty !== 0 ? competitorPenalty : -10;
+      }
+    }
+
+    const startingScore = 40;
+    const discountContrib = discountMod;
+    const dealSizeContrib = dealSizeMod;
+    const proposalStageContrib = competitorCounter !== 0 ? competitorCounter : 10;
+
+    const baseSum = discountContrib + dealSizeContrib + productsNewContrib + proposalStageContrib;
+    const accountHistoryContrib = finalProb - startingScore - baseSum;
+
+    const factors = [
+      {
+        name: accountHistoryContrib >= 0 ? "Strong Account History" : "Limited Account History",
+        explanation: accountHistoryContrib >= 0 
+          ? "Account has a strong success record"
+          : "Limited previous successful purchases introduces some uncertainty",
+        contrib: accountHistoryContrib,
+      },
+      {
+        name: dealSizeContrib >= 0 ? "Deal Size Matches Previous Wins" : "Unusual Deal Size for Account",
+        explanation: dealSizeContrib >= 0
+          ? "Quote value aligns with successful deals"
+          : "The total quote value is outside typical successful ranges",
+        contrib: dealSizeContrib,
+      },
+      {
+        name: discountContrib >= 0 ? "Healthy Pricing" : "Aggressive Discounting",
+        explanation: discountContrib >= 0
+          ? "Discount is within successful range"
+          : "The applied discount level is higher than typical successful deals",
+        contrib: discountContrib,
+      },
+      {
+        name: productsNewName,
+        explanation: productsNewExplanation,
+        contrib: productsNewContrib,
+      },
+      {
+        name: "Opportunity Is In Proposal Stage",
+        explanation: "Customer engagement is active",
+        contrib: proposalStageContrib,
+      }
+    ];
+
+    return {
+      startingScore,
+      factors,
+      finalProb,
+    };
+  };
+
+  const { startingScore, factors, finalProb } = getContributionFactors();
 
   const confidence =
     totalResolved >= 10 ? { label: 'High Confidence', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' } :
@@ -30,8 +172,12 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
             <FlaskConical size={14} />
           </div>
           <div className="text-left">
-            <span className="text-xs font-black text-slate-700 uppercase tracking-widest">How is this Win Rate Calculated?</span>
-            <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Click to understand the methodology behind these numbers</span>
+            <span className="text-xs font-black text-slate-700 uppercase tracking-wide">
+              {isQuoteMode ? `Why This Quote Received ${finalProb}%` : 'How is this Win Rate Calculated?'}
+            </span>
+            <span className="block text-[10px] text-slate-400 font-medium mt-0.5">
+              {isQuoteMode ? "These are the key factors that influenced the win likelihood score." : "Click to understand the methodology behind these numbers"}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -47,39 +193,82 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       </button>
 
       {/* Accordion Body — revealed on click */}
-      <div className={`transition-all duration-300 ease-in-out ${open ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
-        <div className="px-5 pb-5 space-y-4 border-t border-slate-100">
+      <div className={`transition-all duration-300 ease-in-out ${open ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+        <div className="px-5 pb-5 space-y-5 border-t border-slate-100">
 
-          {/* Data Source */}
-          <div className="pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Hash size={12} className="text-indigo-500" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Source</span>
-            </div>
-            <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-              This analysis is based on <span className="font-black text-slate-800">{quotes.length} historical quote{quotes.length !== 1 ? 's' : ''}</span> retrieved directly from Salesforce for <span className="font-black text-slate-800">{accountName}</span>.
-              Of these, <span className="font-black text-emerald-600">{wonQuotes.length} are classified as Won</span>, <span className="font-black text-rose-600">{lostQuotes.length} as Lost</span>, and <span className="font-black text-indigo-600">{activeQuotes.length} are still Active or Draft</span> (excluded from the win rate calculation).
-            </p>
-          </div>
+          {isQuoteMode ? (
+            <div className="pt-4 space-y-5">
+              {/* AI Coach Summary Card */}
+              <div className="bg-gradient-to-br from-indigo-50/40 to-slate-50/40 border border-indigo-100 rounded-2xl p-5 shadow-sm">
+                <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 block mb-2">AI Sales Coach Summary</span>
+                <p className="text-[12px] text-slate-700 leading-relaxed font-semibold">
+                  {quoteExplanation || (() => {
+                    const f0 = factors[0];
+                    const f1 = factors[1];
+                    const f2 = factors[2];
+                    const f3 = factors[3];
+                    const f4 = factors[4];
+                    const f0Sign = f0.contrib >= 0 ? '+' : '';
+                    const f1Sign = f1.contrib >= 0 ? '+' : '';
+                    const f2Sign = f2.contrib >= 0 ? '+' : '';
+                    const f3Sign = f3.contrib >= 0 ? '+' : '';
+                    const f4Sign = f4.contrib >= 0 ? '+' : '';
+                    return `This quote has a win chance of ${finalProb}%. What helps the deal: ${f0.name.toLowerCase()} (${f0Sign}${f0.contrib}%), ${f1.name.toLowerCase()} (${f1Sign}${f1.contrib}%), and ${f2.name.toLowerCase()} (${f2Sign}${f2.contrib}%). The ${f4.name.toLowerCase()} adds ${f4Sign}${f4.contrib}%. Also, ${f3.name.toLowerCase()} (${f3Sign}${f3.contrib}%) introduces some uncertainty.`;
+                  })()}
+                </p>
+              </div>
 
-          {/* Formula */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <BarChart2 size={12} className="text-indigo-500" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">The Formula</span>
+              {/* Score Summary Box */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-inner">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b pb-2 border-slate-200">
+                  Score Summary
+                </h4>
+                <div className="space-y-2.5 text-[11px] font-medium text-slate-600">
+                  <div className="flex justify-between items-center text-slate-500 font-bold">
+                    <span>Starting Score</span>
+                    <span>{startingScore}%</span>
+                  </div>
+                  
+                  {factors.map((factor, idx) => {
+                    const isPositive = factor.contrib >= 0;
+                    return (
+                      <div key={idx} className="flex justify-between items-center">
+                        <span className="text-slate-600">{factor.name}</span>
+                        <span className={isPositive ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
+                          {isPositive ? `+${factor.contrib}%` : `${factor.contrib}%`}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  <div className="flex justify-between items-center border-t border-slate-200 pt-3 mt-2 font-black">
+                    <span className="text-xs text-slate-800 uppercase tracking-wider">Final Win Likelihood</span>
+                    <span className="text-sm text-indigo-600">{finalProb}%</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 space-y-2">
-              {isQuoteMode ? (
-                <>
-                  <p className="text-[11px] text-indigo-700 font-medium">
-                    <span className="font-bold">Quote Win Probability</span> is dynamically calculated based on this quote's specific parameters.
-                  </p>
-                  <p className="text-[11px] text-indigo-600 whitespace-pre-line mt-2">
-                    {quoteExplanation || "Analyzing predictive modifiers for this quote..."}
-                  </p>
-                </>
-              ) : (
-                <>
+          ) : (
+            <>
+              {/* Data Source */}
+              <div className="pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Hash size={12} className="text-indigo-500" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Source</span>
+                </div>
+                <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                  This analysis is based on <span className="font-black text-slate-800">{quotes.length} historical quote{quotes.length !== 1 ? 's' : ''}</span> retrieved directly from Salesforce for <span className="font-black text-slate-800">{accountName}</span>.
+                  Of these, <span className="font-black text-emerald-600">{wonQuotes.length} are classified as Won</span>, <span className="font-black text-rose-600">{lostQuotes.length} as Lost</span>, and <span className="font-black text-indigo-600">{activeQuotes.length} are still Active or Draft</span> (excluded from the win rate calculation).
+                </p>
+              </div>
+
+              {/* Formula */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart2 size={12} className="text-indigo-500" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">The Formula</span>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 space-y-2">
                   <p className="text-[11px] text-indigo-700 font-mono font-bold">
                     Win Rate = Won Quotes ÷ (Won + Lost Quotes) × 100
                   </p>
@@ -89,26 +278,21 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                   <p className="text-[10px] text-indigo-500 mt-1">
                     Active and Draft quotes are intentionally excluded — they haven't been resolved yet, so including them would distort the result.
                   </p>
-                </>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
 
-          {/* Status Definitions */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={12} className="text-indigo-500" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How Statuses Are Classified</span>
-            </div>
-            <div className="text-[11px] text-slate-700 space-y-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-              <p><strong className="text-slate-900 font-black tracking-wide">WON:</strong>  Accepted — these represent positive deal outcomes where the customer agreed.</p>
-              <p><strong className="text-slate-900 font-black tracking-wide">LOST:</strong>  Rejected — these represent deals that didn't close, were declined, or timed out.</p>
-            </div>
-          </div>
+              {/* Status Definitions */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen size={12} className="text-indigo-500" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How Statuses Are Classified</span>
+                </div>
+                <div className="text-[11px] text-slate-700 space-y-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                  <p><strong className="text-slate-900 font-black tracking-wide">WON:</strong>  Accepted — these represent positive deal outcomes where the customer agreed.</p>
+                  <p><strong className="text-slate-900 font-black tracking-wide">LOST:</strong>  Rejected — these represent deals that didn't close, were declined, or timed out.</p>
+                </div>
+              </div>
 
-          {/* Standard Account explanations (hidden in Quote Mode) */}
-          {!isQuoteMode && (
-            <>
               {/* Key Win Driver explanation */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -162,7 +346,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function WinRateBattleCard({ data, accountName, isLoading, isQuoteMode, messages }) {
+export default function WinRateBattleCard({ data, accountName, isLoading, isQuoteMode, messages, previewData, selectedProducts }) {
   const [historyTab, setHistoryTab] = useState('accepted');
 
   if (isLoading) {
@@ -224,6 +408,9 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
   let parsedQuoteWinRate = null;
   let isQuoteReady = false;
   let parsedQuoteExplanation = null;
+  let parsedMath = null;
+  let parsedRisks = [];
+  let parsedStrengths = [];
   let dynamicPlaybook = [];
 
   if (messages && messages.length > 0) {
@@ -245,7 +432,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
 
       // Quote mode specific parsing
       if (isQuoteMode) {
-        const match = lastContent.match(/Quote Win Probability:\s*([\d.]+)%/i);
+        const match = lastContent.match(/(?:Deal Win Likelihood|Quote Win Probability):\s*([\d.]+)%/i);
         if (match) {
           parsedQuoteWinRate = parseFloat(match[1]);
           isQuoteReady = true;
@@ -253,6 +440,30 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         const explainMatch = lastContent.match(/<EXPLAIN>([\s\S]*?)<\/EXPLAIN>/i);
         if (explainMatch) {
           parsedQuoteExplanation = explainMatch[1].trim();
+        }
+        
+        const mathMatch = lastContent.match(/<MATH>([\s\S]*?)<\/MATH>/i);
+        if (mathMatch) {
+          parsedMath = {};
+          const mathLines = mathMatch[1].trim().split('\n');
+          mathLines.forEach(line => {
+            const index = line.indexOf(':');
+            if (index !== -1) {
+              const key = line.slice(0, index).trim();
+              const val = line.slice(index + 1).trim();
+              parsedMath[key] = val;
+            }
+          });
+        }
+
+        const risksMatch = lastContent.match(/<RISKS>([\s\S]*?)<\/RISKS>/i);
+        if (risksMatch) {
+          parsedRisks = risksMatch[1].trim().split('\n').map(line => line.replace(/^[•\s*-\s*✔️✅⚠️]+/, '').trim()).filter(Boolean);
+        }
+
+        const strengthsMatch = lastContent.match(/<STRENGTHS>([\s\S]*?)<\/STRENGTHS>/i);
+        if (strengthsMatch) {
+          parsedStrengths = strengthsMatch[1].trim().split('\n').map(line => line.replace(/^[•\s*-\s*✔️✅⚠️]+/, '').trim()).filter(Boolean);
         }
       }
     }
@@ -265,34 +476,34 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
   const competitiveIntelMap = {
     'GCP': [
       {
-        title: 'Competitor Threat: GCP Direct',
-        description: `${accountName || 'This account'} often uses GCP Direct to try and get a lower price. Talk about our built-in Salesforce features and 24/7 support instead of arguing about price.`,
+        title: 'Market Competition: GCP',
+        description: `${accountName || 'This account'} often considers GCP alternatives. Focus on our native integration features and premium 24/7 support instead of competing on price.`,
         color: 'rose'
       }
     ],
     'META': [
       {
         title: 'Preferred Category: META Systems',
-        description: `Customers are usually happier when buying META products. These deals also close much faster (9 days instead of 24 days).`,
+        description: `Customers show high engagement with META products. These deals also move through the cycle faster (9 days instead of 24 days).`,
         color: 'indigo'
       }
     ],
     'ThermoFisher': [
       {
-        title: 'Competitor Threat: LabCorp Direct',
-        description: `They usually ask LabCorp for a backup price. Remind them that ThermoFisher connects much better with their existing Salesforce setup.`,
+        title: 'Market Competition: LabCorp',
+        description: `Customers in this sector frequently request alternative options. Emphasize how our solutions seamlessly integrate with their existing Salesforce setup.`,
         color: 'rose'
       },
       {
         title: 'High Retention Rate',
-        description: `95% of customers renew ThermoFisher products. Focus on how much money they will save over 3 years, rather than giving a big discount today.`,
+        description: `95% of customers renew ThermoFisher products. Emphasize the long-term value and multi-year savings rather than short-term discounting.`,
         color: 'indigo'
       }
     ],
     'default': [
       {
-        title: 'Competitor Threat: Aggressive Discounter',
-        description: `Expect them to ask for a price match against cheaper options. Keep your price firm by reminding them how fast we can set everything up and how good our support is.`,
+        title: 'Market Competition: Standard',
+        description: `Expect standard price comparison inquiries in the market. Highlight our fast deployment timeline and comprehensive customer support to justify the value.`,
         color: 'rose'
       }
     ]
@@ -333,7 +544,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         {/* Dynamic Win Rate Circle Gauge */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center justify-center">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-1.5 self-start">
-            <Target size={12} className="text-indigo-500" /> {isQuoteMode ? 'Quote Win Probability' : 'Account Win Rate'}
+            <Target size={12} className="text-indigo-500" /> {isQuoteMode ? 'Deal Win Likelihood' : 'Account Win Rate'}
           </h3>
           <div className="relative w-32 h-32 flex items-center justify-center mb-2">
             {isCalculatingQuote ? (
@@ -358,7 +569,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
                 </svg>
                 <div className="absolute text-center">
                   <span className="text-3xl font-black text-slate-800 leading-none">{displayWinRate}%</span>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase mt-0.5">{isQuoteMode ? 'Quote Win' : 'Win Rate'}</span>
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase mt-0.5">{isQuoteMode ? 'Win Likelihood' : 'Win Rate'}</span>
                 </div>
               </>
             )}
@@ -427,6 +638,13 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         accountName={accountName}
         isQuoteMode={isQuoteMode}
         quoteExplanation={parsedQuoteExplanation}
+        parsedMath={parsedMath}
+        parsedRisks={parsedRisks}
+        parsedStrengths={parsedStrengths}
+        dynamicPlaybook={dynamicPlaybook}
+        messages={messages}
+        previewData={previewData}
+        selectedProducts={selectedProducts}
       />
 
       {isQuoteMode && (
@@ -446,7 +664,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         {/* Playbook advice */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
-            <Sparkles size={14} className="text-indigo-500 animate-pulse" /> Deal Win Playbook
+            <Sparkles size={14} className="text-indigo-500 animate-pulse" /> Deal Buddy AI
           </h3>
           <div className="space-y-4">
             {dynamicPlaybook.length > 0 ? (
@@ -470,9 +688,9 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
                     <CheckCircle2 size={16} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-slate-800">Target Support Bundle Add-ons</h4>
+                    <h4 className="text-xs font-black text-slate-800">Add Support Package</h4>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                      Historically, 85% of successful deals on this account included high-tier support services. Bundle Premier Support to defend price.
+                      Add a support package because this customer usually buys them with their orders.
                     </p>
                   </div>
                 </div>
@@ -482,9 +700,9 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
                     <Percent size={16} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-slate-800">Discount Threshold Alert</h4>
+                    <h4 className="text-xs font-black text-slate-800">Adjust the Discount</h4>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                      Wins average a {avgDiscountOnWins}% discount. Quotes exceeding {Math.max(20, avgDiscountOnWins + 5)}% discount show a 60% higher chance of rejection or manager review block.
+                      Lower the discount to match what this customer usually accepts.
                     </p>
                   </div>
                 </div>
@@ -493,23 +711,74 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
           </div>
         </div>
 
-        {/* Competitive Positioning */}
+        {/* Deal Intelligence */}
         {isQuoteMode && (
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
-              <ShieldAlert size={14} className="text-rose-500" /> Competitive Intel
+              <ShieldAlert size={14} className="text-indigo-500" /> Deal Intelligence
             </h3>
             <div className="space-y-4">
-              {currentIntel.map((intel, idx) => (
-                <div key={idx} className={`p-4 bg-${intel.color}-50/50 rounded-2xl border border-${intel.color}-100`}>
-                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-2">
-                    <span className={`w-1.5 h-1.5 rounded-full bg-${intel.color}-500`} /> {intel.title}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    {intel.description}
-                  </p>
+              {/* Risks */}
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-rose-500 block mb-2">Biggest Risks</span>
+                <div className="space-y-2">
+                  {parsedRisks.length > 0 ? (
+                    parsedRisks.map((risk, idx) => {
+                      let cleanRisk = risk
+                        .replace(/[-+]\d+%/g, '')
+                        .replace(/\(?-?\d+\s*(?:points|%)\)?/g, '')
+                        .trim();
+
+                      const lowerRisk = cleanRisk.toLowerCase();
+                      if (lowerRisk.includes('competitor') || lowerRisk.includes('competition') || lowerRisk.includes('threat')) {
+                        if (lowerRisk.includes('gcp')) {
+                          cleanRisk = "Other vendors like GCP are also being considered";
+                        } else if (lowerRisk.includes('labcorp')) {
+                          cleanRisk = "Other vendors like LabCorp are also being considered";
+                        } else if (lowerRisk.includes('discounter') || lowerRisk.includes('aggressive')) {
+                          cleanRisk = "Other options are available to the customer in this segment";
+                        } else {
+                          cleanRisk = "Other vendors are also offering options for this deal";
+                        }
+                      } else if (lowerRisk.includes('discounter') || (lowerRisk.includes('discount') && lowerRisk.includes('aggressive'))) {
+                        cleanRisk = "The applied discount is higher than typical successful deals";
+                      }
+
+                      return (
+                        <div key={idx} className="flex items-start gap-2 bg-rose-50/50 border border-rose-100 rounded-xl p-3 text-[11px] text-slate-700">
+                          <span className="text-rose-500">⚠️</span>
+                          <span className="font-bold">{cleanRisk}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex items-start gap-2 bg-rose-50/50 border border-rose-100 rounded-xl p-3 text-[11px] text-slate-700">
+                      <span className="text-rose-500">⚠️</span>
+                      <span className="font-bold">Standard market competition adjustments apply</span>
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              {/* Strengths */}
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 block mb-2">Biggest Strengths</span>
+                <div className="space-y-2">
+                  {parsedStrengths.length > 0 ? (
+                    parsedStrengths.map((strength, idx) => (
+                      <div key={idx} className="flex items-start gap-2 bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-[11px] text-slate-700">
+                        <span className="text-emerald-500">✔️</span>
+                        <span className="font-bold">{strength}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-start gap-2 bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-[11px] text-slate-700">
+                      <span className="text-emerald-500">✔️</span>
+                      <span className="font-bold">Healthy discount and deal size metrics</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

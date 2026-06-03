@@ -1389,6 +1389,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                     isLoading={dealHistoryLoading}
                     isQuoteMode={isQuoteWinRateRequestRef.current}
                     messages={messages}
+                    previewData={previewData}
+                    selectedProducts={selectedProducts}
                   />
                 ) : (
                   <DealHistoryPanel
@@ -1570,7 +1572,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               ) : (
                 <>
                   <div className="af-bubble">
-                    {msg.content.replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '').replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '').trim()}
+                    {msg.content
+                      .replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '')
+                      .replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '')
+                      .replace(/<RISKS>[\s\S]*?<\/RISKS>/gi, '')
+                      .replace(/<STRENGTHS>[\s\S]*?<\/STRENGTHS>/gi, '')
+                      .replace(/<MATH>[\s\S]*?<\/MATH>/gi, '')
+                      .replace(/^Header:\s*/i, '')
+                      .trim()}
                   </div>
                 </>
               )}

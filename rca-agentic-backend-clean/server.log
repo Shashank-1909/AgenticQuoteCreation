@@ -1747,3 +1747,60 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Fallback Querying 'Vertex Aii' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Vertex%' OR Name LIKE '%Aii%') AND IsActive = true LIMIT 500
 [DEBUG] _search_product_direct: Found 5 matches for 'Vertex Aii'
 [DEBUG] Mapping complete — 5 unique products found
+[06/03/26 17:58:53] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
+[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 9 unique products found
+[06/03/26 17:59:28] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 17:59:39] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 17:59:48] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 17:59:59] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
+[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 9 unique products found
+[06/03/26 18:00:48] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 18:00:57] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 18:01:38] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 18:01:48] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 18:02:44] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 18:02:56] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 18:03:19] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 18:03:47] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 18:15:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 18:17:43] INFO     Processing request of type ListToolsRequest                                  server.py:720
