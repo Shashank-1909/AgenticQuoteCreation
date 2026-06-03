@@ -1943,7 +1943,9 @@ def parse_requirements_doc(document_content: str) -> str:
 
     prompt = (
         "Extract all product/service requirements from the following document. "
-        "For each item, identify its exact product name, quantity, and discount (if specified)."
+        "For each item, identify its exact product name, quantity, and discount (if specified).\n"
+        "IMPORTANT: Do NOT extract table headers, index columns, serial numbers, or row numbers (such as 'S.No', '1', '2', etc.) as product names. "
+        "The product name must be the actual name of the product or service being requested."
         f"\n\nDocument:\n{document_content[:20000]}"
     )
 
@@ -2064,6 +2066,91 @@ def map_requirements_to_catalog(requirements: list) -> str:
     return _map_requirements_to_catalog(requirements)
 
 
+def _is_valid_product_name(name: str) -> bool:
+    name_clean = name.strip()
+    if not name_clean:
+        return False
+    
+    # Check if name is purely numeric or only symbols/digits/dashes/periods
+    if re.match(r"^[\d\s\-\.\*•#]+$", name_clean):
+        return False
+        
+    name_lower = name_clean.lower()
+    
+    # Common table index/header columns
+    ignored_patterns = {
+        "s.no", "sno", "s no", "serial no", "serial number", 
+        "sr.no", "sr no", "index", "no.", "s. no.", "s.no."
+    }
+    if name_lower in ignored_patterns:
+        return False
+        
+    # If the name is extremely short (e.g. less than 2 characters) and is not a letter/digit combination
+    if len(name_clean) < 2:
+        return False
+        
+    return True
+
+
+def _get_similarity_score(str1: str, str2: str) -> float:
+    # Character bigrams
+    def get_bigrams(s):
+        s = re.sub(r'[^a-z0-9]', '', s.lower())
+        return set(s[i:i+2] for i in range(len(s)-1))
+        
+    s1_bi = get_bigrams(str1)
+    s2_bi = get_bigrams(str2)
+    
+    if not s1_bi or not s2_bi:
+        return 0.0
+        
+    intersection = len(s1_bi.intersection(s2_bi))
+    union = len(s1_bi.union(s2_bi))
+    bigram_score = intersection / union if union > 0 else 0.0
+    
+    # Token overlap
+    def get_tokens(s):
+        return set(w for w in re.split(r'[^a-zA-Z0-9]', s.lower()) if len(w) > 1)
+        
+    s1_tok = get_tokens(str1)
+    s2_tok = get_tokens(str2)
+    
+    stopwords = {
+        "the", "and", "for", "with", "this", "that", "you", "your", "from", 
+        "includes", "quotation", "presented", "based", "client", "laboratory", 
+        "requirements", "discussion", "representative", "sales", "meeting", "minutes"
+    }
+    s1_tok_clean = s1_tok - stopwords
+    s2_tok_clean = s2_tok - stopwords
+    
+    if not s1_tok_clean:
+        s1_tok_clean = s1_tok
+    if not s2_tok_clean:
+        s2_tok_clean = s2_tok
+        
+    if not s1_tok_clean or not s2_tok_clean:
+        token_score = 0.0
+    else:
+        # Overlap score: size of intersection of tokens divided by size of str1 tokens
+        matched_tokens = 0
+        for t1 in s1_tok_clean:
+            matched = False
+            for t2 in s2_tok_clean:
+                if t1 == t2 or (len(t1) > 3 and t1 in t2) or (len(t2) > 3 and t2 in t1):
+                    matched = True
+                    break
+            if matched:
+                matched_tokens += 1
+        token_score = matched_tokens / len(s1_tok_clean)
+        
+    # Standard SequenceMatcher ratio
+    import difflib
+    seq_score = difflib.SequenceMatcher(None, str1.lower(), str2.lower()).ratio()
+    
+    # Combined score weights
+    return 0.5 * token_score + 0.3 * bigram_score + 0.2 * seq_score
+
+
 def _map_requirements_to_catalog(requirements: list) -> str:
     """
     Internal implementation — shared by parse_requirements_doc, parse_transcript_to_requirements,
@@ -2075,11 +2162,11 @@ def _map_requirements_to_catalog(requirements: list) -> str:
     for r in requirements:
         if isinstance(r, dict) and r.get("product_name", "").strip():
             name = r.get("product_name", "").strip()
-            if name.lower() not in ignored_names:
+            if name.lower() not in ignored_names and _is_valid_product_name(name):
                 valid_reqs.append(r)
         elif isinstance(r, str) and r.strip():
             name = r.strip()
-            if name.lower() not in ignored_names:
+            if name.lower() not in ignored_names and _is_valid_product_name(name):
                 valid_reqs.append({"product_name": name})
     
     requirements = valid_reqs[:12]
@@ -2106,51 +2193,27 @@ def _map_requirements_to_catalog(requirements: list) -> str:
         scored_products = []
         for p in products_found:
             p_name = p.get("name", "").strip()
-            
-            # Exact lowercase match
-            if p_name.lower() == req_name.lower():
-                score = 1.0
-            else:
-                import difflib
-                req_words = req_name.lower().split()
-                p_words = p_name.lower().split()
-                
-                # Token-level fuzzy match (resolves length-mismatched typos like 'Qest 3' vs 'Meta Quest 3')
-                word_scores = []
-                for rw in req_words:
-                    best_word_score = 0
-                    for pw in p_words:
-                        if rw in pw or pw in rw:
-                            best_word_score = max(best_word_score, min(len(rw), len(pw)) / max(len(rw), len(pw)))
-                        else:
-                            best_word_score = max(best_word_score, difflib.SequenceMatcher(None, rw, pw).ratio())
-                    word_scores.append(best_word_score)
-                
-                token_score = sum(word_scores) / len(req_words) if req_words else 0
-                fuzzy_score = difflib.SequenceMatcher(None, req_name.lower(), p_name.lower()).ratio()
-                
-                # Take the highest of the full string match vs the token average
-                score = max(token_score, fuzzy_score)
-                
+            score = _get_similarity_score(req_name, p_name)
             scored_products.append((p, score))
             
         # Sort products by score descending
         scored_products.sort(key=lambda x: x[1], reverse=True)
         
         # Determine confidence and filter
-        if scored_products:
-            best_score = scored_products[0][1]
+        filtered_products = []
+        confidence = "Low"
+        
+        # Filter scored products to only keep matches >= 0.45
+        valid_scored = [item for item in scored_products if item[1] >= 0.45]
+        
+        if valid_scored:
+            best_score = valid_scored[0][1]
+            # Keep matches that are close to the best score
+            filtered_products = [item[0] for item in valid_scored if item[1] >= best_score - 0.12]
             if best_score >= 0.75:
-                # Accurate match (including typos): filter out unrelated and HIGHLIGHT ONLY THAT
-                filtered_products = [item[0] for item in scored_products if item[1] >= best_score - 0.1]
                 confidence = "High" if len(filtered_products) == 1 else "Medium"
             else:
-                # No accurate match: give keyword matches in the list, but DO NOT highlight (Low confidence)
-                filtered_products = [item[0] for item in scored_products if item[1] > 0]
-                confidence = "Low"
-        else:
-            filtered_products = []
-            confidence = "Low"
+                confidence = "Medium" if best_score >= 0.6 else "Low"
 
         mapped_requirements.append({
             "extracted_need": req,

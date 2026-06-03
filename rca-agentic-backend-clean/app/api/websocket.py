@@ -65,36 +65,49 @@ def _parse_document_inline(text: str) -> list[dict] | None:
 
     lines = [l.strip() for l in text.splitlines() if l.strip()]
 
-    # ── Strategy 1: pipe-separated table ─────────────────────────────────────
-    # Detect header row — must contain at least "name" and one of qty/discount.
-    header_idx: int | None = None
-    col_name: int | None = None
-    col_qty: int | None = None
-    col_disc: int | None = None
+    # ── Strategy 1: Delimited table (tab or pipe separated) ──────────────────
+    delim = None
+    header_idx = None
+    col_name = None
+    col_qty = None
+    col_disc = None
 
-    for i, line in enumerate(lines):
-        if "|" not in line:
-            continue
-        cols = [c.strip().lower() for c in line.split("|")]
-        # Look for a name column
-        name_candidates = [j for j, c in enumerate(cols) if "name" in c or "product" in c or "service" in c]
-        qty_candidates  = [j for j, c in enumerate(cols) if "qty" in c or "quant" in c]
-        disc_candidates = [j for j, c in enumerate(cols) if "disc" in c or "%" in c]
-        if name_candidates and (qty_candidates or disc_candidates):
-            header_idx = i
-            col_name  = name_candidates[0]
-            col_qty   = qty_candidates[0]  if qty_candidates  else None
-            col_disc  = disc_candidates[0] if disc_candidates else None
+    delimiters = ["\t", "|"]
+    for current_delim in delimiters:
+        for i, line in enumerate(lines):
+            if current_delim not in line:
+                continue
+            cols = [c.strip().lower() for c in line.split(current_delim)]
+            # If markdown table row starts/ends with delimiter, adjust
+            start_offset = 0
+            if current_delim == "|" and len(cols) > 1 and cols[0] == "":
+                cols = cols[1:]
+                start_offset = 1
+            if current_delim == "|" and len(cols) > 0 and cols[-1] == "":
+                cols = cols[:-1]
+
+            name_candidates = [j for j, c in enumerate(cols) if "name" in c or "product" in c or "service" in c]
+            qty_candidates  = [j for j, c in enumerate(cols) if "qty" in c or "quant" in c]
+            disc_candidates = [j for j, c in enumerate(cols) if "disc" in c or "%" in c]
+            
+            if name_candidates and (qty_candidates or disc_candidates):
+                delim = current_delim
+                header_idx = i
+                col_name  = name_candidates[0] + start_offset
+                col_qty   = (qty_candidates[0]  + start_offset) if qty_candidates  else None
+                col_disc  = (disc_candidates[0] + start_offset) if disc_candidates else None
+                break
+        if delim is not None:
             break
 
-    if header_idx is not None:
+    if header_idx is not None and delim is not None:
         for line in lines[header_idx + 1:]:
-            if "|" not in line:
+            if delim not in line:
                 continue
             # Skip pure separator rows like |---|---|
-            if re.fullmatch(r"[\s|\-:]+", line):
+            if delim == "|" and re.fullmatch(r"[\s|\-:]+", line):
                 continue
-            parts = [p.strip() for p in line.split("|")]
+            parts = [p.strip() for p in line.split(delim)]
             if col_name is None or col_name >= len(parts):
                 continue
             name = parts[col_name]
@@ -120,36 +133,90 @@ def _parse_document_inline(text: str) -> list[dict] | None:
 
         if requirements:
             logger.info(
-                "Inline parser: extracted %d requirements via table strategy.", len(requirements)
+                "Inline parser: extracted %d requirements via delimited table strategy.", len(requirements)
             )
             return requirements
 
     # ── Strategy 2: bullet / numbered list ───────────────────────────────────
     # Matches lines like:
-    #   "- Standard User (3, 10%)"  or  "1. Enterprise License x2 – 8%"
-    bullet_pattern = re.compile(
-        r"^[-*•\d.]+\s*(?P<name>[A-Za-z][^\(x×–\-\d%]{2,}?)"  # product name
-        r"(?:\s*[x×(]\s*(?P<qty>\d+))?"                         # optional qty
-        r"(?:.*?(?P<disc>\d+(?:\.\d+)?)\s*%)?",                 # optional discount
-        re.IGNORECASE,
-    )
+    #   "o 10 Plasmid DNA Purification Kits"  or  "1. Enterprise License x2 – 8%"
     bullet_hits: list[dict] = []
     for line in lines:
-        m = bullet_pattern.match(line)
-        if not m:
+        line = line.strip()
+        if not line:
             continue
-        name = (m.group("name") or "").strip().rstrip(",;:-")
-        if len(name) < 3:
+            
+        # We only match lines starting with bullet symbols or digits (representing index or quantity)
+        if not re.match(r"^([-*•o\t]|\d+)\b", line, flags=re.IGNORECASE):
             continue
-        try:
-            qty = int(m.group("qty") or 1)
-        except (TypeError, ValueError):
-            qty = 1
-        try:
-            disc = float(m.group("disc") or 0.0)
-        except (TypeError, ValueError):
-            disc = 0.0
-        bullet_hits.append({"product_name": name, "quantity": qty, "discount": disc})
+
+        # Step A: Detect and extract discount (e.g. "12%", "12.5 %")
+        disc = 0.0
+        disc_match = re.search(r"(\d+(?:\.\d+)?)\s*%", line)
+        if disc_match:
+            try:
+                disc = float(disc_match.group(1))
+            except:
+                pass
+            line = re.sub(r"(\d+(?:\.\d+)?)\s*%", "", line).strip()
+
+        # Step B: Strip leading bullets or numbered index
+        # We only strip:
+        # - Non-alphanumeric bullet characters: -, *, •, o (when followed by space/tab)
+        # - Numbered index WITH a separator: e.g. "1.", "1)", "10.", "10)"
+        # We DO NOT strip bare numbers at the start (e.g. "15 DNA...") as they are likely quantities.
+        bullet_match = re.match(r"^(?:[-*•o\t]\s*|\d+[\.\)\:]\s*)+", line, flags=re.IGNORECASE)
+        if bullet_match:
+            line = line[bullet_match.end():].strip()
+
+        # Strip trailing punctuation/separators
+        line = line.rstrip(",;:-–—").strip()
+        if not line:
+            continue
+
+        # Step C: Extract quantity (qty)
+        qty = 1
+
+        # Check for parentheses containing a number: e.g., (3) or (3, ) or (, 3)
+        paren_match = re.search(r"\(\s*([^)]+)\s*\)", line)
+        if paren_match:
+            inner = paren_match.group(1)
+            num_matches = re.findall(r"\b\d+\b", inner)
+            if num_matches:
+                qty = int(num_matches[0])
+            line = line.replace(paren_match.group(0), "").strip()
+
+        line = line.rstrip(",;:-–—").strip()
+
+        # Try pattern A: Quantity at the start
+        start_qty_match = re.match(
+            r"^(?P<qty>\d+)\s*(?:x|units?\s+of|boxes?\s+of|bottles?\s+of|sets?\s+of|pcs?\s+of|pieces?\s+of)?\s+(?P<rest>.+)$",
+            line,
+            re.IGNORECASE
+        )
+        
+        # Try pattern B: Quantity at the end
+        end_qty_match = re.search(
+            r"\s+(?:x|qty|quantity|units?|bottles?|sets?|boxes?)?\s*(?P<qty>\d+)\s*(?:units?|bottles?|sets?|boxes?|pcs?|pieces?)?$",
+            line,
+            re.IGNORECASE
+        )
+
+        if start_qty_match:
+            if qty == 1:
+                qty = int(start_qty_match.group("qty"))
+            line = start_qty_match.group("rest").strip()
+        elif end_qty_match:
+            if qty == 1:
+                qty = int(end_qty_match.group("qty"))
+            line = line[:end_qty_match.start()].strip()
+
+        # Clean up name: strip trailing units, boxes, etc. if they leaked
+        name = re.sub(r"\s+(?:units?|bottles?|sets?|boxes?|pcs?|pieces?)$", "", line, flags=re.IGNORECASE)
+        name = name.strip().rstrip(",;:-–—")
+        
+        if len(name) >= 3:
+            bullet_hits.append({"product_name": name, "quantity": qty, "discount": disc})
 
     if bullet_hits:
         logger.info(
@@ -308,11 +375,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                 if parsed_reqs is not None:
                     # Ignore header elements if any got parsed
+                    from server import _is_valid_product_name, _map_requirements_to_catalog
                     ignored_names = {"product name", "product_name", "quantity", "discount", "price"}
-                    parsed_reqs = [r for r in parsed_reqs if (isinstance(r, dict) and r.get("product_name", "").strip().lower() not in ignored_names)]
+                    parsed_reqs = [
+                        r for r in parsed_reqs 
+                        if (isinstance(r, dict) 
+                            and r.get("product_name", "").strip().lower() not in ignored_names
+                            and _is_valid_product_name(r.get("product_name", "")))
+                    ]
 
                     # Proactively run the mapping logic to match items and get quantities/discounts
-                    from server import _map_requirements_to_catalog
                     mapping_res_json = _map_requirements_to_catalog(parsed_reqs)
 
                     # Build a Catalog_Scout–style handoff message with the extracted JSON.

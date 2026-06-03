@@ -830,12 +830,19 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
 
       {/* Requirements Parser — emerald, appears when activated */}
       {graphReady && showParser && (
-        <div style={{
-          position: 'absolute',
-          left: parserLeft, top: NODE_TOP,
-          transition: 'left 0.72s cubic-bezier(0.4,0,0.2,1)',
-          animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
-        }}>
+        <div 
+          onMouseDown={(e) => startDrag(e, 'parser')}
+          onTouchStart={(e) => startDrag(e, 'parser')}
+          style={{
+            position: 'absolute',
+            left: parserLeft, top: parserTopY,
+            transition: draggedId === 'parser' ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
+            animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+            cursor: draggedId === 'parser' ? 'grabbing' : 'grab',
+            userSelect: 'none',
+            zIndex: 10,
+          }}
+        >
           <NodeCard
             label={t?.nodes?.requirementsParser || "Req. Parser"}
             subLabel={pActive ? (parserComposing ? (t?.nodes?.composing || 'Composing reply…') : (t?.nodes?.executing || 'Executing…')) : (t?.nodes?.completed || 'Completed')}
