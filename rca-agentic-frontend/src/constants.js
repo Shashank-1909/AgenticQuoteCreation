@@ -75,6 +75,9 @@ export const TOOL_LABELS = {
   get_deal_history: 'Deal History',
   summary_node: 'Summary Node',
   win_rate: 'Win Rate',
+  get_thermofisher_account_context: 'SF Context',
+  research_twin_candidates: 'Web Research',
+  build_twin_hunter_cards: 'Twin Cards',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
@@ -88,6 +91,7 @@ export const INIT_ORCH = {
   Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
   Quote_Updator: { state: 'idle', tools: [], routedByDm: false },
   Quote_Analyst: { state: 'idle', tools: [], routedByDm: false },
+  Twin_Hunter: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────

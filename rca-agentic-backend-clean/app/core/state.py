@@ -38,3 +38,7 @@ class AppState:
     # False → standard summary or other flows
     win_rate_flow: dict[str, bool] = field(default_factory=dict)
 
+    # Tracks the active agent for each session to detect intent switches correctly.
+    active_agent: dict[str, str] = field(default_factory=dict)
+
+

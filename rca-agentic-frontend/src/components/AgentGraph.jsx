@@ -1,5 +1,5 @@
 import React from 'react';
-import { Network, Search, FileText, Pencil, ClipboardList, TrendingUp } from 'lucide-react';
+import { Network, Search, FileText, Pencil, ClipboardList, TrendingUp, Target } from 'lucide-react';
 import { config } from '../config';
 import NodeCard from './NodeCard';
 import ToolNode from './ToolNode';
@@ -46,7 +46,15 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const dr = isDark ? 4 : 5;      // leading dot radius
   const tdr = isDark ? 3 : 4;      // tool leading dot radius
 
-  const { coordinator, Requirements_Parser: parser, Catalog_Scout: scout, Quote_Architect: arch, Quote_Updator: updator, Quote_Analyst: analyst } = orchestration;
+  const {
+    coordinator,
+    Requirements_Parser: parser,
+    Catalog_Scout: scout,
+    Quote_Architect: arch,
+    Quote_Updator: updator,
+    Quote_Analyst: analyst,
+    Twin_Hunter: twin = { state: 'idle', tools: [], routedByDm: false },
+  } = orchestration;
 
   const cActive = coordinator === 'active', cDone = coordinator === 'done', cLit = cActive || cDone;
   const pActive = parser?.state === 'active', pDone = parser?.state === 'done';
@@ -54,6 +62,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const aActive = arch.state === 'active', aDone = arch.state === 'done';
   const uActive = updator.state === 'active', uDone = updator.state === 'done';
   const anActive = analyst?.state === 'active', anDone = analyst?.state === 'done';
+  const tActive = twin.state === 'active', tDone = twin.state === 'done';
 
   // Drag and drop state
   const [offsets, setOffsets] = React.useState({});
@@ -116,6 +125,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const archComposing = aActive && arch.tools.length > 0 && !arch.tools.some(t => t.state === 'active');
   const updatorComposing = uActive && updator.tools.length > 0 && !updator.tools.some(t => t.state === 'active');
   const analystComposing = anActive && analyst?.tools?.length > 0 && !analyst.tools.some(t => t.state === 'active');
+  const twinComposing = tActive && twin.tools.length > 0 && !twin.tools.some(t => t.state === 'active');
 
   // DM→Agent line flows ONLY during the brief handoff window:
   const parserHandoffActive  = pActive && parser.tools.length  === 0 && parser.routedByDm;
@@ -123,12 +133,14 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const archHandoffActive  = aActive && arch.tools.length  === 0 && arch.routedByDm;
   const updatorHandoffActive = uActive && updator.tools.length === 0 && updator.routedByDm;
   const analystHandoffActive = anActive && analyst?.tools?.length === 0 && analyst.routedByDm;
+  const twinHandoffActive = tActive && twin.tools.length === 0 && twin.routedByDm;
 
   const showParser  = parser?.state !== 'idle' && parser?.state !== undefined;
   const showScout = scout.state !== 'idle';
   const showArch = arch.state !== 'idle';
   const showUpdator = updator.state !== 'idle';
   const showAnalyst = analyst?.state !== 'idle';
+  const showTwin = twin.state !== 'idle';
 
   // ── Dynamic agent positions ──────────────────────────────
   const visibleKeys = [];
@@ -137,6 +149,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   if (showArch) visibleKeys.push('arch');
   if (showUpdator) visibleKeys.push('updator');
   if (showAnalyst) visibleKeys.push('analyst');
+  if (showTwin) visibleKeys.push('twin');
 
   const getAgentCx = (agentKey) => {
     const total = visibleKeys.length;
@@ -151,10 +164,13 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
       return GW * 0.8;
     }
     if (total === 4) {
-      if (idx === 0) return GW * 0.15;
-      if (idx === 1) return GW * 0.38;
-      if (idx === 2) return GW * 0.62;
-      return GW * 0.85;
+      return [GW * 0.14, GW * 0.38, GW * 0.62, GW * 0.86][idx];
+    }
+    if (total === 5) {
+      return [GW * 0.12, GW * 0.31, GW * 0.50, GW * 0.69, GW * 0.88][idx];
+    }
+    if (total === 6) {
+      return [GW * 0.10, GW * 0.26, GW * 0.42, GW * 0.58, GW * 0.74, GW * 0.90][idx];
     }
     if (total === 5) {
       if (idx === 0) return GW * 0.10;
@@ -204,20 +220,27 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const analystTopY = NODE_TOP + analystOffset.y;
   const analystBotY = analystTopY + NODE_H;
 
-  // ── Dynamic SVG paths (coordinator → each agent) ─────────
+  const twinOffset = offsets['twin'] || { x: 0, y: 0 };
+  const twinCx = getAgentCx('twin') + twinOffset.x;
+  const twinLeft = twinCx - NODE_W / 2;
+  const twinTopY = NODE_TOP + twinOffset.y;
+  const twinBotY = twinTopY + NODE_H;
+
   // ── Dynamic SVG paths (coordinator → each agent) ─────────
   const pathToParser  = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + parserTopY) / 2} ${parserCx}   ${(dmBotY + parserTopY) / 2} ${parserCx}   ${parserTopY}`;
   const pathToScout   = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + scoutTopY) / 2} ${scoutCx} ${(dmBotY + scoutTopY) / 2} ${scoutCx}   ${scoutTopY}`;
   const pathToArch    = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + archTopY) / 2} ${archCx}    ${(dmBotY + archTopY) / 2} ${archCx}    ${archTopY}`;
   const pathToUpdator = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + updatorTopY) / 2} ${updatorCx} ${(dmBotY + updatorTopY) / 2} ${updatorCx} ${updatorTopY}`;
   const pathToAnalyst = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + analystTopY) / 2} ${analystCx} ${(dmBotY + analystTopY) / 2} ${analystCx} ${analystTopY}`;
+  const pathToTwin    = `M ${dmBotX} ${dmBotY} C ${dmBotX} ${(dmBotY + twinTopY) / 2} ${twinCx}    ${(dmBotY + twinTopY) / 2} ${twinCx}    ${twinTopY}`;
 
   // ── Dynamic tool positions (relative to agent cx) ─────────
   const baseParserToolPos  = getShiftedToolPositions(parserCx, parserOffset, parser?.tools || [], offsets);
-  const baseScoutToolPos   = getShiftedToolPositions(scoutCx, scoutOffset, scout.tools, offsets);
-  const baseArchToolPos    = getShiftedToolPositions(archCx, archOffset, arch.tools, offsets);
-  const baseUpdatorToolPos = getShiftedToolPositions(updatorCx, updatorOffset, updator.tools, offsets);
-  const baseAnalystToolPos = getShiftedToolPositions(analystCx, analystOffset, analyst?.tools || [], offsets);
+  const baseScoutToolPos   =   getShiftedToolPositions(scoutCx, scoutOffset, scout.tools, offsets);
+  const baseArchToolPos    =   getShiftedToolPositions(archCx, archOffset, arch.tools, offsets);
+  const baseUpdatorToolPos =   getShiftedToolPositions(updatorCx, updatorOffset, updator.tools, offsets);
+  const baseAnalystToolPos =   getShiftedToolPositions(analystCx, analystOffset, analyst?.tools || [], offsets);
+  const baseTwinToolPos    =   getShiftedToolPositions(twinCx, twinOffset, twin?.tools || [], offsets);
 
   // ── Overlap Resolution / Collision Avoidance ──────────────────
   const resolveToolCollisions = (allToolPositions) => {
@@ -318,6 +341,19 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
     });
   }
 
+  if (showTwin && twin?.tools) {
+    twin.tools.slice(0, 4).forEach((tool, i) => {
+      const basePos = baseTwinToolPos[i] || { x: twinCx, y: 450 };
+      visibleTools.push({
+        agentKey: 'twin',
+        index: i,
+        name: tool.name,
+        x: basePos.x,
+        y: basePos.y
+      });
+    });
+  }
+
   const resolvedVisibleTools = resolveToolCollisions(visibleTools);
 
   const getResolvedToolPos = (agentKey, index, fallback) => {
@@ -330,6 +366,8 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
   const archToolPos = baseArchToolPos.map((tp, i) => getResolvedToolPos('arch', i, tp));
   const updatorToolPos = baseUpdatorToolPos.map((tp, i) => getResolvedToolPos('updator', i, tp));
   const analystToolPos = baseAnalystToolPos.map((tp, i) => getResolvedToolPos('analyst', i, tp));
+  const twinToolPos = baseTwinToolPos.map((tp, i) => getResolvedToolPos('twin', i, tp));
+
 
   // Path transition style for smooth morphing
   const pathTransition = 'd 0.72s cubic-bezier(0.4,0,0.2,1), stroke-opacity 0.5s';
@@ -346,7 +384,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         overflow: 'visible', pointerEvents: 'none',
       }}>
         <defs>
-          {[['cyan', '2.5'], ['amber', '2.5'], ['violet', '2.5'], ['green', '2.5']].map(([n, s]) => (
+          {[['cyan', '2.5'], ['amber', '2.5'], ['violet', '2.5'], ['green', '2.5'], ['teal', '2.5']].map(([n, s]) => (
             <filter key={n} id={`glow-${n}`}>
               <feGaussianBlur stdDeviation={s} result="b" />
               <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -407,7 +445,14 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
             <stop offset="100%" stopColor={config.theme === 'Meta' ? '#31A24C' : '#34d399'} />
           </linearGradient>
 
-
+          {/* Gradient: DM indigo -> Twin teal */}
+          <linearGradient id="grad-twin"
+            x1={dmBotX} y1={dmBotY}
+            x2={twinCx} y2={twinTopY}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={config.theme === 'Meta' ? '#0064E0' : '#818cf8'} />
+            <stop offset="100%" stopColor={config.theme === 'Meta' ? '#00A884' : '#14b8a6'} />
+          </linearGradient>
         </defs>
 
         {graphReady && (
@@ -609,6 +654,35 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
             )}
 
             {/* Scout → tool curves — Circuit Trace style */}
+            {showTwin && (
+              <>
+                <path id="pct" d={pathToTwin}
+                  stroke="url(#grad-twin)"
+                  strokeWidth={csw} fill="none"
+                  strokeOpacity={cLit ? ch : cq}
+                  style={{ transition: pathTransition }}
+                />
+                {twinHandoffActive && (
+                  <path d={pathToTwin}
+                    stroke="url(#grad-twin)"
+                    strokeWidth={dsw} fill="none"
+                    style={{
+                      strokeDasharray: '6 18',
+                      animation: 'flowDash 0.65s linear infinite',
+                      transition: pathTransition
+                    }}
+                  />
+                )}
+                {twinHandoffActive && (
+                  <circle r={dr} fill={config.theme === 'Meta' ? '#00A884' : '#14b8a6'}>
+                    <animateMotion dur="1.5s" repeatCount="indefinite" calcMode="linear">
+                      <mpath href="#pct" />
+                    </animateMotion>
+                  </circle>
+                )}
+              </>
+            )}
+
             {scout.tools.slice(0, 4).map((tool, i) => {
               const tp = scoutToolPos[i];
               const pid = `ps${i}`;
@@ -687,33 +761,15 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
               const toolDone = tool.state === 'done';
               return (
                 <React.Fragment key={tool.name}>
-                  {/* L1: Ghost channel — dims once tool is done */}
-                  <path id={pid} d={d}
-                    stroke="#a78bfa" strokeWidth={tsw} fill="none"
-                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={pathTransitionStyle}
-                  />
-                  {/* L2: Flowing dashes — only while THIS tool is active */}
-                  {toolActive && (
-                    <path d={d}
-                      stroke="#a78bfa" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
-                    />
-                  )}
-                  {/* L3: Leading dot — only while THIS tool is active */}
-                  {toolActive && (
-                    <circle r={tdr} fill="#a78bfa" filter="url(#glow-violet)">
-                      <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
-                        <mpath href={`#${pid}`} />
-                      </animateMotion>
-                    </circle>
-                  )}
+                  <path id={pid} d={d} stroke="#a78bfa" strokeWidth={tsw} fill="none" strokeOpacity={toolActive ? ta : toolDone ? td : ti} style={pathTransitionStyle} />
+                  {toolActive && <path d={d} stroke="#a78bfa" strokeWidth={tdsw} fill="none" style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }} />}
+                  {toolActive && <circle r={tdr} fill="#a78bfa" filter="url(#glow-violet)"><animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear"><mpath href={`#${pid}`} /></animateMotion></circle>}
                 </React.Fragment>
               );
             })}
 
             {/* Analyst → tool curves — Circuit Trace style (green) */}
-            {analyst && analyst.tools && analyst.tools.slice(0, 4).map((tool, i) => {
+            {analyst?.tools?.slice(0, 4).map((tool, i) => {
               const tp = analystToolPos[i];
               const pid = `pan${i}`;
               const d = makeDynamicToolPath(analystCx, analystBotY, tp);
@@ -721,32 +777,28 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
               const toolDone = tool.state === 'done';
               return (
                 <React.Fragment key={tool.name}>
-                  {/* L1: Ghost channel */}
-                  <path id={pid} d={d}
-                    stroke="#34d399" strokeWidth={tsw} fill="none"
-                    strokeOpacity={toolActive ? ta : toolDone ? td : ti}
-                    style={pathTransitionStyle}
-                  />
-                  {/* L2: Flowing dashes */}
-                  {toolActive && (
-                    <path d={d}
-                      stroke="#34d399" strokeWidth={tdsw} fill="none"
-                      style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }}
-                    />
-                  )}
-                  {/* L3: Leading dot */}
-                  {toolActive && (
-                    <circle r={tdr} fill="#34d399" filter="url(#glow-green)">
-                      <animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear">
-                        <mpath href={`#${pid}`} />
-                      </animateMotion>
-                    </circle>
-                  )}
+                  <path id={pid} d={d} stroke="#34d399" strokeWidth={tsw} fill="none" strokeOpacity={toolActive ? ta : toolDone ? td : ti} style={pathTransitionStyle} />
+                  {toolActive && <path d={d} stroke="#34d399" strokeWidth={tdsw} fill="none" style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }} />}
+                  {toolActive && <circle r={tdr} fill="#34d399" filter="url(#glow-green)"><animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear"><mpath href={`#${pid}`} /></animateMotion></circle>}
                 </React.Fragment>
               );
             })}
 
-
+            {/* Twin Hunter → tool curves — Circuit Trace style (teal) */}
+            {twin?.tools?.slice(0, 4).map((tool, i) => {
+              const tp = twinToolPos[i];
+              const pid = `pt${i}`;
+              const d = makeDynamicToolPath(twinCx, twinBotY, tp);
+              const toolActive = tool.state === 'active';
+              const toolDone = tool.state === 'done';
+              return (
+                <React.Fragment key={tool.name}>
+                  <path id={pid} d={d} stroke="#14b8a6" strokeWidth={tsw} fill="none" strokeOpacity={toolActive ? ta : toolDone ? td : ti} style={pathTransitionStyle} />
+                  {toolActive && <path d={d} stroke="#14b8a6" strokeWidth={tdsw} fill="none" style={{ strokeDasharray: '6 18', animation: 'flowDash 0.55s linear infinite', ...pathTransitionStyle }} />}
+                  {toolActive && <circle r={tdr} fill="#14b8a6" filter="url(#glow-teal)"><animateMotion dur="1.0s" repeatCount="indefinite" calcMode="linear"><mpath href={`#${pid}`} /></animateMotion></circle>}
+                </React.Fragment>
+              );
+            })}
           </>
         )}
       </svg>
@@ -933,6 +985,34 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         );
       })}
 
+      {graphReady && showTwin && (
+        <div 
+          onMouseDown={(e) => startDrag(e, 'twin')}
+          onTouchStart={(e) => startDrag(e, 'twin')}
+          style={{
+            position: 'absolute',
+            left: twinLeft, top: twinTopY,
+            transition: draggedId === 'twin' ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)',
+            animation: 'slide-up-in 0.55s cubic-bezier(0.4,0,0.2,1) both',
+            cursor: draggedId === 'twin' ? 'grabbing' : 'grab',
+            userSelect: 'none',
+          }}>
+          <NodeCard
+            label={t?.nodes?.twinHunter || "Twin Hunter"}
+            subLabel={tActive ? (twinComposing ? (t?.nodes?.composing || 'Composing reply...') : (t?.nodes?.executing || 'Executing...')) : (t?.nodes?.completed || 'Completed')}
+            icon={Target} w={NODE_W} h={NODE_H} borderRadius={16}
+            accentColor={config.theme === 'Meta' ? '#00A884' : '#14b8a6'}
+            glowColor={config.theme === 'Meta' ? 'rgba(0,168,132,0.5)' : 'rgba(20,184,166,0.5)'}
+            isIdle={false} isActive={tActive} isDone={tDone}
+          />
+          <div style={{
+            textAlign: 'center', fontSize: 7.5, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: '#14b8a655', marginTop: 8,
+          }}>{t?.nodes?.twinHunter || "Twin Hunter"}</div>
+        </div>
+      )}
+
       {graphReady && scout.tools.slice(0, 4).map((tool, i) => {
         const tp = scoutToolPos[i];
         return (
@@ -989,7 +1069,19 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         );
       })}
 
-
+      {graphReady && twin && twin.tools && twin.tools.slice(0, 4).map((tool, i) => {
+        const tp = twinToolPos[i];
+        return (
+          <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
+            label={shortLabel(tool.name)} color="#14b8a6"
+            active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
+            onMouseDown={(e) => startDrag(e, tool.name)}
+            onTouchStart={(e) => startDrag(e, tool.name)}
+            cursor={draggedId === tool.name ? 'grabbing' : 'grab'}
+            style={{ transition: draggedId === tool.name ? 'none' : 'left 0.72s cubic-bezier(0.4,0,0.2,1), top 0.72s cubic-bezier(0.4,0,0.2,1)' }}
+          />
+        );
+      })}
     </div>
   );
 };

@@ -28,6 +28,7 @@ from app.agents.requirements_parser import build_requirements_parser
 from app.agents.quote_architect import build_quote_architect
 from app.agents.quote_updator import build_quote_updator
 from app.agents.quote_analyst import build_quote_analyst
+from app.agents.twin_hunter import build_twin_hunter
 from app.agents.deal_manager import build_deal_manager
 from app.services.session import session_service
 from app.api import websocket as ws_module
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI):
     mcp_architect = build_mcp_toolset("architect")
     mcp_updator   = build_mcp_toolset("updator")
     mcp_analyst   = build_mcp_toolset("analyst")
+    mcp_twin      = build_mcp_toolset("twin")
 
     catalog_scout_dm   = build_catalog_scout(mcp_scout_dm)
     catalog_scout_parser = build_catalog_scout(mcp_scout_parser)
@@ -62,8 +64,9 @@ async def lifespan(app: FastAPI):
     quote_architect = build_quote_architect(mcp_architect)
     quote_updator   = build_quote_updator(mcp_updator)
     quote_analyst   = build_quote_analyst(mcp_analyst)
+    twin_hunter     = build_twin_hunter(mcp_twin)
     
-    deal_manager    = build_deal_manager(requirements_parser_dm, catalog_scout_dm, quote_architect, quote_updator, quote_analyst)
+    deal_manager    = build_deal_manager(requirements_parser_dm, catalog_scout_dm, quote_architect, quote_updator, quote_analyst, twin_hunter)
 
     # Standalone parser_runner's tree: Requirements_Parser MUST have Catalog_Scout as a 
     # sub-agent in order to transfer to it, since it is the root agent here.
@@ -123,7 +126,7 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown: release all MCP subprocess connections ──────────────────
     logger.info("Closing MCP connections...")
-    for toolset in [mcp_scout_dm, mcp_scout_parser, mcp_parser, mcp_architect, mcp_updator, mcp_analyst]:
+    for toolset in [mcp_scout_dm, mcp_scout_parser, mcp_parser, mcp_architect, mcp_updator, mcp_analyst, mcp_twin]:
         try:
             result = toolset.close()
             if hasattr(result, "__await__"):

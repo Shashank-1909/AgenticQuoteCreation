@@ -14,6 +14,7 @@ import ProductConfigModal from './ProductConfigModal';
 import DealHistoryPanel from './DealHistoryPanel';
 import WinRateBattleCard from './WinRateBattleCard';
 import LanguageToggle from './LanguageToggle';
+import LookalikeCards from './LookalikeCards';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
 import { translations } from '../translations';
 import './AgentforceView.css';
@@ -108,6 +109,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const [configProducts, setConfigProducts] = useState([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [lookalikeData, setLookalikeData] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [productConfigs, setProductConfigs] = useState({}); // { id: { qty, discount } }
@@ -247,7 +249,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               };
             } else {
               if (n.coordinator === 'active') n.coordinator = 'done';
-              for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+              for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
                 if (n[k] && n[k].state === 'active') {
                   n[k] = { ...n[k], state: 'done' };
                   if (n[k].tools) {
@@ -424,9 +426,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             name === 'Catalog_Scout' ||
             name === 'Quote_Architect' ||
             name === 'Quote_Updator' ||
-            name === 'Quote_Analyst'
+            name === 'Quote_Analyst' ||
+            name === 'Twin_Hunter'
           ) {
-            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
               if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
@@ -497,7 +500,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
             if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
@@ -522,7 +525,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
             if (n[k] && n[k].tools && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
@@ -582,10 +585,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               setDealHistoryAccount(parsed.accountName || '');
             }
           }
+          if (data.tool === 'build_twin_hunter_cards' && Array.isArray(parsed.cards)) {
+            setLookalikeData(parsed);
+            setPreviewData(null);
+            setWorkspaceView('preview');
+          }
           if (data.tool === 'evaluate_quote_graph') {
             let qId = extractQuoteId(data.data);
             const newQuote = { id: qId, status: 'Draft' };
             setQuotes(prev => [...prev, newQuote]);
+            setLookalikeData(null);
             // Clear any pending cards since the quote is now finalized
             pendingResultsRef.current = null;
             pendingSelectionRef.current = null;
@@ -786,11 +795,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
 
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote');
+    let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
     
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter or updating/modifying quotes
+    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
     const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
-    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && (
+    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview') && (
         cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
     )) {
       isWinRateRequest = true;
@@ -1095,7 +1104,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         setProductConfigs({});
         setBulkQty('');
         setBulkDiscount('');
-        setOrchestration(INIT_ORCH);
+        setOrchestration(prev => {
+          const n = { ...prev };
+          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
+            n[k] = { state: 'idle', tools: [], routedByDm: false };
+          }
+          return n;
+        });
 
         // Immediately notify the user in the UI
         setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
@@ -1156,6 +1171,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       const data = await resp.json();
       if (data.status === 'success') {
         setPreviewData(data);
+        setLookalikeData(null);
+        setDealHistoryData(null);
+        isWinRateRequestRef.current = false;
+        isSummarizeRequestRef.current = false;
         setWorkspaceView('preview');
         // Show update suggestion ONLY after preview is successfully displayed
         setShowUpdateSuggestion(true);
@@ -1382,7 +1401,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               </div>
             ) : (
             <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-              {previewData ? (
+              {lookalikeData ? (
+                <LookalikeCards
+                  variant="workspace"
+                  cards={lookalikeData.cards || []}
+                  summary={lookalikeData.summary || ''}
+                  sourceAccount={lookalikeData.source_account}
+                  limitations={lookalikeData.limitations || []}
+                />
+              ) : previewData ? (
                 <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
