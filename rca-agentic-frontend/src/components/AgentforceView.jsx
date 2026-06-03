@@ -714,6 +714,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         // Quote modification complete — set flag to show preview recommendation after the final reply
         if (data.quote_id) {
           pendingUpdateRef.current = true;
+          // Refresh the preview pane automatically if we are currently looking at it
+          fetch(`${config.API_BASE_URL}/api/quote-preview/${data.quote_id}`)
+            .then(res => res.json())
+            .then(d => {
+              setPreviewData(d);
+            })
+            .catch(err => console.error('Error refreshing quote preview:', err));
         }
         break;
 
