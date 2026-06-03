@@ -9,7 +9,7 @@ function formatCurrency(val) {
 }
 
 // ── Explainability Accordion ─────────────────────────────────────────────────
-function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages }) {
+function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages, previewData, selectedProducts }) {
   const [open, setOpen] = useState(false);
 
   const getContributionFactors = () => {
@@ -34,9 +34,32 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       });
     });
 
-    // Extract current products from messages
+    // Extract current products
     let currentProductNames = [];
-    if (messages && messages.length > 0) {
+
+    // 1. First try: Get products from previewData (the active quote)
+    if (previewData && previewData.records && previewData.records[0] && previewData.records[0].QuoteLineItems) {
+      previewData.records[0].QuoteLineItems.forEach(li => {
+        if (li.Product2 && li.Product2.Name) {
+          currentProductNames.push(li.Product2.Name.trim().toLowerCase());
+        }
+      });
+    }
+
+    // 2. Second try: Get products from selectedProducts (currently configured items)
+    if (currentProductNames.length === 0 && selectedProducts && selectedProducts.size > 0 && messages) {
+      const productMessages = messages.filter(m => m.type === 'card' && m.cardType === 'products');
+      const allProds = productMessages.flatMap(m => m.data || []);
+      selectedProducts.forEach(id => {
+        const prod = allProds.find(p => p.id === id);
+        if (prod && prod.name) {
+          currentProductNames.push(prod.name.trim().toLowerCase());
+        }
+      });
+    }
+
+    // 3. Fallback: Parse assistant messages
+    if (currentProductNames.length === 0 && messages && messages.length > 0) {
       const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
       const lines = lastAssistantMsg.split('\n');
       lines.forEach(line => {
@@ -59,22 +82,22 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
     });
     const newProdsCount = newProdsList.length;
 
-    let productsNewName = "Products Are New For This Customer";
+    let productsNewName = "New Products Modifier";
     let productsNewExplanation = "New products introduce uncertainty";
     let productsNewContrib = competitorPenalty !== 0 ? competitorPenalty : -7;
 
     if (totalProds > 0) {
       if (newProdsCount === 0) {
-        productsNewName = "Products Are Familiar to Customer";
+        productsNewName = "Product Familiarity Modifier";
         productsNewExplanation = "All selected products match previous successful orders";
         productsNewContrib = 0;
       } else if (newProdsCount < totalProds) {
-        productsNewName = "Some Products Are New to Customer";
+        productsNewName = "Product Familiarity Modifier";
         productsNewExplanation = `${newProdsCount} of ${totalProds} products have not been purchased before`;
         const basePenalty = competitorPenalty !== 0 ? competitorPenalty : -10;
         productsNewContrib = Math.round(basePenalty * (newProdsCount / totalProds));
       } else {
-        productsNewName = "Products Are New For This Customer";
+        productsNewName = "New Products Modifier";
         productsNewExplanation = "New products introduce uncertainty";
         productsNewContrib = competitorPenalty !== 0 ? competitorPenalty : -10;
       }
@@ -88,36 +111,89 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
     const baseSum = discountContrib + dealSizeContrib + productsNewContrib + proposalStageContrib;
     const accountHistoryContrib = finalProb - startingScore - baseSum;
 
+    // Helper math values for display
+    const wonValues = wonQuotes.map(q => q.grandTotal || 0).filter(v => v > 0);
+    const minWonValue = wonValues.length > 0 ? Math.min(...wonValues) : 10000;
+    const maxWonValue = wonValues.length > 0 ? Math.max(...wonValues) : 250000;
+    const currentQuoteValue = previewData?.records?.[0]?.GrandTotal || previewData?.records?.[0]?.grandTotal || 85000;
+    const currentDiscount = previewData?.records?.[0]?.Discount || previewData?.records?.[0]?.discount || 10;
+
+    // Segment matched and new products
+    const matchedProds = [];
+    const newProds = [];
+    currentProductNames.forEach(p => {
+      const isFamiliar = [...wonProductNames].some(wonP => p.includes(wonP) || wonP.includes(p));
+      if (isFamiliar) {
+        matchedProds.push(p);
+      } else {
+        newProds.push(p);
+      }
+    });
+
+    const matchedCounts = matchedProds.map(prod => {
+      let count = 0;
+      wonQuotes.forEach(q => {
+        const hasProd = (q.lineItems || []).some(li => li.name?.toLowerCase().includes(prod) || prod.includes(li.name?.toLowerCase()));
+        if (hasProd) count++;
+      });
+      return { name: prod, count };
+    });
+
+    // Dynamic explanation blocks
+    const accountHistoryExpl = accountHistoryContrib >= 0
+      ? `Account has a strong success record. Out of ${totalResolved} resolved quotes, ${wonQuotes.length} were Won and ${lostQuotes.length} were Lost, establishing a highly reliable relationship.`
+      : `Limited purchase history introduces uncertainty. With only ${wonQuotes.length} Won and ${lostQuotes.length} Lost quotes, the historical baseline is less established.`;
+
+    const dealSizeExpl = dealSizeContrib >= 0
+      ? `The total quote value is ${formatCurrency(currentQuoteValue)}, which fits well within the typical range of successful deals for this account (${formatCurrency(minWonValue)} - ${formatCurrency(maxWonValue)}).`
+      : `The total quote value is ${formatCurrency(currentQuoteValue)}, which is outside the typical range of successful deals for this account (${formatCurrency(minWonValue)} - ${formatCurrency(maxWonValue)}).`;
+
+    let discountExpl = "";
+    if (currentDiscount > avgDiscountOnWins) {
+      discountExpl = `The applied discount (${currentDiscount}%) is higher than the typical successful average of ${avgDiscountOnWins}%.`;
+    } else {
+      discountExpl = `The discount applied (${currentDiscount}%) is healthy and falls well within the typical win tolerance threshold (average is ${avgDiscountOnWins}%).`;
+    }
+
+    let productExpl = "No products specified in the active context.";
+    if (totalProds > 0) {
+      if (newProdsCount === 0) {
+        const details = matchedCounts.map(mc => `"${mc.name}" appeared ${mc.count} out of ${wonQuotes.length} times`).join(', ');
+        productExpl = `In this quote, products [${matchedProds.join(', ')}] appeared in previous won quotes (${details}), showing 100% familiar products.`;
+      } else if (newProdsCount < totalProds) {
+        const details = matchedCounts.map(mc => `"${mc.name}" appeared ${mc.count} out of ${wonQuotes.length} times`).join(', ');
+        productExpl = `In this quote, familiar product(s) [${matchedProds.join(', ')}] appeared ${details} in previous won quotes, while new product(s) [${newProds.join(', ')}] are new to the customer (overall score: ${productsNewContrib}%).`;
+      } else {
+        productExpl = `All products in this quote [${newProds.join(', ')}] are brand new to this customer, introducing some uncertainty.`;
+      }
+    }
+
+    const stageExpl = "Since the opportunity is currently in the Proposal stage, it indicates active customer engagement and higher probability of closing.";
+
     const factors = [
       {
-        name: accountHistoryContrib >= 0 ? "Strong Account History" : "Limited Account History",
-        explanation: accountHistoryContrib >= 0 
-          ? "Account has a strong success record"
-          : "Limited previous successful purchases introduces some uncertainty",
+        name: "Account Purchase History",
+        explanation: accountHistoryExpl,
         contrib: accountHistoryContrib,
       },
       {
-        name: dealSizeContrib >= 0 ? "Deal Size Matches Previous Wins" : "Unusual Deal Size for Account",
-        explanation: dealSizeContrib >= 0
-          ? "Quote value aligns with successful deals"
-          : "The total quote value is outside typical successful ranges",
+        name: "Deal Size Alignment",
+        explanation: dealSizeExpl,
         contrib: dealSizeContrib,
       },
       {
-        name: discountContrib >= 0 ? "Healthy Pricing" : "Aggressive Discounting",
-        explanation: discountContrib >= 0
-          ? "Discount is within successful range"
-          : "The applied discount level is higher than typical successful deals",
+        name: "Pricing & Discounting",
+        explanation: discountExpl,
         contrib: discountContrib,
       },
       {
-        name: productsNewName,
-        explanation: productsNewExplanation,
+        name: "Product Familiarity",
+        explanation: productExpl,
         contrib: productsNewContrib,
       },
       {
-        name: "Opportunity Is In Proposal Stage",
-        explanation: "Customer engagement is active",
+        name: "Opportunity Stage (Proposal Stage)",
+        explanation: stageExpl,
         contrib: proposalStageContrib,
       }
     ];
@@ -126,10 +202,24 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       startingScore,
       factors,
       finalProb,
+      accountHistoryContrib,
+      dealSizeContrib,
+      discountContrib,
+      productsNewContrib,
+      proposalStageContrib,
     };
   };
 
-  const { startingScore, factors, finalProb } = getContributionFactors();
+  const {
+    startingScore,
+    factors,
+    finalProb,
+    accountHistoryContrib,
+    dealSizeContrib,
+    discountContrib,
+    productsNewContrib,
+    proposalStageContrib
+  } = getContributionFactors();
 
   const confidence =
     totalResolved >= 10 ? { label: 'High Confidence', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' } :
@@ -190,7 +280,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                     const f2Sign = f2.contrib >= 0 ? '+' : '';
                     const f3Sign = f3.contrib >= 0 ? '+' : '';
                     const f4Sign = f4.contrib >= 0 ? '+' : '';
-                    return `This quote has a win likelihood of ${finalProb}%. Based on our Salesforce analysis, the deal is supported by a ${f0.name.toLowerCase()} (${f0Sign}${f0.contrib}%), alignment where the ${f1.name.toLowerCase()} (${f1Sign}${f1.contrib}%), and ${f2.name.toLowerCase()} (${f2Sign}${f2.contrib}%). The ${f4.name.toLowerCase()} adds ${f4Sign}${f4.contrib}%. These positive indicators are adjusted by the fact that ${f3.name.toLowerCase()} (${f3Sign}${f3.contrib}%), which introduces some uncertainty.`;
+                    return `This quote has a win chance of ${finalProb}%. What helps the deal: ${f0.name.toLowerCase()} (${f0Sign}${f0.contrib}%), ${f1.name.toLowerCase()} (${f1Sign}${f1.contrib}%), and ${f2.name.toLowerCase()} (${f2Sign}${f2.contrib}%). The ${f4.name.toLowerCase()} adds ${f4Sign}${f4.contrib}%. Also, ${f3.name.toLowerCase()} (${f3Sign}${f3.contrib}%) introduces some uncertainty.`;
                   })()}
                 </p>
               </div>
@@ -198,30 +288,102 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
               {/* Score Summary Box */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-inner">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b pb-2 border-slate-200">
-                  Score Summary
+                  Score Summary Breakdown
                 </h4>
-                <div className="space-y-2.5 text-[11px] font-medium text-slate-600">
-                  <div className="flex justify-between items-center text-slate-500 font-bold">
-                    <span>Starting Score</span>
-                    <span>{startingScore}%</span>
+                <div className="space-y-3">
+                  {/* Account Baseline Win Rate Card */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-start gap-4 shadow-sm hover:border-indigo-100 transition-colors">
+                    <div className="space-y-1">
+                      <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5 uppercase tracking-wide">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" /> Account Baseline Win Rate
+                      </span>
+                      <p className="text-[10px] text-slate-500 leading-normal font-semibold">
+                        The historical baseline win rate based on won and lost deals for this account.
+                      </p>
+                    </div>
+                    <span className="font-black text-slate-700 text-[11px] bg-slate-100 px-2 py-1 rounded">
+                      {startingScore}%
+                    </span>
                   </div>
-                  
+
+                  {/* Dynamic Factors Cards */}
                   {factors.map((factor, idx) => {
-                    const isPositive = factor.contrib >= 0;
+                    const isPositive = factor.contrib > 0;
+                    const isNegative = factor.contrib < 0;
+                    const dotColor = isPositive ? 'bg-emerald-500' : isNegative ? 'bg-rose-500' : 'bg-slate-400';
+                    const badgeClass = isPositive
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : isNegative
+                        ? 'text-rose-700 bg-rose-50'
+                        : 'text-slate-700 bg-slate-100';
+                    const scoreText = isPositive
+                      ? `+${factor.contrib}%`
+                      : isNegative
+                        ? `${factor.contrib}%`
+                        : '0% (neutral)';
+
                     return (
-                      <div key={idx} className="flex justify-between items-center">
-                        <span className="text-slate-600">{factor.name}</span>
-                        <span className={isPositive ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
-                          {isPositive ? `+${factor.contrib}%` : `${factor.contrib}%`}
+                      <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-start gap-4 shadow-sm hover:border-indigo-100 transition-colors">
+                        <div className="space-y-1">
+                          <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5 uppercase tracking-wide">
+                            <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                            {factor.name}
+                          </span>
+                          <p className="text-[10px] text-slate-500 leading-normal font-semibold">
+                            {factor.explanation}
+                          </p>
+                        </div>
+                        <span className={`font-black text-[11px] px-2 py-1 rounded ${badgeClass}`}>
+                          {scoreText}
                         </span>
                       </div>
                     );
                   })}
 
-                  <div className="flex justify-between items-center border-t border-slate-200 pt-3 mt-2 font-black">
-                    <span className="text-xs text-slate-800 uppercase tracking-wider">Final Win Likelihood</span>
-                    <span className="text-sm text-indigo-600">{finalProb}%</span>
+                  {/* Horizontal Sum Equation Bar */}
+                  <div className="bg-indigo-900 text-white rounded-xl p-4 border border-indigo-950/20 shadow-md mt-4 overflow-x-auto">
+                    <div className="flex items-center justify-between gap-2 text-[10px] font-black min-w-max">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
+                          <span className="text-[8px] uppercase text-indigo-200">Baseline</span>
+                          <span>{startingScore}%</span>
+                        </div>
+                        <span className="text-indigo-300 font-bold">+</span>
+                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
+                          <span className="text-[8px] uppercase text-indigo-200">History</span>
+                          <span>{accountHistoryContrib > 0 ? `+${accountHistoryContrib}%` : accountHistoryContrib < 0 ? `${accountHistoryContrib}%` : '0% (neutral)'}</span>
+                        </div>
+                        <span className="text-indigo-300 font-bold">+</span>
+                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
+                          <span className="text-[8px] uppercase text-indigo-200">Deal Size</span>
+                          <span>{dealSizeContrib > 0 ? `+${dealSizeContrib}%` : dealSizeContrib < 0 ? `${dealSizeContrib}%` : '0% (neutral)'}</span>
+                        </div>
+                        <span className="text-indigo-300 font-bold">+</span>
+                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
+                          <span className="text-[8px] uppercase text-indigo-200">Pricing</span>
+                          <span>{discountContrib > 0 ? `+${discountContrib}%` : discountContrib < 0 ? `${discountContrib}%` : '0% (neutral)'}</span>
+                        </div>
+                        <span className="text-indigo-300 font-bold">+</span>
+                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
+                          <span className="text-[8px] uppercase text-indigo-200">Products</span>
+                          <span>{productsNewContrib > 0 ? `+${productsNewContrib}%` : productsNewContrib < 0 ? `${productsNewContrib}%` : '0% (neutral)'}</span>
+                        </div>
+                        <span className="text-indigo-300 font-bold">+</span>
+                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
+                          <span className="text-[8px] uppercase text-indigo-200">Stage</span>
+                          <span>{proposalStageContrib > 0 ? `+${proposalStageContrib}%` : proposalStageContrib < 0 ? `${proposalStageContrib}%` : '0% (neutral)'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-indigo-300 font-bold">=</span>
+                        <div className="bg-emerald-500 text-white px-3 py-1.5 rounded flex flex-col items-center shadow-sm">
+                          <span className="text-[8px] uppercase text-emerald-100">Final Probability</span>
+                          <span>{finalProb}%</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -323,7 +485,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function WinRateBattleCard({ data, accountName, isLoading, isQuoteMode, messages }) {
+export default function WinRateBattleCard({ data, accountName, isLoading, isQuoteMode, messages, previewData, selectedProducts }) {
   const [historyTab, setHistoryTab] = useState('accepted');
 
   if (isLoading) {
@@ -620,6 +782,8 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         parsedStrengths={parsedStrengths}
         dynamicPlaybook={dynamicPlaybook}
         messages={messages}
+        previewData={previewData}
+        selectedProducts={selectedProducts}
       />
 
       {isQuoteMode && (

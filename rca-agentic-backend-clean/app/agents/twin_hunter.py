@@ -92,11 +92,7 @@ DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
-- Contextual suggestions for Twin Hunter:
-  - If a specific anchor account was used to find lookalikes, you MUST recommend checking that anchor account's deal history or win rate, e.g., "View deal history for [Anchor Account]" or "Calculate win rate for [Anchor Account]" (replace [Anchor Account] with the actual Salesforce account name you matched against).
-  - You can also suggest starting a product search or finding lookalikes for another account.
-  - If they did a general ICP search (no specific anchor account), suggest listing accounts or searching the catalog, e.g., "List all accounts" or "Search product catalog".
-- Example: `[ACTIONS: View deal history for Edge Communications | Calculate win rate for Edge Communications | Search product catalog]`
+- Example: `[ACTIONS: Search for products | View deal history | Calculate account win rate]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

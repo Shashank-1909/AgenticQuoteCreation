@@ -415,12 +415,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           break;
         }
 
-        if (data.agent === 'Quote_Updator' || data.agent === 'Quote_Architect' || data.agent === 'Catalog_Scout' || data.agent === 'Requirements_Parser') {
-          isWinRateRequestRef.current = false;
-          isSummarizeRequestRef.current = false;
-          isDealHistoryRequestRef.current = false;
-        }
-
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
           const name = data.agent;
@@ -452,6 +446,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         if (data.tool === 'get_deal_history') {
           if (!isWinRateRequestRef.current && !isSummarizeRequestRef.current) {
             isDealHistoryRequestRef.current = true;
+            isWinRateRequestRef.current = false;
+            isSummarizeRequestRef.current = false;
           }
           // Trigger get_my_accounts first to represent going to accounts
           setOrchestration(prev => {
@@ -585,6 +581,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           if (data.tool === 'get_deal_history') {
             if (!isWinRateRequestRef.current && !isSummarizeRequestRef.current) {
               isDealHistoryRequestRef.current = true;
+              isWinRateRequestRef.current = false;
+              isSummarizeRequestRef.current = false;
             }
             if (parsed.status === 'success' || parsed.quotes) {
               setDealHistoryData(parsed.quotes || []);
@@ -720,6 +718,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         // Quote modification complete — set flag to show preview recommendation after the final reply
         if (data.quote_id) {
           pendingUpdateRef.current = true;
+          // Refresh the preview pane automatically if we are currently looking at it
+          fetch(`${config.API_BASE_URL}/api/quote-preview/${data.quote_id}`)
+            .then(res => res.json())
+            .then(d => {
+              setPreviewData(d);
+            })
+            .catch(err => console.error('Error refreshing quote preview:', err));
         }
         break;
 
@@ -801,26 +806,18 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
 
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('win probablity') || cmd.includes('win analysis') || cmd.includes('winning chance') || cmd.includes('winning chances') || cmd.includes('deal win') || cmd.includes('success rate') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
+    let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
     
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
-    const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount') || cmd.includes('qty') || cmd.includes('quantity') || cmd.includes('set') || cmd.includes('reduce') || cmd.includes('increase') || cmd.includes('decrease') || cmd.includes('apply');
-    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview') && (
-        cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
-    )) {
+    // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
+    const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
+    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
       isWinRateRequest = true;
-    }
-    if (isQuoteUpdateKeyword) {
-      isWinRateRequest = false;
-      isSummarizeRequestRef.current = false;
-      isDealHistoryRequestRef.current = false;
-      setDealHistoryData(null);
     }
     isWinRateRequestRef.current = isWinRateRequest;
 
-    // A win rate request is a QUOTE win rate request if it explicitly mentions 'quote' or provides an ID/number
+    // A win rate request is a QUOTE win rate request if it mentions 'quote', 'deal', 'probability', 'chance', 'likelihood', 'predict', 'this' or provides an ID/number
     let isQuoteWinRateRequest = isWinRateRequest && (
-      cmd.includes('quote') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
+      cmd.includes('quote') || cmd.includes('deal') || cmd.includes('probability') || cmd.includes('chance') || cmd.includes('likelihood') || cmd.includes('predict') || cmd.includes('this') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
     );
     // Persist quote mode if they are just answering follow-ups
     if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {
@@ -1401,6 +1398,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                     isLoading={dealHistoryLoading}
                     isQuoteMode={isQuoteWinRateRequestRef.current}
                     messages={messages}
+                    previewData={previewData}
+                    selectedProducts={selectedProducts}
                   />
                 ) : (
                   <DealHistoryPanel
@@ -1588,6 +1587,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                       .replace(/<RISKS>[\s\S]*?<\/RISKS>/gi, '')
                       .replace(/<STRENGTHS>[\s\S]*?<\/STRENGTHS>/gi, '')
                       .replace(/<MATH>[\s\S]*?<\/MATH>/gi, '')
+                      .replace(/^Header:\s*/i, '')
                       .trim()}
                   </div>
                 </>
