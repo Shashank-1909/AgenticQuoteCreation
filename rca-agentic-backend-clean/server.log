@@ -1865,3 +1865,93 @@ Processing request of type CallToolRequest
 [06/03/26 22:38:48] INFO     Processing request of type CallToolRequest                                   server.py:720
 [06/03/26 22:39:39] INFO     Processing request of type CallToolRequest                                   server.py:720
 [06/03/26 22:41:29] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:55:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'PCR Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%PCR%' AND Name LIKE '%Master%' AND Name LIKE '%Mix%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'PCR Master Mix'
+[DEBUG] _search_product_direct: Querying 'qPCR SYBR Green Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%SYBR%' AND Name LIKE '%Green%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR SYBR Green Master Mix'
+[DEBUG] _search_product_direct: Querying 'NanoDrop Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%NanoDrop%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'NanoDrop Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Culture Media – DMEM' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Culture%' AND Name LIKE '%Media%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'Cell Culture Media – DMEM'
+[DEBUG] _search_product_direct: Querying 'Fetal Bovine Serum' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Fetal%' AND Name LIKE '%Bovine%' AND Name LIKE '%Serum%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Fetal Bovine Serum'
+[DEBUG] Mapping complete — 6 unique products found
+[06/03/26 22:56:46] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:56:56] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:57:09] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:57:25] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] _map_requirements_to_catalog: mapping 6 items
+[DEBUG] _search_product_direct: Querying 'PCR Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%PCR%' AND Name LIKE '%Master%' AND Name LIKE '%Mix%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'PCR Master Mix'
+[DEBUG] _search_product_direct: Querying 'qPCR SYBR Green Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%SYBR%' AND Name LIKE '%Green%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR SYBR Green Master Mix'
+[DEBUG] _search_product_direct: Querying 'NanoDrop Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%NanoDrop%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'NanoDrop Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Culture Media – DMEM' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Culture%' AND Name LIKE '%Media%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'Cell Culture Media – DMEM'
+[DEBUG] _search_product_direct: Querying 'Fetal Bovine Serum' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Fetal%' AND Name LIKE '%Bovine%' AND Name LIKE '%Serum%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Fetal Bovine Serum'
+[DEBUG] Mapping complete — 6 unique products found
+[06/03/26 22:58:08] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:58:22] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:58:42] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:58:55] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:59:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 22:59:32] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 22:59:57] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/03/26 23:00:46] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 23:02:01] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 23:06:21] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/03/26 23:06:49] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/03/26 23:09:32] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:10:11] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:10:25] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:10:37] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:11:36] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:11:47] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:12:06] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:12:18] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:12:36] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:12:50] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:13:07] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:13:49] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:14:00] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:14:46] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:14:59] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:15:57] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  
+[06/03/26 23:16:09] INFO     Processing request of type           server.py:720
+                             CallToolRequest                                   
+[06/03/26 23:22:37] INFO     Processing request of type           server.py:720
+                             ListToolsRequest                                  

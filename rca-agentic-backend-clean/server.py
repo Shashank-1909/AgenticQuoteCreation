@@ -1421,17 +1421,24 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
     quote_number = "Unknown"
     
     try:
-        for rec in salesforce_resp.get("records", []):
-            if rec.get("referenceId") == "refQuote":
-                quote_id = rec.get("record", {}).get("id", "")
-                break
+        quote_id = salesforce_resp.get("salesTransactionId") or ""
+        if not quote_id:
+            for rec in salesforce_resp.get("records", []):
+                if rec.get("referenceId") == "refQuote":
+                    quote_id = rec.get("record", {}).get("Id") or rec.get("record", {}).get("id") or ""
+                    break
                 
         if quote_id:
-            q_url = f"{instance_url}/services/data/v66.0/sobjects/Quote/{quote_id}?fields=QuoteNumber"
-            q_res = requests.get(q_url, headers=headers)
-            if q_res.status_code == 200:
-                q_data = q_res.json()
-                quote_number = q_data.get("QuoteNumber", "Unknown")
+            import time
+            for attempt in range(4):
+                q_url = f"{instance_url}/services/data/v66.0/sobjects/Quote/{quote_id}?fields=QuoteNumber"
+                q_res = requests.get(q_url, headers=headers)
+                if q_res.status_code == 200:
+                    q_data = q_res.json()
+                    quote_number = q_data.get("QuoteNumber") or q_data.get("quoteNumber") or "Unknown"
+                    if quote_number != "Unknown":
+                        break
+                time.sleep(1)
     except Exception as e:
         print(f"[DEBUG] Error fetching QuoteNumber: {str(e)}")
 
