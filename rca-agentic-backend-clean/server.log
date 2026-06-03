@@ -1631,3 +1631,21 @@ Processing request of type ListToolsRequest
 [06/02/26 17:49:49] INFO     Processing request of type CallToolRequest                                   server.py:720
 [06/02/26 17:50:07] INFO     Processing request of type CallToolRequest                                   server.py:720
 [06/02/26 17:51:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/03/26 10:01:06] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/03/26 10:01:07] WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/03/26 10:01:23] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/03/26 10:01:43] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
