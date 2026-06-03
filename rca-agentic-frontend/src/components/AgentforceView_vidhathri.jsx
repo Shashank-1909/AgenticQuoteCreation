@@ -12,15 +12,36 @@ import TypingIndicator from './TypingIndicator';
 import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
+import { translations } from '../translations';
+import LanguageToggle from './LanguageToggle';
 import './AgentforceView.css';
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setLanguage }) => {
+  const sendPayload = useCallback((payloadStr) => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+    try {
+      const t = translations[language] || translations['en'];
+      let parsed = JSON.parse(payloadStr);
+      if (language !== 'en' && t?.languageContext && parsed.text) {
+        parsed.text = `${parsed.text}\n\n[System Context: ${t.languageContext}]`;
+      }
+      ws.current.send(JSON.stringify(parsed));
+    } catch (e) {
+      const t = translations[language] || translations['en'];
+      let text = payloadStr;
+      if (language !== 'en' && t?.languageContext) {
+        text = `${text}\n\n[System Context: ${t.languageContext}]`;
+      }
+      ws.current.send(text);
+    }
+  }, [language]);
+
   const [messages, setMessages] = useState([
     {
       id: 1,
       role: 'assistant',
-      aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      aiName: config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI',
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator'} Assistant. How can I help you today?`,
       type: 'text'
     }
   ]);
@@ -292,7 +313,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   };
 
   const addMessage = (msg) => {
-    const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
+    const aiName = config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI';
     setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', aiName, ...msg }]);
   };
 
@@ -360,7 +381,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    ws.current?.send(JSON.stringify({
+    sendPayload(JSON.stringify({
       text: finalMessage,
       module: selectedModule?.id || 'sales'
     }));
@@ -410,7 +431,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setWorkspaceView('graph');
 
         // Send the extracted text (already truncated server-side) to the agent
-        ws.current?.send(JSON.stringify({
+        sendPayload(JSON.stringify({
           text: data.user_message,
           module: selectedModule?.id || 'sales'
         }));
@@ -509,7 +530,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
-    ws.current?.send(text);
+    sendPayload(text);
 
     // Clear selections after confirm
     setSelectedProducts(new Set());
@@ -570,23 +591,31 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? 'Meta Workspace' : config.theme === 'Thermofisher' ? 'Thermo Fisher Workspace' : 'Quoting Accelerator'}
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
-            <button
-              onClick={() => setWorkspaceView('graph')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Orchestration Flow
-            </button>
-            <button
-              onClick={() => setWorkspaceView('preview')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Record Preview
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+              <button
+                onClick={() => setWorkspaceView('graph')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Orchestration Flow
+              </button>
+              <button
+                onClick={() => {
+                  setWorkspaceView('preview');
+                  if (quotes && quotes.length > 0) {
+                    handlePreview(quotes[quotes.length - 1].id);
+                  }
+                }}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Record Preview
+              </button>
+            </div>
+            <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
           </div>
         </div>
 
@@ -713,16 +742,18 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       {/* RIGHT SIDEBAR — AGENT INTELLIGENCE */}
       <section className="af-sidebar">
         <div className="af-sidebar-header">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${(config.theme === 'Meta' || config.theme === 'Thermofisher') ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
             {config.theme === 'Meta' ? (
               <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+            ) : config.theme === 'Thermofisher' ? (
+              <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-3 object-contain" />
             ) : (
               <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
             )}
           </div>
           <div className="flex flex-col">
             <h3 className="text-xs font-black uppercase tracking-tighter">
-              {config.theme === 'Meta' ? 'Meta Assistant' : 'Quoting Accelerator'}
+              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales Assistant' : 'Quoting Accelerator'}
             </h3>
             <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
           </div>
@@ -843,7 +874,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   <SelectionPanel
                     panel={msg.data}
                     onSelect={(opt) => {
-                      const text = `${opt.name} (ID: ${opt.id})`;
+                      const text = opt.name;
                       setInputValue(text);
                       handleSend();
                     }}
@@ -929,7 +960,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 type="text"
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
-                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : config.theme === 'Thermofisher' ? 'Ask Thermo Fisher AI...' : 'Ask Quoting Accelerator...'}
                 className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
               <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">

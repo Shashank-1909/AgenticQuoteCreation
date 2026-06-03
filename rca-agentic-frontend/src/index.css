@@ -32,12 +32,17 @@
     100% { opacity: 0; transform: scaleX(1); transform-origin: right; }
   }
 
-  --indigo-500: #60A5FA;
-  --indigo-600: #3B82F6;
+  --color-indigo-400: var(--theme-primary-400);
+  --color-indigo-500: var(--theme-primary-500);
+  --color-indigo-600: var(--theme-primary-600);
 }
 
 /* Base Theme Variables */
 :root {
+  --theme-primary-400: #818cf8;
+  --theme-primary-500: #6366f1;
+  --theme-primary-600: #4f46e5;
+
   --site-bg: #FFFFFF;
   --card-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 26, 114, 0.1);
@@ -50,6 +55,12 @@
 }
 
 /* Explicit Dark Mode Overrides */
+html.meta-theme {
+  --theme-primary-400: #38bdf8;
+  --theme-primary-500: #0064E0;
+  --theme-primary-600: #004fb0;
+}
+
 html.dark {
   --site-bg: #020306;
   --card-bg: rgba(10, 12, 20, 0.7);
@@ -61,13 +72,47 @@ html.dark {
   color-scheme: dark;
 }
 
+/* Thermo Fisher Theme Overrides */
+html[data-theme="thermofisher"] {
+  --theme-primary-400: #ff6b6b;
+  --theme-primary-500: #EE3124;
+  --theme-primary-600: #B71234;
+
+  --site-bg: #FFFFFF;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(227, 24, 55, 0.15);
+  --text-main: #111111;
+  --text-muted: #555555;
+  --accent-primary: #EE3124;
+  --accent-secondary: #B71234;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+html[data-theme="thermofisher"].dark {
+  --site-bg: #0a0a0a;
+  --card-bg: rgba(20, 20, 20, 0.85);
+  --glass-border: rgba(238, 49, 36, 0.2);
+  --text-main: #F5F5F5;
+  --text-muted: #A0A0A0;
+  --accent-primary: #EE3124;
+  --accent-secondary: #FF4D4D;
+}
+
 /* Core Layout styles using variables */
 html, body {
-  font-family: 'Outfit', sans-serif;
+  font-family: inherit;
   background-color: var(--site-bg);
   color: var(--text-main);
   transition: background-color 0.5s ease, color 0.5s ease;
   min-height: 100vh;
+}
+
+html {
+  font-family: 'Outfit', sans-serif; /* Default font */
+}
+
+html[data-theme="thermofisher"] {
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* Circuit-trace dash animation */

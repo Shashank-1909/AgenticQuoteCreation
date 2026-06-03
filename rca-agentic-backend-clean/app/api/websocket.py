@@ -218,13 +218,46 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             except Exception:
                 pass
 
-            # Detect document upload to reset session and flow
+            # Detect document upload or requirements document intent to reset session and flow
             is_upload = "Document uploaded:" in text_content
-            if is_upload:
-                logger.info("New document upload detected. Resetting session flags.")
-                _app_state.quote_flow.pop(session_id, None)
-                _app_state.update_flow.pop(session_id, None)
-                _app_state.win_rate_flow.pop(session_id, None)
+            clean_lower = text_content.lower()
+            is_req_doc_intent = (
+                "have a req" in clean_lower or
+                "have a doc" in clean_lower or
+                "have a pdf" in clean_lower or
+                "have a sow" in clean_lower or
+                "have a rfp" in clean_lower or
+                "have a transcript" in clean_lower or
+                "here is the rfp" in clean_lower or
+                "requirements document" in clean_lower or
+                "parse transcript" in clean_lower or
+                "parse document" in clean_lower
+            )
+            is_win_rate = "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower or "success rate" in clean_lower
+            _app_state.win_rate_flow[session_id] = is_win_rate
+
+            is_lookalike_query = "lookalike" in clean_lower or "twin" in clean_lower or "icp" in clean_lower or "similar customer" in clean_lower
+            is_deal_history_query = "deal history" in clean_lower or "previous quotes" in clean_lower or "historical quotes" in clean_lower or "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower
+            is_reset = "reset" in clean_lower or "restart" in clean_lower or "start fresh" in clean_lower
+
+            last_agent = _app_state.active_agent.get(session_id)
+            in_update_flow = _app_state.update_flow.get(session_id, False)
+            in_quote_flow  = _app_state.quote_flow.get(session_id, False)
+
+            should_reset_session = (
+                is_upload or
+                is_reset or
+                is_req_doc_intent or
+                (is_lookalike_query and last_agent != "Twin_Hunter") or
+                (is_deal_history_query and not (in_quote_flow or in_update_flow) and last_agent != "Quote_Analyst")
+            )
+
+            if should_reset_session:
+                logger.info("Resetting session flags and recreating session database for session %s", session_id)
+                _app_state.quote_flow[session_id] = False
+                _app_state.update_flow[session_id] = False
+                _app_state.win_rate_flow[session_id] = False
+                _app_state.active_agent.pop(session_id, None)
                 try:
                     await session_service.delete_session(
                         app_name=APP_NAME, user_id=USER_ID, session_id=session_id
@@ -232,14 +265,14 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     await session_service.create_session(
                         app_name=APP_NAME, user_id=USER_ID, session_id=session_id
                     )
-                    logger.info("Successfully recreated session database for clean upload state.")
+                    logger.info("Successfully recreated session database.")
                 except Exception as exc:
                     logger.warning("Failed to reset session: %s", exc)
 
-            # Detect win rate requests and store state
-            clean_lower = text_content.lower()
-            is_win_rate = "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower or "success rate" in clean_lower
-            _app_state.win_rate_flow[session_id] = is_win_rate
+            if is_lookalike_query or is_deal_history_query or is_reset or is_req_doc_intent:
+                _app_state.quote_flow[session_id] = False
+                _app_state.update_flow[session_id] = False
+
 
             # Choose runner based on active flow.
             # Priority: document_upload > update_flow > quote_flow > root (Deal_Manager).
@@ -304,6 +337,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     try:
                         import asyncio
                         logger.info("Streaming simulated Requirements_Parser UI events...")
+                        
+                        # 0. Deal_Manager Coordinator Start Event
+                        await websocket.send_json({"type": "AGENT_START", "agent": "Deal_Manager"})
+                        await asyncio.sleep(0.4)
                         
                         # 1. Agent Start Event
                         await websocket.send_json({"type": "AGENT_START", "agent": "Requirements_Parser"})

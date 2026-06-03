@@ -9,8 +9,14 @@ const SelectionPanel = ({ panel, confirmedAccount, onSelect, scrollRef }) => {
     account: '#0064E0',
     opportunity: '#31A24C'
   };
+  const thermoColors = {
+    account: '#EE3124',
+    opportunity: '#B71234'
+  };
   const accentColor = config.theme === 'Meta' 
     ? (isOpp ? metaColors.opportunity : metaColors.account)
+    : config.theme === 'Thermofisher'
+    ? (isOpp ? thermoColors.opportunity : thermoColors.account)
     : (isOpp ? '#fbbf24' : '#818cf8');
   return (
     <div className="overflow-hidden p-4" style={{ animation: 'panel-in 0.28s ease' }}>

@@ -29,6 +29,12 @@ const Sidebar = ({ activeTab, onTabChange }) => {
             <div className="h-6 w-[1px] bg-slate-200 mx-1" />
             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-main)]">CPQ</h2>
           </>
+        ) : config.theme === 'Thermofisher' ? (
+          <>
+            <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher Scientific" className="h-10 object-contain" />
+            <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-main)]">CPQ</h2>
+          </>
         ) : (
           <>
             <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-10 object-contain" />

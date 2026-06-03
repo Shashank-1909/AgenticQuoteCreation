@@ -3,8 +3,8 @@ import { config } from './config';
 // ─────────────────────────────────────────────────────────────
 // GRAPH LAYOUT CONSTANTS  (SVG + DOM coordinate space, px)
 // ─────────────────────────────────────────────────────────────
-export const GW = 680;   // graph canvas width
-export const GH = 560;   // graph canvas height
+export const GW = 980;   // graph canvas width
+export const GH = 580;   // graph canvas height
 
 // Deal Manager card (active / top position)
 export const DM_W = 160, DM_H = 76;
@@ -75,6 +75,9 @@ export const TOOL_LABELS = {
   get_deal_history: 'Deal History',
   summary_node: 'Summary Node',
   win_rate: 'Win Rate',
+  get_thermofisher_account_context: 'SF Context',
+  research_twin_candidates: 'Web Research',
+  build_twin_hunter_cards: 'Twin Cards',
 };
 export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
@@ -88,6 +91,7 @@ export const INIT_ORCH = {
   Quote_Architect: { state: 'idle', tools: [], routedByDm: false },
   Quote_Updator: { state: 'idle', tools: [], routedByDm: false },
   Quote_Analyst: { state: 'idle', tools: [], routedByDm: false },
+  Twin_Hunter: { state: 'idle', tools: [], routedByDm: false },
 };
 
 // ─────────────────────────────────────────────────────────────

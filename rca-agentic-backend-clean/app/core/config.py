@@ -39,6 +39,11 @@ TOOL_QUOTE:         str = "evaluate_quote_graph"
 TOOL_LINE_ITEMS:    str = "get_quote_line_items"
 TOOL_MANAGE_LINES:  str = "manage_quote_line_items"
 
+# Twin Hunter tools
+TOOL_TWIN_CONTEXT:  str = "get_thermofisher_account_context"
+TOOL_TWIN_RESEARCH: str = "research_twin_candidates"
+TOOL_TWIN_CARDS:    str = "build_twin_hunter_cards"
+
 # ---------------------------------------------------------------------------
 # Salesforce instance URL — loaded from auth.json at import time.
 # Falls back to the public login URL if auth.json is absent.

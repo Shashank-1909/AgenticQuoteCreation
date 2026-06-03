@@ -68,6 +68,12 @@ const App = () => {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    import('./config').then(({ config }) => {
+      document.documentElement.setAttribute('data-theme', config.theme.toLowerCase());
+    });
+  }, []);
+
   const handleSelect = (module) => {
     setSelectedModule(module);
     setView('dashboard');

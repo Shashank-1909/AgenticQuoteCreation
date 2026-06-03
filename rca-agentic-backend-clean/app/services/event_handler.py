@@ -201,6 +201,8 @@ async def process_events(
             current_agent = agent_name
             logger.info("[AGENT] %s", agent_name)
             await websocket.send_json({"type": "AGENT_START", "agent": agent_name})
+            state.active_agent[session_id] = agent_name
+
 
         # ── Tool call (LLM → Tool) ────────────────────────────────────────
         for fn_call in (event.get_function_calls() or []):

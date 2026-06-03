@@ -13,7 +13,10 @@ import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
 import DealHistoryPanel from './DealHistoryPanel';
 import WinRateBattleCard from './WinRateBattleCard';
+import LanguageToggle from './LanguageToggle';
+import LookalikeCards from './LookalikeCards';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
+import { translations } from '../translations';
 import './AgentforceView.css';
 
 const getActionIcon = (label) => {
@@ -36,9 +39,28 @@ const getActionIcon = (label) => {
   return <Sparkles size={14} className="text-indigo-500 flex-shrink-0" />;
 };
 
-const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
+const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setLanguage }) => {
   const [rightWidth, setRightWidth] = useState(500);
   const [isResizingRight, setIsResizingRight] = useState(false);
+
+  const sendPayload = useCallback((payloadStr) => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+    try {
+      const t = translations[language] || translations['en'];
+      let parsed = JSON.parse(payloadStr);
+      if (language !== 'en' && t?.languageContext && parsed.text) {
+        parsed.text = `${parsed.text}\n\n[System Context: ${t.languageContext}]`;
+      }
+      ws.current.send(JSON.stringify(parsed));
+    } catch (e) {
+      const t = translations[language] || translations['en'];
+      let text = payloadStr;
+      if (language !== 'en' && t?.languageContext) {
+        text = `${text}\n\n[System Context: ${t.languageContext}]`;
+      }
+      ws.current.send(text);
+    }
+  }, [language]);
 
   const startResizingRight = useCallback((e) => {
     setIsResizingRight(true);
@@ -71,8 +93,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     {
       id: 1,
       role: 'assistant',
-      aiName: config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI',
-      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : 'Quoting Accelerator'} Assistant for ${selectedModule?.title || 'Salesforce'}. How can I help you today?`,
+      aiName: config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI',
+      content: `Hello! I'm your ${config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator'} Assistant. How can I help you today?`,
       type: 'text',
       isGreeting: true
     }
@@ -87,6 +109,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [configProducts, setConfigProducts] = useState([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [lookalikeData, setLookalikeData] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [productConfigs, setProductConfigs] = useState({}); // { id: { qty, discount } }
@@ -94,6 +117,23 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [workspaceView, setWorkspaceView] = useState('graph'); // graph, preview, account
   const [zoomLevel, setZoomLevel] = useState(0.75);
+  const graphContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (workspaceView !== 'graph' || !graphContainerRef.current) return;
+    const updateScale = () => {
+      const rect = graphContainerRef.current.getBoundingClientRect();
+      const scaleX = (rect.width - 40) / 980; // 980 is GW
+      const scaleY = (rect.height - 40) / 580; // 580 is GH
+      const fitScale = Math.min(scaleX, scaleY);
+      setZoomLevel(Math.max(0.4, Math.min(fitScale, 1.15)));
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(graphContainerRef.current);
+    return () => observer.disconnect();
+  }, [workspaceView]);
+
   const [quotes, setQuotes] = useState([]);
   const [quoteNumberMap, setQuoteNumberMap] = useState({}); // { id: number }
   const [showPreviewSuggestion, setShowPreviewSuggestion] = useState(false);
@@ -209,7 +249,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               };
             } else {
               if (n.coordinator === 'active') n.coordinator = 'done';
-              for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+              for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
                 if (n[k] && n[k].state === 'active') {
                   n[k] = { ...n[k], state: 'done' };
                   if (n[k].tools) {
@@ -375,6 +415,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
           break;
         }
 
+        if (data.agent === 'Quote_Updator' || data.agent === 'Quote_Architect' || data.agent === 'Catalog_Scout' || data.agent === 'Requirements_Parser') {
+          isWinRateRequestRef.current = false;
+          isSummarizeRequestRef.current = false;
+          isDealHistoryRequestRef.current = false;
+        }
+
         setReasoning(`Agent ${data.agent.replace('_', ' ')} is thinking...`);
         setOrchestration(prev => {
           const name = data.agent;
@@ -386,9 +432,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             name === 'Catalog_Scout' ||
             name === 'Quote_Architect' ||
             name === 'Quote_Updator' ||
-            name === 'Quote_Analyst'
+            name === 'Quote_Analyst' ||
+            name === 'Twin_Hunter'
           ) {
-            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+            for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
               if (n[k] && n[k].state === 'active') n[k] = { ...n[k], state: 'done' };
             }
             const dmWasActive = n.coordinator === 'active';
@@ -403,6 +450,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
       case 'TOOL_TRIGGER':
         if (data.tool === 'get_deal_history') {
+          if (!isWinRateRequestRef.current && !isSummarizeRequestRef.current) {
+            isDealHistoryRequestRef.current = true;
+          }
           // Trigger get_my_accounts first to represent going to accounts
           setOrchestration(prev => {
             const n = { ...prev };
@@ -456,7 +506,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
             if (n[k] && n[k].state === 'active') {
               const settled = n[k].tools.map(t =>
                 t.state === 'active' ? { ...t, state: 'done' } : t
@@ -481,7 +531,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       case 'TOOL_RESULT':
         setOrchestration(prev => {
           const n = { ...prev };
-          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst']) {
+          for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
             if (n[k] && n[k].tools && n[k].tools.some(t => t.name === data.tool)) {
               n[k] = {
                 ...n[k], tools: n[k].tools.map(t =>
@@ -495,7 +545,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         });
         try {
           const parsed = JSON.parse(data.data);
-          
           if (data.tool === 'get_quote_line_items' && parsed.quote_id) {
             // Automatically switch to preview when Quote Updator fetches line items
             fetch(`${config.API_BASE_URL}/api/quote-preview/${parsed.quote_id}`)
@@ -506,7 +555,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               })
               .catch(err => console.error('Error fetching quote preview:', err));
           }
-
           if ((data.tool === 'search_catalog' || data.tool === 'parse_transcript_to_requirements' || data.tool === 'parse_requirements_doc' || data.tool === 'map_requirements_to_catalog') && parsed.results && parsed.results.length > 0) {
             pendingResultsRef.current = parsed.results;
 
@@ -535,15 +583,24 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             }
           }
           if (data.tool === 'get_deal_history') {
+            if (!isWinRateRequestRef.current && !isSummarizeRequestRef.current) {
+              isDealHistoryRequestRef.current = true;
+            }
             if (parsed.status === 'success' || parsed.quotes) {
               setDealHistoryData(parsed.quotes || []);
               setDealHistoryAccount(parsed.accountName || '');
             }
           }
+          if (data.tool === 'build_twin_hunter_cards' && Array.isArray(parsed.cards)) {
+            setLookalikeData(parsed);
+            setPreviewData(null);
+            setWorkspaceView('preview');
+          }
           if (data.tool === 'evaluate_quote_graph') {
             let qId = extractQuoteId(data.data);
             const newQuote = { id: qId, status: 'Draft' };
             setQuotes(prev => [...prev, newQuote]);
+            setLookalikeData(null);
             // Clear any pending cards since the quote is now finalized
             pendingResultsRef.current = null;
             pendingSelectionRef.current = null;
@@ -674,7 +731,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
   };
 
   const addMessage = (msg) => {
-    const aiName = config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI';
+    const aiName = config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI';
     setMessages(prev => {
       // Prevent any duplicate dealHistorySummary messages for the same account
       if (msg.type === 'dealHistorySummary') {
@@ -744,13 +801,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
 
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
-    let isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote');
+    let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('win probablity') || cmd.includes('win analysis') || cmd.includes('winning chance') || cmd.includes('winning chances') || cmd.includes('deal win') || cmd.includes('success rate') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
     
-    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter
-    if (!isWinRateRequest && !isStatusFilterRequest && isWinRateRequestRef.current && (
+    // If we're already in a win rate context, keep it alive for follow-up answers or quote numbers, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
+    const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount') || cmd.includes('qty') || cmd.includes('quantity') || cmd.includes('set') || cmd.includes('reduce') || cmd.includes('increase') || cmd.includes('decrease') || cmd.includes('apply');
+    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview') && (
         cmd.includes('yes') || cmd.includes('current') || cmd.includes('calculate') || /\b\d{8}\b/.test(cmd) || /\b0[qQ]0\w{12,15}\b/.test(cmd) || cmd.includes('quote')
     )) {
       isWinRateRequest = true;
+    }
+    if (isQuoteUpdateKeyword) {
+      isWinRateRequest = false;
+      isSummarizeRequestRef.current = false;
+      isDealHistoryRequestRef.current = false;
+      setDealHistoryData(null);
     }
     isWinRateRequestRef.current = isWinRateRequest;
 
@@ -770,7 +834,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
-    const isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
+    let isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
       isStatusFilterRequest || 
       cmd.includes('deal history') || 
       cmd.includes('previous quotes') || 
@@ -785,6 +849,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       cmd.includes('deal history of')
     );
 
+    // If we're already in a deal history context, keep it alive for follow-up account selection, filters, or resetting account
+    if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
+      detectAccountName(text) || 
+      cmd.includes('yes') || 
+      cmd.includes('all') || 
+      cmd.includes('list') || 
+      cmd.includes('show') || 
+      cmd.includes('current') ||
+      cmd.includes('different') ||
+      cmd.includes('account')
+    )) {
+      isDealHistoryRequest = true;
+    }
+
     if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest) {
       setDealHistoryData(null);
     }
@@ -797,8 +875,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       setDealHistoryAccount(newlyDetectedAcc);
     }
 
-    // Lazy load deal history for win rate request if not loaded yet
-    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0)) {
+    // Lazy load deal history for win rate request if not loaded yet or if the account changed
+    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount))) {
       const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
@@ -816,19 +894,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
           }).join('\n');
 
-          ws.current?.send(JSON.stringify({
+          sendPayload(JSON.stringify({
             text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
             module: selectedModule?.id || 'sales'
           }));
         } else {
-          ws.current?.send(JSON.stringify({
+          sendPayload(JSON.stringify({
             text: text,
             module: selectedModule?.id || 'sales'
           }));
         }
       } catch (err) {
         console.error("Error lazy-loading deal history for win rate:", err);
-        ws.current?.send(JSON.stringify({
+        sendPayload(JSON.stringify({
           text: text,
           module: selectedModule?.id || 'sales'
         }));
@@ -850,15 +928,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
       }).join('\n');
 
-      ws.current?.send(JSON.stringify({
+      sendPayload(JSON.stringify({
         text: text + (quotesText ? `\n\n[Historical Quotes in context:\n${quotesText}]` : ''),
         module: selectedModule?.id || 'sales'
       }));
       return;
     }
 
-    // Lazy load deal history for summarization/prioritization if not loaded yet
-    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0)) {
+    // Lazy load deal history for summarization/prioritization if not loaded yet or if the account changed
+    if (isSummarizeOrPrioritize && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount))) {
       const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
@@ -876,19 +954,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
           }).join('\n');
 
-          ws.current?.send(JSON.stringify({
+          sendPayload(JSON.stringify({
             text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
             module: selectedModule?.id || 'sales'
           }));
         } else {
-          ws.current?.send(JSON.stringify({
+          sendPayload(JSON.stringify({
             text: text,
             module: selectedModule?.id || 'sales'
           }));
         }
       } catch (err) {
         console.error("Error lazy-loading deal history:", err);
-        ws.current?.send(JSON.stringify({
+        sendPayload(JSON.stringify({
           text: text,
           module: selectedModule?.id || 'sales'
         }));
@@ -908,7 +986,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       setDealHistoryAccount(detectedAcc);
       setDealHistoryLoading(true);
       dealHistoryLoadingRef.current = true;
-      
       try {
         const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
         const data = await resp.json();
@@ -1001,7 +1078,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
     setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
     setInputValue('');
-    ws.current?.send(JSON.stringify({
+    sendPayload(JSON.stringify({
       text: finalMessage,
       module: selectedModule?.id || 'sales'
     }));
@@ -1039,7 +1116,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setProductConfigs({});
         setBulkQty('');
         setBulkDiscount('');
-        setOrchestration(INIT_ORCH);
+        setOrchestration(prev => {
+          const n = { ...prev };
+          for (const k of ['Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
+            n[k] = { state: 'idle', tools: [], routedByDm: false };
+          }
+          return n;
+        });
 
         // Immediately notify the user in the UI
         setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
@@ -1052,7 +1135,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
         setWorkspaceView('graph');
 
         // Send the extracted text (already truncated server-side) to the agent
-        ws.current?.send(JSON.stringify({
+        sendPayload(JSON.stringify({
           text: data.user_message,
           module: selectedModule?.id || 'sales'
         }));
@@ -1100,6 +1183,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
       const data = await resp.json();
       if (data.status === 'success') {
         setPreviewData(data);
+        setLookalikeData(null);
+        setDealHistoryData(null);
+        isWinRateRequestRef.current = false;
+        isSummarizeRequestRef.current = false;
         setWorkspaceView('preview');
         // Show update suggestion ONLY after preview is successfully displayed
         setShowUpdateSuggestion(true);
@@ -1185,7 +1272,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
     const text = `Create a quote for: ${listStr}`;
     setInputValue(text);
     setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: text, type: 'text' }]);
-    ws.current?.send(text);
+    sendPayload(text);
 
     // Clear selections after confirm
     setSelectedProducts(new Set());
@@ -1246,29 +1333,37 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? 'Meta Workspace' : config.theme === 'Thermofisher' ? 'Thermo Fisher Workspace' : 'Quoting Accelerator'}
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
-            <button
-              onClick={() => setWorkspaceView('graph')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Orchestration Flow
-            </button>
-            <button
-              onClick={() => setWorkspaceView('preview')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
-            >
-              Record Preview
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 bg-black/5 p-1 rounded-xl border border-black/5">
+              <button
+                onClick={() => setWorkspaceView('graph')}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Orchestration Flow
+              </button>
+              <button
+                onClick={() => {
+                  setWorkspaceView('preview');
+                  if (quotes && quotes.length > 0) {
+                    handlePreview(quotes[quotes.length - 1].id);
+                  }
+                }}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
+              >
+                Record Preview
+              </button>
+            </div>
+            <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
           </div>
         </div>
 
         <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
           {workspaceView === 'graph' && (
-            <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
+            <div ref={graphContainerRef} className="w-full h-full relative overflow-hidden flex items-center justify-center">
               <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
                 <button
                   onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
@@ -1297,7 +1392,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           )}
           {workspaceView === 'preview' && (
-            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || dealHistoryData) ? (
+            (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || (dealHistoryData && isDealHistoryRequestRef.current)) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
                   <WinRateBattleCard
@@ -1318,7 +1413,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               </div>
             ) : (
             <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-              {previewData ? (
+              {lookalikeData ? (
+                <LookalikeCards
+                  variant="workspace"
+                  cards={lookalikeData.cards || []}
+                  summary={lookalikeData.summary || ''}
+                  sourceAccount={lookalikeData.source_account}
+                  limitations={lookalikeData.limitations || []}
+                />
+              ) : previewData ? (
                 <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -1423,16 +1526,18 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
 
       <section className="af-sidebar" style={{ width: rightWidth }}>
         <div className="af-sidebar-header">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${config.theme === 'Meta' ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
-            {config.theme === 'Meta' ? (
-              <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
-            ) : (
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${(config.theme === 'Meta' || config.theme === 'Thermofisher') ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
+              {config.theme === 'Meta' ? (
+                <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+              ) : config.theme === 'Thermofisher' ? (
+                <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-3 object-contain" />
+              ) : (
               <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
             )}
           </div>
           <div className="flex flex-col">
             <h3 className="text-xs font-black uppercase tracking-tighter">
-              {config.theme === 'Meta' ? 'Meta Assistant' : 'Quoting Accelerator'}
+              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales Assistant' : 'Quoting Accelerator'}
             </h3>
             <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
           </div>
@@ -1477,7 +1582,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
               ) : (
                 <>
                   <div className="af-bubble">
-                    {msg.content.replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '').replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '').trim()}
+                    {msg.content
+                      .replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '')
+                      .replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '')
+                      .replace(/<RISKS>[\s\S]*?<\/RISKS>/gi, '')
+                      .replace(/<STRENGTHS>[\s\S]*?<\/STRENGTHS>/gi, '')
+                      .replace(/<MATH>[\s\S]*?<\/MATH>/gi, '')
+                      .trim()}
                   </div>
                 </>
               )}
@@ -1581,7 +1692,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                   <SelectionPanel
                     panel={msg.data}
                     onSelect={(opt) => {
-                      const text = `${opt.name} (ID: ${opt.id})`;
+                      const text = opt.name;
                       setInputValue(text);
                       handleSend();
                     }}
@@ -1655,6 +1766,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
             </div>
           ))}
 
+          {reasoning && (
+            <div className="af-reasoning">
+              <Loader2 size={12} className="animate-spin" />
+              {reasoning}
+            </div>
+          )}
+
+          {workflowState === 'orchestrating' && <TypingIndicator />}
 
           <div ref={chatEndRef} />
         </div>
@@ -1676,7 +1795,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false }) => {
                 type="text"
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
-                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : 'Ask Quoting Accelerator...'}
+                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : config.theme === 'Thermofisher' ? 'Ask Thermo Fisher AI...' : 'Ask Quoting Accelerator...'}
                 className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
               <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">

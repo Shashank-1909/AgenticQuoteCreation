@@ -10,9 +10,7 @@ the Catalog Scout's responsibility.
 """
 
 # pyrefly: ignore [missing-import]
-# pyrefly: ignore [missing-import]
 from google.adk.agents import LlmAgent
-# pyrefly: ignore [missing-import]
 # pyrefly: ignore [missing-import]
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 
@@ -62,8 +60,6 @@ IMPORTANT: Before starting, check the conversation history! If the user has ALRE
 STEP 1 — VERIFY CONFIGURATION:
   Identify the products the user wants to quote from the System Context or conversation history.
   Look for 'Quantity' and 'Discount' values in the user's message (e.g., "Quantity: 5, Discount: 10%"). 
-  - If the user DOES NOT specify quantities or discounts, proceed immediately using the defaults (Quantity: 1, No Discount). 
-  - Do NOT ask for confirmation. Move directly to Step 2 (Account Selection).
   - If the user DOES NOT specify quantities or discounts, proceed immediately using the defaults (Quantity: 1, No Discount). 
   - Do NOT ask for confirmation. Move directly to Step 2 (Account Selection).
 
@@ -119,12 +115,6 @@ STEP 5 — CREATE QUOTE:
   - Pass the confirmed Opportunity ID from Step 3 (or from history).
   - Map the quantities and discounts identified in Step 1 to the corresponding line items.
   - IMPORTANT: If a product is NOT a subscription (e.g. hardware, perpetual license), do NOT include "BillingFrequency" or "PeriodBoundary" in that line item. If you are unsure, omit them; the system will use defaults if needed.
-  Use the quote creation tool (described as submitting a Quote Graph to Salesforce CPQ).
-  - Pass the `pricebook_id` you received from the pricing tool in Step 4.
-  - Pass ALL resolved line items (one per product).
-  - Pass the confirmed Opportunity ID from Step 3 (or from history).
-  - Map the quantities and discounts identified in Step 1 to the corresponding line items.
-  - IMPORTANT: If a product is NOT a subscription (e.g. hardware, perpetual license), do NOT include "BillingFrequency" or "PeriodBoundary" in that line item. If you are unsure, omit them; the system will use defaults if needed.
   
   Map the quantities and discounts identified in Step 1 to the corresponding line items.
   A single quote can contain multiple line items — include all of them in one call.
@@ -143,6 +133,7 @@ DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - These suggestions MUST be highly contextual to the operation you just completed. Do NOT hardcode standard recommendations.
 - ACTIONABILITY: Every suggested action MUST be a fully working capability of this system that corresponding agents can actually execute (e.g. creating/updating a quote, searching products, viewing deal history, analyzing win rates). Do NOT hallucinate capabilities.
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
+  DO NOT ask for account win rate, Only ask for win rate of quote you created.
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
 - Example: `[ACTIONS: Update this quote | Apply a discount | View quote win probability]`

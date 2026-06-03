@@ -105,9 +105,11 @@ DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - These suggestions MUST be highly contextual to the operation you just completed. Do NOT hardcode standard recommendations.
 - ACTIONABILITY: Every suggested action MUST be a fully working capability of this system that corresponding agents can actually execute (e.g. creating/updating a quote, searching products, viewing deal history, analyzing win rates). Do NOT hallucinate capabilities.
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
+- NO Account win rate calculations: Do NOT recommend any account win rate calculations. You can recommend to check for quote winning probability.
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
+- REQUIRED RECOMMENDATION FOR UPDATES: Whenever you successfully update a quote (or apply a discount/quantity change to a line item), you MUST ALWAYS include "Preview updated quote" as one of your recommended actions so that the user can verify the update.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
-- Example: `[ACTIONS: Update another item | Add new products | Calculate win probability]`
+- Example: `[ACTIONS: Preview updated quote | Update another item | Calculate win probability]`
         """,
         tools=[toolset],
         before_model_callback=sequence_repair_hook,

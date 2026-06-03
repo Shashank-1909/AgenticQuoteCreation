@@ -8,8 +8,9 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
   const quote = data.records?.[0] || {};
   const lines = quote.QuoteLineItems || [];
   const isMeta = config.theme === 'Meta';
+  const isThermofisher = config.theme === 'Thermofisher';
   
-  const logoUrl = isMeta ? config.META_LOGO_URL : config.AGIVANT_LOGO_URL;
+  const logoUrl = isMeta ? config.META_LOGO_URL : isThermofisher ? config.THERMOFISHER_LOGO_URL : config.AGIVANT_LOGO_URL;
 
   // Calculate totals
   const totalContractValue = quote.GrandTotal || 0;
@@ -19,7 +20,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
       <div className="bg-white w-full max-w-6xl max-h-[90vh] rounded-lg shadow-2xl overflow-hidden flex flex-col border border-slate-200">
         
         {/* Header */}
-        <div className={`px-8 py-5 ${isMeta ? 'bg-[#0084FF]' : 'bg-indigo-600'} flex items-center justify-between text-white`}>
+        <div className={`px-8 py-5 ${isMeta ? 'bg-[#0084FF]' : isThermofisher ? 'bg-[#EE3124]' : 'bg-indigo-600'} flex items-center justify-between text-white`}>
           <div className="flex items-center gap-6">
             <div className="bg-white p-2 rounded-md shadow-sm">
               <img src={logoUrl} alt="Logo" className="h-5 w-auto object-contain" />
@@ -98,7 +99,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
             <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className={`${isMeta ? 'bg-[#0084FF] text-white' : 'bg-indigo-600 text-white'}`}>
+                  <tr className={`${isMeta ? 'bg-[#0084FF] text-white' : isThermofisher ? 'bg-[#EE3124] text-white' : 'bg-indigo-600 text-white'}`}>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-left">Product</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-right">Sales Price</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-center">Quantity</th>
@@ -148,7 +149,7 @@ const QuotePreviewModal = ({ isOpen, onClose, data }) => {
                 const baseUrl = data.instance_url || 'https://agivant-8f-dev-ed.develop.lightning.force.com';
                 if (quoteId) window.open(`${baseUrl}/lightning/r/Quote/${quoteId}/view`, '_blank');
               }}
-              className={`px-8 py-2.5 ${isMeta ? 'bg-[#0084FF]' : 'bg-indigo-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg flex items-center gap-2 hover:opacity-90 transition-all active:scale-95`}
+              className={`px-8 py-2.5 ${isMeta ? 'bg-[#0084FF]' : isThermofisher ? 'bg-[#EE3124]' : 'bg-indigo-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg flex items-center gap-2 hover:opacity-90 transition-all active:scale-95`}
             >
               View in Salesforce <ExternalLink size={14} />
             </button>

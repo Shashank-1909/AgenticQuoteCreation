@@ -66,6 +66,7 @@ export const translations = {
     commandCenterOnline: "Centro de Comando en Línea. Esperando instrucciones para ",
     documentUploaded: "Documento Subido",
     uploadFailed: "Error al subir",
+    languageContext: "The user prefers to communicate in Spanish. Please translate any responses, product details, UI actions, and text into Spanish.",
 
     // New UI sections for Spanish
     selectionHub: {

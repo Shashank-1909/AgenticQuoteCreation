@@ -1,8 +1,8 @@
 import os
 import sys
 import json
+import re
 import requests
-
 # Redirect sys.stderr to a file to prevent subprocess standard error pipe deadlocks on Windows
 class FileLogger:
     def __init__(self, filepath="server.log"):
@@ -17,6 +17,8 @@ class FileLogger:
         pass
 
 sys.stderr = FileLogger()
+import uuid
+from urllib.parse import urlparse
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 from google import genai
@@ -35,6 +37,10 @@ mcp = FastMCP("Salesforce RCA Deal Management MCP Server")
 # ---------------------------------------------------------------------------
 FIELD_VALUE_INDEX: dict = {}
 _INDEX_BUILT = False
+SF_FIELD_CACHE: dict = {}
+TWIN_HUNTER_CACHE: dict = {}
+THERMOFISHER_CATEGORY = "ThermoFisher"
+
 
 # Global GenAI Client Initialization
 def _get_genai_client():
@@ -73,6 +79,731 @@ def get_salesforce_auth():
     }
     _AUTH_CACHE = (headers, auth_data['instance_url'])
     return _AUTH_CACHE
+
+
+def _json_dumps(payload: dict) -> str:
+    return json.dumps(payload, indent=2, default=str)
+
+
+def _twin_log(stage: str, message: str, payload: dict | None = None) -> None:
+    """Concise Twin Hunter diagnostics. stderr keeps MCP stdout parseable."""
+    line = f"[Twin Hunter] {stage}: {message}"
+    if payload:
+        line = f"{line} {json.dumps(payload, default=str, ensure_ascii=True)}"
+    print(line, file=sys.stderr, flush=True)
+
+
+def _normalise_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _sf_escape(value: str) -> str:
+    return str(value or "").replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _hostname(url: str) -> str:
+    try:
+        parsed = urlparse(url if str(url).startswith(("http://", "https://")) else f"https://{url}")
+        return parsed.netloc.lower().replace("www.", "")
+    except Exception:
+        return ""
+
+
+def _same_registered_domain(left: str, right: str) -> bool:
+    left_host = _hostname(left)
+    right_host = _hostname(right)
+    if not left_host or not right_host:
+        return False
+    if left_host == right_host:
+        return True
+    return left_host.endswith(f".{right_host}") or right_host.endswith(f".{left_host}")
+
+
+def _salesforce_query(query: str, api_version: str = "v66.0", max_records: int = 2000) -> list[dict]:
+    headers, instance_url = get_salesforce_auth()
+    endpoint = f"{instance_url}/services/data/{api_version}/query"
+    records = []
+    first_page = True
+
+    while endpoint and len(records) < max_records:
+        if first_page:
+            resp = requests.get(endpoint, headers=headers, params={"q": query}, timeout=45)
+            first_page = False
+        else:
+            resp = requests.get(endpoint, headers=headers, timeout=45)
+        if resp.status_code != 200:
+            raise RuntimeError(resp.text)
+        body = resp.json()
+        records.extend(body.get("records", []))
+        if body.get("done", True):
+            break
+        next_url = body.get("nextRecordsUrl")
+        endpoint = f"{instance_url}{next_url}" if next_url else ""
+    return records[:max_records]
+
+
+def _describe_fields(object_api_name: str) -> dict:
+    if object_api_name in SF_FIELD_CACHE:
+        return SF_FIELD_CACHE[object_api_name]
+    try:
+        headers, instance_url = get_salesforce_auth()
+        resp = requests.get(
+            f"{instance_url}/services/data/v66.0/sobjects/{object_api_name}/describe",
+            headers=headers,
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            SF_FIELD_CACHE[object_api_name] = {}
+            return {}
+        fields = {
+            field.get("name"): field
+            for field in resp.json().get("fields", [])
+            if field.get("name")
+        }
+        SF_FIELD_CACHE[object_api_name] = fields
+        return fields
+    except Exception:
+        SF_FIELD_CACHE[object_api_name] = {}
+        return {}
+
+
+def _available_fields(object_api_name: str, candidates: list[str]) -> list[str]:
+    fields = _describe_fields(object_api_name)
+    if not fields:
+        return candidates
+    return [field for field in candidates if field in fields]
+
+
+def _find_category_field(object_api_name: str) -> tuple[str, dict]:
+    fields = _describe_fields(object_api_name)
+    preferred = [
+        "Category__c",
+        "Company_Category__c",
+        "Customer_Category__c",
+        "Client_Category__c",
+        "Business_Category__c",
+        "Org_Category__c",
+    ]
+    for name in preferred:
+        if name in fields:
+            return name, fields[name]
+    for name, meta in fields.items():
+        if "category" in name.lower():
+            return name, meta
+    return "", {}
+
+
+def _category_filter(field_name: str, field_meta: dict, category_value: str = THERMOFISHER_CATEGORY) -> str:
+    if not field_name:
+        return ""
+    escaped = _sf_escape(category_value)
+    if field_meta.get("type") == "multipicklist":
+        return f"{field_name} INCLUDES ('{escaped}')"
+    return f"{field_name} = '{escaped}'"
+
+
+def _amount(value) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _money(value) -> str:
+    amount = _amount(value)
+    if amount <= 0:
+        return "-"
+    return f"${amount:,.0f}"
+
+
+def _revenue_band(value) -> str:
+    amount = _amount(value)
+    if amount >= 100_000_000_000:
+        return "enterprise revenue"
+    if amount >= 10_000_000_000:
+        return "large market revenue"
+    if amount >= 1_000_000_000:
+        return "mid market revenue"
+    return ""
+
+
+def _employee_band(value) -> str:
+    try:
+        employees = int(value or 0)
+    except (TypeError, ValueError):
+        employees = 0
+    if employees >= 10000:
+        return "enterprise workforce"
+    if employees >= 1000:
+        return "large workforce"
+    if employees >= 250:
+        return "mid sized workforce"
+    return ""
+
+
+def _business_terms(text: str) -> set[str]:
+    stopwords = {
+        "about", "above", "across", "advanced", "after", "against", "also",
+        "and", "are", "based", "been", "being", "best", "between", "both",
+        "business", "can", "company", "companies", "customer", "customers",
+        "delivering", "for", "from", "global", "has", "have", "into", "its",
+        "leading", "limited", "multiple", "new", "not", "offering", "offers",
+        "one", "our", "private", "provides", "providing", "public", "research",
+        "services", "solutions", "that", "the", "their", "this", "through",
+        "with", "world", "worldwide",
+    }
+    terms = set()
+    for token in re.findall(r"[a-zA-Z][a-zA-Z0-9&-]{2,}", str(text or "").lower()):
+        cleaned = token.strip("-&")
+        if len(cleaned) >= 3 and cleaned not in stopwords:
+            terms.add(cleaned)
+    return terms
+
+
+def _top_keywords(records: list[dict], fields: list[str], limit: int = 12) -> list[str]:
+    counts: dict[str, int] = {}
+    for record in records:
+        text = " ".join(str(record.get(field) or "") for field in fields)
+        for term in _business_terms(text):
+            counts[term] = counts.get(term, 0) + 1
+    return [
+        term for term, _count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+    ]
+
+
+def _ranked_values(records: list[dict], field: str, limit: int = 6) -> list[dict]:
+    counts: dict[str, int] = {}
+    for record in records:
+        value = str(record.get(field) or "").strip()
+        if value:
+            counts[value] = counts.get(value, 0) + 1
+    return [
+        {"value": value, "count": count}
+        for value, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+    ]
+
+
+def _compact_terms(values: list[str], limit: int = 12) -> list[str]:
+    seen = set()
+    terms = []
+    for value in values:
+        cleaned = re.sub(r"\s+", " ", str(value or "")).strip(" ,.-")
+        key = _normalise_name(cleaned)
+        if cleaned and key and key not in seen:
+            seen.add(key)
+            terms.append(cleaned)
+        if len(terms) >= limit:
+            break
+    return terms
+
+
+def _build_account_terms(account: dict) -> list[str]:
+    description_keywords = _top_keywords(
+        [{"Description": account.get("description", ""), "Industry": account.get("industry", "")}],
+        ["Description", "Industry"],
+        limit=10,
+    )
+    return _compact_terms([
+        account.get("industry"),
+        account.get("type"),
+        account.get("billing_city"),
+        _revenue_band(account.get("annual_revenue")),
+        _employee_band(account.get("employees")),
+        *description_keywords,
+    ], limit=12)
+
+
+def _best_account_match(accounts: list[dict], target_account_name: str) -> dict | None:
+    if not target_account_name:
+        return None
+    needle = _normalise_name(target_account_name)
+    if not needle:
+        return None
+    exact = [acct for acct in accounts if _normalise_name(acct.get("name")) == needle]
+    if exact:
+        return exact[0]
+    contains = [
+        acct for acct in accounts
+        if needle in _normalise_name(acct.get("name")) or _normalise_name(acct.get("name")) in needle
+    ]
+    if contains:
+        return contains[0]
+    try:
+        from difflib import SequenceMatcher
+        scored = [
+            (SequenceMatcher(None, needle, _normalise_name(acct.get("name"))).ratio(), acct)
+            for acct in accounts
+        ]
+        scored.sort(key=lambda item: item[0], reverse=True)
+        if scored and scored[0][0] >= 0.62:
+            return scored[0][1]
+    except Exception:
+        pass
+    return None
+
+
+
+
+def _load_thermofisher_accounts() -> tuple[list[dict], list[str], str]:
+    fields = _available_fields(
+        "Account",
+        ["Id", "Name", "Website", "Industry", "Description", "Type", "AnnualRevenue", "NumberOfEmployees", "BillingCity"],
+    )
+    if "Id" not in fields:
+        fields.insert(0, "Id")
+    if "Name" not in fields:
+        fields.insert(1, "Name")
+
+    category_field, category_meta = _find_category_field("Account")
+    where_clause = _category_filter(category_field, category_meta)
+    query = f"SELECT {', '.join(fields)} FROM Account"
+    limitations = []
+    if where_clause:
+        query += f" WHERE {where_clause}"
+    else:
+        pass
+    query += " ORDER BY LastModifiedDate DESC LIMIT 250"
+
+    records = _salesforce_query(query)
+    accounts = []
+    valid_keywords = ["health", "research", "biotech", "life science", "diagnostic", "pharma", "lab", "medicine", "medical"]
+    
+    for rec in records:
+        industry = (rec.get("Industry") or "").lower()
+        # If an industry is provided, strictly ensure it matches the ThermoFisher domain
+        if industry and not any(kw in industry for kw in valid_keywords):
+            continue
+            
+        accounts.append({
+            "id": rec.get("Id"),
+            "name": rec.get("Name") or "",
+            "website": rec.get("Website") or "",
+            "industry": rec.get("Industry") or "",
+            "description": rec.get("Description") or "",
+            "type": rec.get("Type") or "",
+            "annual_revenue": rec.get("AnnualRevenue"),
+            "employees": rec.get("NumberOfEmployees"),
+            "billing_city": rec.get("BillingCity") or "",
+            "category": THERMOFISHER_CATEGORY if where_clause else "",
+        })
+    return accounts, limitations, category_field
+
+
+def _load_opportunities(account_ids: list[str]) -> list[dict]:
+    if not account_ids:
+        return []
+    fields = _available_fields("Opportunity", ["Id", "Name", "StageName", "Amount", "CloseDate", "AccountId"])
+    for required in ["Id", "Name", "AccountId"]:
+        if required not in fields:
+            fields.append(required)
+    all_opps = []
+    for idx in range(0, len(account_ids), 80):
+        chunk = account_ids[idx:idx + 80]
+        ids = ", ".join(f"'{_sf_escape(account_id)}'" for account_id in chunk if account_id)
+        if not ids:
+            continue
+        query = (
+            f"SELECT {', '.join(fields)} FROM Opportunity "
+            f"WHERE AccountId IN ({ids}) "
+            "ORDER BY LastModifiedDate DESC LIMIT 500"
+        )
+        all_opps.extend(_salesforce_query(query, max_records=500))
+    return [
+        {
+            "id": rec.get("Id"),
+            "name": rec.get("Name") or "",
+            "stage": rec.get("StageName") or "",
+            "amount": rec.get("Amount"),
+            "amount_display": _money(rec.get("Amount")),
+            "close_date": rec.get("CloseDate") or "",
+            "account_id": rec.get("AccountId") or "",
+        }
+        for rec in all_opps
+    ]
+
+
+def _attach_account_opportunities(accounts: list[dict], opportunities: list[dict]) -> list[dict]:
+    by_account: dict[str, list[dict]] = {}
+    for opp in opportunities:
+        by_account.setdefault(opp.get("account_id"), []).append(opp)
+    enriched = []
+    for account in accounts:
+        account_opps = by_account.get(account.get("id"), [])
+        won = [opp for opp in account_opps if "closed won" in (opp.get("stage") or "").lower()]
+        open_opps = [opp for opp in account_opps if "closed" not in (opp.get("stage") or "").lower()]
+        total_amount = sum(_amount(opp.get("amount")) for opp in account_opps)
+        enriched.append({
+            **account,
+            "opportunity_count": len(account_opps),
+            "won_opportunity_count": len(won),
+            "open_opportunity_count": len(open_opps),
+            "opportunity_amount_total": total_amount,
+            "opportunity_amount_display": _money(total_amount),
+            "sample_opportunities": account_opps[:4],
+            "terms": _build_account_terms(account),
+        })
+    return enriched
+
+
+def _account_rank_score(account: dict) -> float:
+    return (
+        _amount(account.get("opportunity_amount_total")) / 1_000_000
+        + int(account.get("opportunity_count") or 0) * 12
+        + int(account.get("won_opportunity_count") or 0) * 18
+        + (8 if account.get("industry") else 0)
+        + (6 if account.get("description") else 0)
+    )
+
+
+def _build_icp_profile(accounts: list[dict], opportunities: list[dict]) -> dict:
+    ranked_accounts = sorted(accounts, key=_account_rank_score, reverse=True)
+    opportunity_keywords = _top_keywords(
+        [{"Name": opp.get("name", ""), "StageName": opp.get("stage", "")} for opp in opportunities],
+        ["Name", "StageName"],
+        limit=10,
+    )
+    return {
+        "method": "Top ThermoFisher accounts ranked by populated Account fields and Opportunity activity.",
+        "top_accounts": ranked_accounts[:5],
+        "top_industries": _ranked_values(accounts, "industry"),
+        "top_account_types": _ranked_values(accounts, "type"),
+        "top_cities": _ranked_values(accounts, "billing_city"),
+        "description_keywords": _top_keywords(
+            [{"Description": acct.get("description", ""), "Industry": acct.get("industry", "")} for acct in accounts],
+            ["Description", "Industry"],
+            limit=12,
+        ),
+        "opportunity_keywords": opportunity_keywords,
+        "revenue_bands": _ranked_values(
+            [{"band": _revenue_band(acct.get("annual_revenue"))} for acct in accounts],
+            "band",
+        ),
+        "employee_bands": _ranked_values(
+            [{"band": _employee_band(acct.get("employees"))} for acct in accounts],
+            "band",
+        ),
+        "confidence_basis": [
+            f"{len(accounts)} ThermoFisher Account record(s) were available.",
+            f"{len(opportunities)} Opportunity record(s) were compared.",
+            "Recommendations use only populated Salesforce fields plus company-specific Tavily evidence.",
+        ],
+    }
+
+
+def get_thermofisher_account_context(target_account_name: str = "") -> str:
+    """
+    Fetches ThermoFisher-scoped Salesforce Account and Opportunity context for Twin Hunter.
+
+    Call this first for any lookalike, customer twin, ICP, ideal customer profile,
+    or best-fit account request. Pass target_account_name only when the user names
+    one Salesforce account to compare against.
+    """
+    analysis_id = f"twin_{uuid.uuid4().hex[:10]}"
+    try:
+        accounts, limitations, category_field = _load_thermofisher_accounts()
+        opportunities = _load_opportunities([acct.get("id") for acct in accounts if acct.get("id")])
+        accounts = _attach_account_opportunities(accounts, opportunities)
+        target = _best_account_match(accounts, target_account_name)
+        if target_account_name and not target:
+            result = {
+                "status": "not_found",
+                "analysis_id": analysis_id,
+                "requested_category": THERMOFISHER_CATEGORY,
+                "message": f"Could not find '{target_account_name}' in the ThermoFisher account set.",
+                "account_count": len(accounts),
+                "opportunity_count": len(opportunities),
+                "accounts": accounts[:30],
+                "limitations": limitations,
+            }
+            TWIN_HUNTER_CACHE[analysis_id] = {"context": result}
+            return _json_dumps(result)
+
+        icp_profile = _build_icp_profile(accounts, opportunities)
+        anchor_accounts = [target] if target else icp_profile.get("top_accounts", [])[:5]
+        result = {
+            "status": "success",
+            "analysis_id": analysis_id,
+            "requested_category": THERMOFISHER_CATEGORY,
+            "mode": "single_account" if target else "icp_profile",
+            "category_field": category_field,
+            "target_account": target,
+            "anchor_accounts": anchor_accounts,
+            "accounts": accounts,
+            "account_count": len(accounts),
+            "opportunities": opportunities[:80],
+            "opportunity_count": len(opportunities),
+            "icp_profile": icp_profile,
+            "signals_available": [
+                "Account.Name",
+                "Account.Website",
+                "Account.Industry",
+                "Account.Description",
+                "Account.Type",
+                "Account.AnnualRevenue",
+                "Account.NumberOfEmployees",
+                "Account.BillingCity",
+                "Opportunity.Name",
+                "Opportunity.StageName",
+                "Opportunity.Amount",
+            ],
+            "limitations": limitations,
+        }
+        TWIN_HUNTER_CACHE[analysis_id] = {"context": result}
+        _twin_log("Salesforce Context", "retrieved ThermoFisher context", {
+            "analysis_id": analysis_id,
+            "mode": result["mode"],
+            "accounts": len(accounts),
+            "opportunities": len(opportunities),
+            "target": (target or {}).get("name"),
+            "anchors": [acct.get("name") for acct in anchor_accounts],
+        })
+        return _json_dumps(result)
+    except Exception as exc:
+        result = {
+            "status": "error",
+            "analysis_id": analysis_id,
+            "message": f"Could not load ThermoFisher Salesforce context: {exc}",
+            "requested_category": THERMOFISHER_CATEGORY,
+            "cards": [],
+        }
+        TWIN_HUNTER_CACHE[analysis_id] = {"context": result}
+        _twin_log("Salesforce Context", "failed", {"analysis_id": analysis_id, "error": str(exc)[:240]})
+        return _json_dumps(result)
+
+def research_twin_candidates(analysis_id: str, max_results: int = 12) -> str:
+    """
+    Uses Tavily to find company-specific public evidence for Twin Hunter candidates.
+    """
+    analysis_id_str = str(analysis_id or "").strip()
+    cache_entry = TWIN_HUNTER_CACHE.get(analysis_id_str)
+    if not cache_entry or "context" not in cache_entry:
+        if TWIN_HUNTER_CACHE:
+            latest_id = list(TWIN_HUNTER_CACHE.keys())[-1]
+            cache_entry = TWIN_HUNTER_CACHE[latest_id]
+            _twin_log("research_twin_candidates", f"analysis_id '{analysis_id_str}' not found. Falling back to latest entry: '{latest_id}'")
+        else:
+            return _json_dumps({"status": "error", "analysis_id": analysis_id, "message": "Unknown analysis_id. Call get_thermofisher_account_context first.", "results": []})
+
+    context = cache_entry["context"]
+    tavily_key = os.getenv("TAVILY_API_KEY", "").strip()
+    
+    if not tavily_key:
+        research = {
+            "status": "needs_api_key",
+            "analysis_id": analysis_id,
+            "message": "TAVILY_API_KEY is empty. Add it to .env to enable external lookalike research.",
+            "results": [],
+        }
+        cache_entry["research"] = research
+        return _json_dumps(research)
+
+    target = context.get("target_account") or {}
+    icp = context.get("icp_profile") or {}
+    
+    if target:
+        terms = [target.get("industry"), target.get("type"), target.get("billing_city")]
+    else:
+        terms = [item.get("value") for item in icp.get("top_industries", [])[:2]]
+        
+    terms = [t for t in terms if t]
+    query = f"{' '.join(terms)} b2b companies official website" if terms else "B2B customer profile official website"
+
+    headers = {"Authorization": f"Bearer {tavily_key}", "Content-Type": "application/json"}
+    payload = {
+        "query": query,
+        "search_depth": "advanced",
+        "max_results": max(8, min(int(max_results or 12), 20)),
+        "include_answer": True,
+        "include_raw_content": True
+    }
+    
+    try:
+        import requests
+        resp = requests.post("https://api.tavily.com/search", headers=headers, json=payload, timeout=45)
+        if resp.status_code != 200:
+            research = {
+                "status": "error",
+                "analysis_id": analysis_id,
+                "message": f"Tavily API error ({resp.status_code}): {resp.text}",
+                "results": []
+            }
+            cache_entry["research"] = research
+            return _json_dumps(research)
+            
+        body = resp.json()
+        results = []
+        for item in body.get("results", []):
+            results.append({
+                "title": item.get("title") or "",
+                "url": item.get("url") or "",
+                "content": item.get("content") or "",
+                "raw_content": (item.get("raw_content") or "")[:5000],
+                "score": item.get("score")
+            })
+            
+        research = {
+            "status": "success",
+            "analysis_id": analysis_id,
+            "query": query,
+            "answer": str(body.get("answer") or "")[:800],
+            "results": results,
+            "message": f"Retrieved {len(results)} raw results from Tavily.",
+        }
+        cache_entry["research"] = research
+        return _json_dumps(research)
+        
+    except Exception as exc:
+        research = {
+            "status": "error",
+            "analysis_id": analysis_id,
+            "message": f"Tavily search failed: {exc}",
+            "results": []
+        }
+        cache_entry["research"] = research
+        return _json_dumps(research)
+
+
+def build_twin_hunter_cards(analysis_id: str, max_cards: int = 6) -> str:
+    """
+    Builds Twin Hunter preview cards using LLM.
+    """
+    analysis_id_str = str(analysis_id or "").strip()
+    cache_entry = TWIN_HUNTER_CACHE.get(analysis_id_str)
+    if not cache_entry or "context" not in cache_entry:
+        if TWIN_HUNTER_CACHE:
+            latest_id = list(TWIN_HUNTER_CACHE.keys())[-1]
+            cache_entry = TWIN_HUNTER_CACHE[latest_id]
+            _twin_log("build_twin_hunter_cards", f"analysis_id '{analysis_id_str}' not found. Falling back to latest entry: '{latest_id}'")
+        else:
+            return _json_dumps({"status": "error", "analysis_id": analysis_id, "message": "Unknown analysis_id.", "cards": []})
+
+    context = cache_entry.get("context", {})
+    research = cache_entry.get("research", {})
+    research_results = research.get("results") or []
+    
+    if not research_results:
+        result = {
+            "status": "empty",
+            "analysis_id": analysis_id,
+            "summary": "No research results available to build cards.",
+            "cards": []
+        }
+        return _json_dumps(result)
+        
+    context_for_ai = {
+        "target_account": context.get("target_account"),
+        "anchor_accounts": context.get("anchor_accounts", [])[:5],
+        "existing_salesforce_accounts": [acc.get("name") for acc in context.get("accounts", []) if acc.get("name")]
+    }
+    
+    prompt = f"""
+You are Twin Hunter. Your task is to extract lookalike customer companies from the Tavily search results below, and compare them against the Salesforce anchor account(s). 
+Be extremely careful NOT to confuse the source Salesforce anchor account with the new lookalike company candidate!
+
+Strict Rules:
+- NO ANCHOR / SYSTEM COMPANY IN RESULTS: Never include "ThermoFisher", "Thermo Fisher Scientific", or any variation of the system owner/service provider company name in the lookalike candidates. Lookalikes are external prospects/accounts only.
+- NO EXISTING SALESFORCE ACCOUNTS: Do NOT include any companies listed under "existing_salesforce_accounts" in your lookalike results. They must be net-new prospect accounts only.
+- STRICT INDUSTRY FILTER: You must discard any candidate that operates in unrelated consumer sectors (e.g., wellness, fitness, retail, consumer health). Only accept verified B2B companies that match the anchor's exact industry.
+- Return exactly {min(int(max_cards or 6), 6)} lookalike companies.
+- `company_name`: The name of the NEW lookalike company (NOT the Salesforce anchor account).
+- `summary`: A concise sentence explaining what this company does.
+- `location`: The headquarters city/state or country (e.g. "Cambridge, MA" or "Germany"), if found. Otherwise, leave empty.
+- `revenue`: Estimated annual revenue or range (e.g. "$120M est." or "$2B+"), if found. Otherwise, leave empty.
+- `match_score`: An integer from 1 to 100 calculated EXACTLY using this rubric: 1) Industry Match (50 pts max), 2) Products & Services (50 pts max).
+- `score_breakdown`: An array of EXACTLY 2 objects detailing the points awarded for each of the 2 rubric metrics. Each object MUST contain: `metric` (either "Industry Match" or "Products & Services"), `score` (e.g. 45), `max` (e.g. 50), and `reason` (1 sentence explaining why this specific score was given).
+- `reasons`: Array of 2-3 short sentences explaining exact commercial synergies, structural/location alignment, or revenue matching compared against the anchor profile (e.g., "Matches the anchor's Basel location with R&D sites in the same area" or "Has comparable employee scale (20k+) and diagnostics product offering").
+- `key_highlights`: Array of 2-3 short, objective facts about the company from public records (e.g. CEO name, year founded, stock ticker, core business domains, global site footprint). WARNING: DO NOT mention the anchor account or repeat/duplicate any details or keywords from the reasons array. Keep these facts completely independent and descriptive of the candidate company only.
+- `matched_against`: Array with 1 object detailing the closest Salesforce anchor account it resembles.
+  - `account_name`: The name of the SALESFORCE ANCHOR ACCOUNT.
+  - `match_reason`: Why it matches this anchor.
+  - `shared_terms`: Array of shared business attributes/keywords.
+- `source_urls`: Array of their OFFICIAL company website URLs. ONLY include the official domain. DO NOT include news articles or directories. If the official website is not found, leave this empty.
+- `contact_email`: The company's official contact email, if explicitly found. Otherwise, leave empty.
+
+Return strict JSON only:
+{{
+  "summary": "one concise sentence summarizing the findings",
+  "cards": [
+    {{
+      "company_name": "New Company Name",
+      "summary": "...",
+      "location": "Cambridge, MA",
+      "revenue": "$120M est.",
+      "match_score": 85,
+      "score_breakdown": [
+        {{"metric": "Industry Match", "score": 45, "max": 50, "reason": "..."}},
+        {{"metric": "Products & Services", "score": 40, "max": 50, "reason": "..."}}
+      ],
+      "reasons": ["..."],
+      "key_highlights": ["..."],
+      "matched_against": [
+        {{
+          "account_name": "Anchor Salesforce Account Name",
+          "match_reason": "...",
+          "shared_terms": ["..."]
+        }}
+      ],
+      "source_urls": ["..."],
+      "contact_email": "..."
+    }}
+  ]
+}}
+
+Salesforce Context:
+{json.dumps(context_for_ai, default=str)}
+
+Tavily Results:
+{json.dumps(research_results[:8], default=str)}
+"""
+    try:
+        import subprocess
+        worker_path = os.path.join(os.path.dirname(__file__), "app", "tools", "twin_ai_cards_worker.py")
+        model_name = os.getenv("TWIN_HUNTER_MODEL", "gemini-2.5-flash")
+        timeout_seconds = 45
+        
+        completed = subprocess.run(
+            [sys.executable, worker_path],
+            input=json.dumps({"prompt": prompt, "model_name": model_name, "http_timeout": timeout_seconds}),
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds + 10,
+            cwd=os.path.dirname(__file__),
+        )
+        worker_output = json.loads(completed.stdout or "{}")
+        if worker_output.get("ok"):
+            text = worker_output.get("text") or ""
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                import re
+                match = re.search(r"\{.*\}", text, re.S)
+                parsed = json.loads(match.group(0)) if match else {}
+                
+            result = {
+                "status": "success",
+                "analysis_id": analysis_id,
+                "summary": parsed.get("summary") or "Lookalike matches processed successfully.",
+                "source_account": context.get("target_account"),
+                "anchor_accounts": context.get("anchor_accounts", []),
+                "cards": [
+                    c for c in parsed.get("cards", [])
+                    if (
+                        "thermofisher" not in c.get("company_name", "").lower()
+                        and "thermo fisher" not in c.get("company_name", "").lower()
+                        and _normalise_name(c.get("company_name", "")) not in {
+                            _normalise_name(acc.get("name"))
+                            for acc in context.get("accounts", []) if acc.get("name")
+                        }
+                    )
+                ],
+                "limitations": context.get("limitations", [])
+            }
+            cache_entry["cards"] = result
+            return _json_dumps(result)
+        else:
+            return _json_dumps({"status": "error", "message": f"Worker failed: {worker_output.get('error')}"})
+    except Exception as exc:
+        return _json_dumps({"status": "error", "message": f"Card building failed: {str(exc)}"})
 
 
 def search_catalog(
@@ -696,14 +1427,11 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
                 break
                 
         if quote_id:
-            from urllib.parse import quote
-            query = f"SELECT QuoteNumber FROM Quote WHERE Id = '{quote_id}'"
-            q_url = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
+            q_url = f"{instance_url}/services/data/v66.0/sobjects/Quote/{quote_id}?fields=QuoteNumber"
             q_res = requests.get(q_url, headers=headers)
             if q_res.status_code == 200:
                 q_data = q_res.json()
-                if q_data.get("records"):
-                    quote_number = q_data["records"][0].get("QuoteNumber", "Unknown")
+                quote_number = q_data.get("QuoteNumber", "Unknown")
     except Exception as e:
         print(f"[DEBUG] Error fetching QuoteNumber: {str(e)}")
 
@@ -1476,6 +2204,11 @@ if agent_type in ["parser", "all"]:
 if agent_type in ["analyst", "all"]:
     mcp.add_tool(get_deal_history)
     mcp.add_tool(get_my_accounts)
+
+if agent_type in ["twin", "all"]:
+    mcp.add_tool(get_thermofisher_account_context)
+    mcp.add_tool(research_twin_candidates)
+    mcp.add_tool(build_twin_hunter_cards)
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server

@@ -556,7 +556,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
     if (!text || workflowState === 'orchestrating' || workflowState === 'executing') return;
     const cmd = text.toLowerCase();
 
-    const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate');
+    const isWinRateRequest = cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('win probablity') || cmd.includes('win analysis') || cmd.includes('winning chance') || cmd.includes('winning chances') || cmd.includes('deal win') || cmd.includes('success rate');
     isWinRateRequestRef.current = isWinRateRequest;
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
@@ -647,7 +647,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
 
     setIsUploading(true);
     const placeholderId = Date.now();
-    const aiName = 'Agivant AI';
+    const aiName = config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI';
 
     // Show temporary progress bubble
     setMessages(prev => [...prev, {
@@ -780,7 +780,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
     setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
     setVaultHistory(prev => [...prev, confirmedItem]);
     setSelectionPanel(null);
-    const text = `${option.name} (ID: ${option.id})`;
+    const text = option.name;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
   };
@@ -811,7 +811,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
         {/* LEFT — COMMAND PANEL */}
         <section className="h-full border-r border-[var(--glass-border)] bg-[var(--site-bg)] flex flex-col relative z-20 shrink-0 overflow-hidden transition-colors duration-500" style={{ width: leftWidth }}>
           {/* Background Glow for Panel */}
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-indigo-500/[0.03] to-transparent pointer-events-none" />
+          <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-b ${config.theme === 'Thermofisher' ? 'from-[#EE3124]/[0.03]' : config.theme === 'Meta' ? 'from-blue-500/[0.03]' : 'from-indigo-500/[0.03]'} to-transparent pointer-events-none`} />
 
           <div className="p-5 pb-4 flex items-center justify-between border-b border-[var(--glass-border)] bg-slate-500/[0.03] dark:bg-white/[0.02] relative z-10">
             <div className="flex items-center gap-3">
@@ -820,6 +820,12 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
                   <img src={config.META_LOGO_URL} alt="Meta" className="h-5 object-contain" />
                   {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
                   {leftWidth > 180 && <span className="text-[7.5px] font-black text-indigo-500/60 dark:text-indigo-400/60 uppercase tracking-[0.3em]">Connect</span>}
+                </div>
+              ) : config.theme === 'Thermofisher' ? (
+                <div className="flex items-center gap-3">
+                  <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-4 object-contain" />
+                  {leftWidth > 160 && <div className="h-4 w-[1px] bg-slate-200/50 mx-1" />}
+                  {leftWidth > 180 && <span className="text-[7.5px] font-black text-indigo-500/60 dark:text-indigo-400/60 uppercase tracking-[0.3em]">Scientific</span>}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
@@ -840,7 +846,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
                 <div className="flex items-center gap-2 mb-2.5">
                   <div className={`w-1 h-2.5 rounded-full ${msg.role === 'user' ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300 dark:bg-slate-700'}`} />
                   <div className={`text-[8.5px] uppercase font-black tracking-[0.2em] ${msg.role === 'user' ? 'text-indigo-500' : 'text-slate-500 italic'}`}>
-                    {msg.role === 'user' ? t.commander : config.theme === 'Meta' ? 'Meta AI' : 'Agivant AI'}
+                    {msg.role === 'user' ? t.commander : config.theme === 'Meta' ? 'Meta AI' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Agivant AI'}
                   </div>
                 </div>
                 <div className={`p-5 rounded-2xl text-[11px] leading-relaxed transition-all ${msg.role === 'user' ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg' : 'glass-card text-[var(--text-main)] shadow-xl border-white/5'}`}>
@@ -925,7 +931,7 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
                 <div className="flex items-center gap-4">
                   {onBack && <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-500/10 dark:hover:bg-white/10 text-slate-500 hover:text-indigo-600 transition-all"><ArrowLeft size={16} /></button>}
                   <span className="text-[10px] font-black tracking-[0.6em] uppercase flex items-center gap-3">
-                    <span className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent">{t.orchestration}</span>
+                    <span className={`bg-gradient-to-r bg-clip-text text-transparent ${config.theme === 'Thermofisher' ? 'from-[#EE3124] to-[#B71234]' : config.theme === 'Meta' ? 'from-blue-500 to-green-500' : 'from-indigo-500 to-emerald-500'}`}>{t.orchestration}</span>
                     <span className="text-slate-400 dark:text-white/40 font-bold">{t.flow}</span>
                   </span>
                 </div>
