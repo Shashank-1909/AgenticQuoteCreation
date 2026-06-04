@@ -34,6 +34,8 @@ export const translations = {
     bulkQty: "Bulk Qty",
     bulkDiscPercent: "Bulk Disc %",
     activeThinking: "Active & Thinking",
+    workspace: "Workspace",
+    salesAssistant: "Sales Assistant",
     all: "All",
     modules: {
       cpq: "Salesforce CPQ",
@@ -58,6 +60,48 @@ export const translations = {
       quotes: "Quotes",
       approvals: "Approvals"
     },
+    greeting: "Hello! I'm your {name} Assistant. How can I help you today?",
+    nodes: {
+      dealManager: "Deal Manager",
+      requirementsParser: "Req. Parser",
+      catalogScout: "Catalog Scout",
+      quoteBuilder: "Quote Builder",
+      quoteModifier: "Quote Modifier",
+      quoteAnalyst: "Quote Analyst",
+      routing: "Routing...",
+      dispatched: "Dispatched",
+      coordinator: "Coordinator",
+      composing: "Composing reply...",
+      executing: "Executing...",
+      completed: "Completed"
+    },
+    tools: {
+      check_field_values: 'Field Check',
+      search_catalog: 'Product Search',
+      resolve_pricebook_entries: 'Pricebook',
+      evaluate_quote_graph: 'CPQ Quote',
+      get_my_accounts: 'Accounts',
+      get_opportunities_for_account: 'Opportunity',
+      transfer_to_agent: 'Route',
+      get_quote_line_items: 'Line Items',
+      manage_quote_line_items: 'Update Lines',
+      parse_requirements_doc: 'Parse Document',
+      parse_transcript_to_requirements: 'Parse Transcript',
+      map_requirements_to_catalog: 'Map Products',
+      get_deal_history: 'Deal History',
+      summary_node: 'Summary Node',
+      win_rate: 'Win Rate',
+      get_thermofisher_account_context: 'SF Context',
+      research_twin_candidates: 'Web Research',
+      build_twin_hunter_cards: 'Twin Cards'
+    },
+    uploadDocumentCTA: "Upload your document to get started.",
+    uploadCard: {
+      title: "Requirements Analyst",
+      subtitle: "Document Analysis Service",
+      buttonText: "Click here to upload document"
+    },
+    chatInputPlaceholder: "Ask {name}..."
   },
   es: {
     quotingAccelerator: "Acelerador de Cotizaciones",
@@ -92,7 +136,11 @@ export const translations = {
     },
     nodes: {
       dealManager: "Gestor de Ofertas",
+      requirementsParser: "Analista Req.",
       catalogScout: "Explorador de Catálogo",
+      quoteBuilder: "Creador de Cotizaciones",
+      quoteModifier: "Modificador de Cotizaciones",
+      quoteAnalyst: "Analista de Cot.",
       quoteBuilder: "Creador de Cotizaciones",
       quoteModifier: "Modificador de Cotizaciones",
       routing: "Enrutando…",
@@ -101,7 +149,38 @@ export const translations = {
       composing: "Redactando respuesta…",
       executing: "Ejecutando…",
       completed: "Completado"
-    }
+    },
+    tools: {
+      check_field_values: 'Comprobar Campo',
+      search_catalog: 'Búsqueda de Prod.',
+      resolve_pricebook_entries: 'Lista de Precios',
+      evaluate_quote_graph: 'Cotización CPQ',
+      get_my_accounts: 'Cuentas',
+      get_opportunities_for_account: 'Oportunidad',
+      transfer_to_agent: 'Enrutar',
+      get_quote_line_items: 'Artículos',
+      manage_quote_line_items: 'Actualizar Art.',
+      parse_requirements_doc: 'Analizar Doc.',
+      parse_transcript_to_requirements: 'Analizar Trans.',
+      map_requirements_to_catalog: 'Mapear Prod.',
+      get_deal_history: 'Historial',
+      summary_node: 'Resumen',
+      win_rate: 'Tasa de Éxito',
+      get_thermofisher_account_context: 'Contexto SF',
+      research_twin_candidates: 'Búsqueda Web',
+      build_twin_hunter_cards: 'Tarjetas Gemelas'
+    },
+    greeting: "¡Hola! Soy su asistente de {name}. ¿Cómo puedo ayudarle hoy?",
+    uploadDocumentCTA: "Sube tu documento para empezar.",
+    uploadCard: {
+      title: "Analista de Requisitos",
+      subtitle: "Servicio de Análisis de Documentos",
+      buttonText: "Haga clic aquí para subir el documento"
+    },
+    chatInputPlaceholder: "Pregunte a {name}...",
+    workspace: "Espacio de Trabajo",
+    salesAssistant: "Asistente de Ventas",
+    activeThinking: "Activo y Pensando"
   },
   zh: {
   quotingAccelerator: "报价加速器",
@@ -163,8 +242,11 @@ export const translations = {
   },
   nodes: {
     dealManager: "交易经理",
+    requirementsParser: "需求解析器",
     catalogScout: "目录侦察员",
     quoteBuilder: "报价构建器",
+    quoteModifier: "报价修改器",
+    quoteAnalyst: "报价分析师",
     quoteModifier: "报价修改器",
     routing: "路由中…",
     dispatched: "已派遣",
@@ -172,7 +254,37 @@ export const translations = {
     composing: "撰写回答…",
     executing: "执行中…",
     completed: "已完成"
-  }
+  },
+  tools: {
+    check_field_values: '字段检查',
+    search_catalog: '产品搜索',
+    resolve_pricebook_entries: '价格表',
+    evaluate_quote_graph: 'CPQ 报价',
+    get_my_accounts: '账户',
+    get_opportunities_for_account: '机会',
+    transfer_to_agent: '路由',
+    get_quote_line_items: '订单项',
+    manage_quote_line_items: '更新订单项',
+    parse_requirements_doc: '解析文档',
+    parse_transcript_to_requirements: '解析转录',
+    map_requirements_to_catalog: '映射产品',
+    get_deal_history: '交易历史',
+    summary_node: '摘要节点',
+    win_rate: '胜率',
+    get_thermofisher_account_context: 'SF上下文',
+    research_twin_candidates: '网络搜索',
+    build_twin_hunter_cards: '双子卡片'
+  },
+  greeting: "您好！我是您的 {name} 助手。今天我能为您提供什么帮助？",
+  uploadDocumentCTA: "上传您的文档以开始。",
+  uploadCard: {
+    title: "需求分析师",
+    subtitle: "文档分析服务",
+    buttonText: "点击此处上传文档"
+  },
+  chatInputPlaceholder: "询问 {name}...",
+  workspace: "工作区",
+  salesAssistant: "销售助手"
 },
 /* ta: {
     quotingAccelerator: "மேற்கோள் முடுக்கி",

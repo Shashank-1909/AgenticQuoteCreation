@@ -391,12 +391,19 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     # Proactively run the mapping logic to match items and get quantities/discounts
                     mapping_res_json = _map_requirements_to_catalog(parsed_reqs)
 
+                    import re
+                    sys_ctx_match = re.search(r"(\[System Context: .*?\])", text_content)
+                    sys_ctx = sys_ctx_match.group(1) if sys_ctx_match else ""
+
                     # Build a Catalog_Scout–style handoff message with the extracted JSON.
                     reqs_json = json.dumps(parsed_reqs, indent=2)
                     text_content = (
                         "Here are the extracted requirements for catalog discovery and mapping:\n"
                         + reqs_json
                     )
+                    if sys_ctx:
+                        text_content += f"\n\n{sys_ctx}"
+                        
                     active_runner = _app_state.scout_runner
                     logger.info(
                         "Inline parser succeeded (%d items) — routing directly to Catalog_Scout runner.",
@@ -435,9 +442,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         await asyncio.sleep(0.5)
                         
                         # 4. Final Reply Event
+                        if "in Spanish." in text_content:
+                            final_msg = "Requisitos del producto extraídos exitosamente."
+                        elif "in Chinese." in text_content:
+                            final_msg = "已成功提取产品需求。"
+                        else:
+                            final_msg = "Extracted product requirements successfully."
+                            
                         await websocket.send_json({
                             "type": "FINAL_REPLY",
-                            "data": "Extracted product requirements successfully."
+                            "data": final_msg
                         })
                         await asyncio.sleep(0.3)
                     except Exception as simulated_err:

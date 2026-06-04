@@ -985,7 +985,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         const tp = parserToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#34d399"
+            label={shortLabel(t, tool.name)} color="#34d399"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark}
             style={{ transition: 'cx 0.72s cubic-bezier(0.4,0,0.2,1), cy 0.72s cubic-bezier(0.4,0,0.2,1)' }}
           />
@@ -1024,7 +1024,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         const tp = scoutToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#22d3ee"
+            label={shortLabel(t, tool.name)} color="#22d3ee"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
             onMouseDown={(e) => startDrag(e, tool.name)}
             onTouchStart={(e) => startDrag(e, tool.name)}
@@ -1038,7 +1038,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         const tp = archToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#fbbf24"
+            label={shortLabel(t, tool.name)} color="#fbbf24"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
             onMouseDown={(e) => startDrag(e, tool.name)}
             onTouchStart={(e) => startDrag(e, tool.name)}
@@ -1052,7 +1052,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         const tp = updatorToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#a78bfa"
+            label={shortLabel(t, tool.name)} color="#a78bfa"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
             onMouseDown={(e) => startDrag(e, tool.name)}
             onTouchStart={(e) => startDrag(e, tool.name)}
@@ -1066,7 +1066,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         const tp = analystToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#34d399"
+            label={shortLabel(t, tool.name)} color="#34d399"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
             onMouseDown={(e) => startDrag(e, tool.name)}
             onTouchStart={(e) => startDrag(e, tool.name)}
@@ -1080,7 +1080,7 @@ const AgentGraph = ({ orchestration, graphActive, graphReady, isDark = true, t }
         const tp = twinToolPos[i];
         return (
           <ToolNode key={tool.name} cx={tp.x} cy={tp.y}
-            label={shortLabel(tool.name)} color="#14b8a6"
+            label={shortLabel(t, tool.name)} color="#14b8a6"
             active={tool.state === 'active'} done={tool.state === 'done'} isDark={isDark} 
             onMouseDown={(e) => startDrag(e, tool.name)}
             onTouchStart={(e) => startDrag(e, tool.name)}

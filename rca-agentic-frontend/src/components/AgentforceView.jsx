@@ -89,6 +89,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       window.removeEventListener('mouseup', stopResizingRight);
     };
   }, [isResizingRight, resizeRight, stopResizingRight]);
+  useEffect(() => { setMessages(prev => prev.map(msg => msg.isGreeting ? { ...msg, content: (translations[language?.toLowerCase()] || translations['en']).greeting.replace('{name}', config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator') } : msg)); }, [language]);
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -499,7 +500,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           break;
         }
 
-        setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
+        setReasoning(`${(translations[language?.toLowerCase()] || translations['en']).nodes?.executing?.replace('…', '') || 'Running tool:'} ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
           for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
@@ -702,7 +703,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               addMessage({
                 type: 'card',
                 cardType: 'upload',
-                content: "Upload your document to get started."
+                content: (translations[language] || translations['en']).uploadDocumentCTA
               });
             }
 
@@ -1122,7 +1123,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         });
 
         // Immediately notify the user in the UI
-        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
+        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `${(translations[language?.toLowerCase()] || translations['en']).documentUploaded}: ${data.filename}`, type: 'text' }]);
 
         // FIX: Must enter orchestrating state before sending — otherwise the
         // frontend state machine desyncs and FINAL_REPLY renders nothing.
@@ -1330,7 +1331,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : config.theme === 'Thermofisher' ? 'Thermo Fisher Workspace' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? `Meta ${(translations[language?.toLowerCase()] || translations['en']).workspace}` : config.theme === 'Thermofisher' ? `Thermo Fisher ${(translations[language?.toLowerCase()] || translations['en']).workspace}` : 'Quoting Accelerator'}
               </h2>
             </div>
           </div>
@@ -1340,7 +1341,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 onClick={() => setWorkspaceView('graph')}
                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
               >
-                Orchestration Flow
+                {(translations[language?.toLowerCase()] || translations['en']).orchestrationFlow || 'Orchestration Flow'}
               </button>
               <button
                 onClick={() => {
@@ -1351,7 +1352,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 }}
                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
               >
-                Record Preview
+                {(translations[language?.toLowerCase()] || translations['en']).recordPreview || 'Record Preview'}
               </button>
             </div>
             <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
@@ -1384,7 +1385,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 </button>
               </div>
               <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease-out' }} className="origin-center">
-                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} t={translations[language?.toLowerCase()] || translations['en']} />
               </div>
             </div>
           )}
@@ -1536,9 +1537,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           </div>
           <div className="flex flex-col">
             <h3 className="text-xs font-black uppercase tracking-tighter">
-              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales Assistant' : 'Quoting Accelerator'}
+              {config.theme === 'Meta' ? `Meta ${(translations[language?.toLowerCase()] || translations['en']).salesAssistant || 'Assistant'}` : config.theme === 'Thermofisher' ? `Thermo Fisher ${(translations[language?.toLowerCase()] || translations['en']).salesAssistant || 'Sales Assistant'}` : 'Quoting Accelerator'}
             </h3>
-            <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
+            <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">{(translations[language?.toLowerCase()] || translations['en']).activeThinking || 'Active & Thinking'}</span>
           </div>
           <Settings size={14} className="ml-auto text-slate-500 cursor-pointer" />
         </div>
@@ -1560,7 +1561,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                     <Sparkles size={9} className="text-indigo-500" />
                     <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500">Solution Advisor</span>
                   </div>
-                  <div className="af-bubble mb-3">{msg.content}</div>
+                  <div className="af-bubble mb-3">{msg.isGreeting ? (translations[language?.toLowerCase()] || translations['en']).greeting.replace('{name}', config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator') : msg.content}</div>
                   <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Quick Replies</div>
                   <div className="flex flex-col gap-2">
                     {[
@@ -1708,8 +1709,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                         <FileText size={20} className="text-white" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">Requirements Analyst</span>
-                        <span className="text-[10px] font-medium text-slate-500">Document Analysis Service</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">{(translations[language?.toLowerCase()] || translations['en']).uploadCard.title}</span>
+                        <span className="text-[10px] font-medium text-slate-500">{(translations[language?.toLowerCase()] || translations['en']).uploadCard.subtitle}</span>
                       </div>
                     </div>
                     <button
@@ -1718,7 +1719,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                       className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 text-white rounded-xl text-[12px] font-bold hover:bg-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
-                      Click here to upload document
+                      {(translations[language?.toLowerCase()] || translations['en']).uploadCard.buttonText}
                     </button>
                   </div>
                 </div>
@@ -1773,7 +1774,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             </div>
           )}
 
-          {workflowState === 'orchestrating' && <TypingIndicator />}
+          {workflowState === 'orchestrating' && <TypingIndicator text={(translations[language?.toLowerCase()] || translations['en']).nodes?.composing?.replace('…', '') || 'COMPOSING'} />}
 
           <div ref={chatEndRef} />
         </div>
@@ -1795,7 +1796,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 type="text"
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
-                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : config.theme === 'Thermofisher' ? 'Ask Thermo Fisher AI...' : 'Ask Quoting Accelerator...'}
+                placeholder={(translations[language?.toLowerCase()] || translations['en']).chatInputPlaceholder.replace('{name}', config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Quoting Accelerator')}
                 className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
               <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
