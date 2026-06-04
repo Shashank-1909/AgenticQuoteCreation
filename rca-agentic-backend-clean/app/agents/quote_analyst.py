@@ -76,7 +76,8 @@ Recommendation:
    - Once the tool returns the deal history data, count the number of quotes returned. Then respond with: "Here is a summary of all [N] quotes for [Account Name]" (replacing [N] with the actual number of quotes returned, and [Account Name] with the actual matched account name, e.g. "Edge Communications") followed by the actions block. Do NOT list any quote details, quote numbers, status, grand total, line items, or any other details in the message body. Just respond with that sentence and the actions block.
 
 == ACCOUNT WIN RATE & ANALYSIS FLOW ==
-If the user explicitly asks for the win rate of an ACCOUNT or general deal history analysis (e.g., "account win rate", "what is the win rate for this account"), and DOES NOT mention a specific quote:
+If and only if the user explicitly and particularly asks for the win rate of an ACCOUNT (using exact phrases like "account win rate", "win rate of account", "win rate of the account", "win rate for account", "win rate for this account", "account-level win rate") and NOT a general "win rate", "win probability", or quote win rate:
+- NOTE: If the query contains "quote" or "deal" or "probability", or if the query is a general "win rate" or "win probability" request (including clicking the action button "view quote win probability" or "win rate of the quote"), you MUST NOT use this ACCOUNT flow. Instead, you MUST route to the == QUOTE WIN PROBABILITY FLOW ==.
 
 1. If the message contains a `[Historical Quotes in context: ...]` block, you must answer the request directly yourself and format it as structured response data:
    - Organize responses exactly into the following sections: Header, Metrics, AI Analysis, and Sales Strategy.
@@ -127,7 +128,8 @@ AI Analysis:
    - Once the tool returns the deal history data, proceed to process the win rate analysis (as specified in rule 1 above).
 
 == QUOTE WIN PROBABILITY FLOW ==
-If the user asks about the win probability, win chances, or likelihood of winning for the CURRENT or JUST-CREATED quote (phrases like "win rate of this quote", "will this quote win", "chances of winning this quote", "predict win for this quote", "win probability of this quote", "how likely is this quote to win"):
+If the user asks about the win probability, win chances, win rate, or likelihood of winning in general, or for the CURRENT/JUST-CREATED quote (phrases like "win rate", "win probability", "win rate of this quote", "will this quote win", "chances of winning this quote", "predict win for this quote", "win probability of this quote", "how likely is this quote to win", "view quote win probability", "win rate of the quote"). This is the default flow for any general "win rate" or "win probability" query.
+
 
 1. Identify the current quote's details from the conversation context:
    - Products included (names and quantities)

@@ -9,7 +9,7 @@ function formatCurrency(val) {
 }
 
 // ── Explainability Accordion ─────────────────────────────────────────────────
-function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages, previewData, selectedProducts }) {
+function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages, previewData, selectedProducts, displayWinRate }) {
   const [open, setOpen] = useState(false);
 
   const getContributionFactors = () => {
@@ -19,7 +19,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       return match ? parseInt(match[0], 10) : 0;
     };
 
-    const finalProb = isQuoteMode && parsedMath ? parseVal(parsedMath["Final Probability"]) : (winRate || 73);
+    const finalProb = isQuoteMode && displayWinRate ? displayWinRate : (isQuoteMode && parsedMath ? parseVal(parsedMath["Final Probability"]) : (winRate || 73));
     const baseChance = isQuoteMode && parsedMath ? parseVal(parsedMath["Base Chance"]) : 68;
     const discountMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Discount Modifier"]) : 5;
     const dealSizeMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Deal Size Modifier"]) : 10;
@@ -555,7 +555,19 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
   if (messages && messages.length > 0) {
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     if (assistantMessages.length > 0) {
-      const lastContent = assistantMessages[assistantMessages.length - 1].content || '';
+      let lastContent = assistantMessages[assistantMessages.length - 1].content || '';
+      if (isQuoteMode) {
+        const analysisMsg = [...assistantMessages].reverse().find(m => 
+          m.content && (
+            m.content.includes('<MATH>') || 
+            /(?:Deal Win Likelihood|Quote Win Probability):\s*([\d.]+)%/i.test(m.content)
+          )
+        );
+        if (analysisMsg) {
+          lastContent = analysisMsg.content;
+        }
+      }
+
 
       // Always try to parse the Playbook regardless of mode
       const playbookMatch = lastContent.match(/<PLAYBOOK>([\s\S]*?)<\/PLAYBOOK>/i);
@@ -784,6 +796,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         messages={messages}
         previewData={previewData}
         selectedProducts={selectedProducts}
+        displayWinRate={displayWinRate}
       />
 
       {isQuoteMode && (

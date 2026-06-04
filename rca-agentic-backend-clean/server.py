@@ -1450,15 +1450,59 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
         "quote_number": quote_number,
         "salesforce_response": salesforce_resp
     }, indent=2)
+def resolve_quote_id(quote_ref: str) -> str:
+    """
+    Resolves a quote reference (which could be an 18-character Quote ID starting with '0Q0'
+    or a Quote Number like '00000479') into the clean 18-character Salesforce Quote ID.
+    """
+    if not quote_ref:
+        return ""
+    
+    quote_ref = str(quote_ref).strip()
+    
+    # 1. Check if it's already a valid 15 or 18 character Quote ID starting with '0Q0'
+    import re
+    match = re.search(r'(0Q0[A-Za-z0-9]{12,15})', quote_ref)
+    if match:
+        return match.group(1)
+        
+    # 2. Otherwise, treat it as a Quote Number and query Salesforce to find its ID
+    quote_num_match = re.search(r'(\d+)', quote_ref)
+    if quote_num_match:
+        digits = quote_num_match.group(1)
+        padded_num = digits.zfill(8)
+        
+        try:
+            headers, instance_url = get_salesforce_auth()
+            query = f"SELECT Id FROM Quote WHERE QuoteNumber = '{padded_num}' OR QuoteNumber = '{digits}' LIMIT 1"
+            from urllib.parse import quote
+            endpoint = f"{instance_url}/services/data/v65.0/query/?q={quote(query)}"
+            resp = requests.get(endpoint, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                records = resp.json().get("records", [])
+                if records:
+                    resolved_id = records[0]["Id"]
+                    sys.stderr.write(f"[DEBUG] Resolved Quote Number '{quote_ref}' to ID '{resolved_id}'\n")
+                    return resolved_id
+        except Exception as e:
+            sys.stderr.write(f"[DEBUG] Error resolving Quote Number '{quote_ref}': {str(e)}\n")
+            
+    return quote_ref
+
+
 def get_quote_preview(quote_id: str) -> str:
     """
     Fetches detailed preview data for a specific Salesforce Quote, 
     including its Account, Opportunity, and Quote Line Items.
 
     Args:
-        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0').
+        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0') or Quote Number.
     """
     print(f"[DEBUG] get_quote_preview called for {quote_id}")
+    quote_id = resolve_quote_id(quote_id)
+    print(f"[DEBUG] Resolved quote reference to ID: {quote_id}")
+    if not quote_id:
+        return json.dumps({"status": "error", "message": "Could not resolve quote reference to a valid Quote ID."})
     try:
         headers, instance_url = get_salesforce_auth()
         print(f"[DEBUG] Auth success. Instance: {instance_url}")
@@ -1625,7 +1669,7 @@ def get_quote_line_items(quote_id: str) -> str:
     a line item without its exact QuoteLineItem ID (starts with '0Z4').
 
     Args:
-        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0').
+        quote_id: The 18-character Salesforce Quote ID (starts with '0Q0') or Quote Number.
                   Extract this from the conversation history — do NOT ask the
                   user to provide it if a quote was already created this session.
 
@@ -1642,6 +1686,9 @@ def get_quote_line_items(quote_id: str) -> str:
                       TotalPrice  (computed total)
         count:      number of line items found
     """
+    quote_id = resolve_quote_id(quote_id)
+    if not quote_id:
+        return json.dumps({"status": "error", "message": "Could not resolve quote reference to a valid Quote ID.", "line_items": []})
     import re
     match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
     clean_id = match.group(1) if match else quote_id.strip()
@@ -1690,7 +1737,7 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
     18-character QuoteLineItem IDs (starts with '0Z4'). Never fabricate IDs.
 
     Args:
-        quote_id:   18-character Salesforce Quote ID (starts with '0Q0').
+        quote_id:   18-character Salesforce Quote ID (starts with '0Q0') or Quote Number.
         operations: List of operation dicts. Each dict must contain 'method'
                     (PATCH, DELETE, or POST) plus the fields described below.
 
@@ -1713,6 +1760,9 @@ def manage_quote_line_items(quote_id: str, operations: list[dict]) -> str:
         message:             human-readable outcome
         salesforce_response: raw Graph API response body
     """
+    quote_id = resolve_quote_id(quote_id)
+    if not quote_id:
+        return json.dumps({"status": "error", "message": "Could not resolve quote reference to a valid Quote ID."})
     import re
     match = re.search(r'(0Q0[A-Za-z0-9]{15})', quote_id)
     clean_id = match.group(1) if match else quote_id.strip()
@@ -2266,6 +2316,7 @@ if agent_type in ["updator", "all"]:
     mcp.add_tool(manage_quote_line_items)
     mcp.add_tool(get_my_accounts)
     mcp.add_tool(get_opportunities_for_account)
+    mcp.add_tool(resolve_pricebook_entries)
 
 if agent_type in ["parser", "all"]:
     mcp.add_tool(parse_requirements_doc)
