@@ -1427,16 +1427,26 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
                 break
                 
         if quote_id:
+            import time
             from urllib.parse import quote
             query = f"SELECT QuoteNumber FROM Quote WHERE Id = '{quote_id}'"
-            q_url = f"{instance_url}/services/data/v66.0/query/?q={quote(query)}"
-            q_res = requests.get(q_url, headers=headers)
-            if q_res.status_code == 200:
-                q_data = q_res.json()
-                if q_data.get("records"):
-                    quote_number = q_data["records"][0].get("QuoteNumber", "Unknown")
+            q_url = f"{instance_url}/services/data/v60.0/query/?q={quote(query)}"
+            for attempt in range(5):
+                try:
+                    q_res = requests.get(q_url, headers=headers, timeout=10)
+                    if q_res.status_code == 200:
+                        q_data = q_res.json()
+                        if q_data.get("records"):
+                            num = q_data["records"][0].get("QuoteNumber")
+                            if num and num != "Unknown":
+                                quote_number = num
+                                sys.stderr.write(f"[DEBUG] Successfully retrieved QuoteNumber: {quote_number} on attempt {attempt + 1}\n")
+                                break
+                except Exception as e:
+                    sys.stderr.write(f"[DEBUG] Attempt {attempt + 1} error fetching QuoteNumber: {str(e)}\n")
+                time.sleep(0.5)
     except Exception as e:
-        print(f"[DEBUG] Error fetching QuoteNumber: {str(e)}")
+        sys.stderr.write(f"[DEBUG] Error fetching QuoteNumber: {str(e)}\n")
 
     return json.dumps({
         "status": "success",
