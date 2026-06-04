@@ -1601,20 +1601,20 @@ def evaluate_quote_graph(line_items: list[dict], pricebook_id: str, opportunity_
             from urllib.parse import quote
             query = f"SELECT QuoteNumber FROM Quote WHERE Id = '{quote_id}'"
             q_url = f"{instance_url}/services/data/v60.0/query/?q={quote(query)}"
-            for attempt in range(5):
+            for attempt in range(25):
                 try:
                     q_res = requests.get(q_url, headers=headers, timeout=10)
                     if q_res.status_code == 200:
                         q_data = q_res.json()
                         if q_data.get("records"):
                             num = q_data["records"][0].get("QuoteNumber")
-                            if num and num != "Unknown":
+                            if num and num != "Unknown" and num != "None" and num != "":
                                 quote_number = num
                                 sys.stderr.write(f"[DEBUG] Successfully retrieved QuoteNumber: {quote_number} on attempt {attempt + 1}\n")
                                 break
                 except Exception as e:
                     sys.stderr.write(f"[DEBUG] Attempt {attempt + 1} error fetching QuoteNumber: {str(e)}\n")
-                time.sleep(0.5)
+                time.sleep(1.0)
     except Exception as e:
         sys.stderr.write(f"[DEBUG] Error fetching QuoteNumber: {str(e)}\n")
 
@@ -1687,6 +1687,27 @@ def get_quote_preview(quote_id: str) -> str:
             return json.dumps({"status": "error", "message": "Quote not found."})
             
         quote_obj = quote_data[0]
+        
+        # Poll if QuoteNumber is missing or Unknown
+        q_num = quote_obj.get("QuoteNumber")
+        if not q_num or q_num == "Unknown" or q_num == "None":
+            import time
+            print(f"[DEBUG] QuoteNumber in preview is '{q_num}'. Polling Salesforce to wait for it...")
+            for attempt in range(25):
+                time.sleep(1.0)
+                try:
+                    p_resp = requests.get(quote_endpoint, headers=headers, timeout=10)
+                    if p_resp.status_code == 200:
+                        p_records = p_resp.json().get("records", [])
+                        if p_records:
+                            new_num = p_records[0].get("QuoteNumber")
+                            if new_num and new_num != "Unknown" and new_num != "None" and new_num != "":
+                                quote_obj.update(p_records[0])
+                                print(f"[DEBUG] Polled and successfully got QuoteNumber: {new_num} on attempt {attempt + 1}")
+                                break
+                except Exception as e:
+                    print(f"[DEBUG] Preview poll attempt {attempt + 1} error: {e}")
+
         quote_obj["QuoteLineItems"] = lines_resp.json().get("records", [])
         print(f"[DEBUG] Successfully merged {len(quote_obj['QuoteLineItems'])} lines.")
         
@@ -2447,6 +2468,7 @@ if agent_type in ["updator", "all"]:
     mcp.add_tool(manage_quote_line_items)
     mcp.add_tool(get_my_accounts)
     mcp.add_tool(get_opportunities_for_account)
+    mcp.add_tool(resolve_pricebook_entries)
 
 if agent_type in ["parser", "all"]:
     mcp.add_tool(parse_requirements_doc)

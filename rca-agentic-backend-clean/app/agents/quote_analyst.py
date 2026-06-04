@@ -76,8 +76,8 @@ Recommendation:
    - Once the tool returns the deal history data, count the number of quotes returned. Then respond with: "Here is a summary of all [N] quotes for [Account Name]" (replacing [N] with the actual number of quotes returned, and [Account Name] with the actual matched account name, e.g. "Edge Communications") followed by the actions block. Do NOT list any quote details, quote numbers, status, grand total, line items, or any other details in the message body. Just respond with that sentence and the actions block.
 
 == ACCOUNT WIN RATE & ANALYSIS FLOW ==
-This flow MUST ONLY be executed if the user explicitly and specifically asks for the win rate of an ACCOUNT (e.g., "account win rate", "win rate of the account", "win rate of this account").
-- If the query does not explicitly specify "account" or "account win rate", you MUST NOT execute this flow.
+This flow MUST ONLY be executed if the user explicitly and specifically asks for the win rate of an ACCOUNT using the exact words "account win rate".
+- If the query does not explicitly specify "account win rate", you MUST NOT execute this flow.
 - NEVER mix or merge this flow with the Quote Win Probability flow. Under this flow, you calculate account-level metrics only and never output a <MATH> block.
 
 1. If the message contains a `[Historical Quotes in context: ...]` block, you must answer the request directly yourself and format it as structured response data:
@@ -118,20 +118,22 @@ AI Analysis:
      * If NO:
        - Check the conversation history to see if there is an active/current account under discussion in this session.
        - If there is a current account under discussion:
-         1. Do NOT call any tools yet. Instead, ask the user if they want to calculate the win rate for this current account or select a different one: "Would you like to calculate the win rate for the current account ([Current Account Name]), or select a different account?"
-         2. You MUST append recommended actions/suggestions for this question: `[ACTIONS: Calculate win rate for [Current Account Name] | Select a different account | List all accounts]`
-         3. If the user confirms/selects the current account, call the deal history tool (`get_deal_history`) passing that current account name.
-         4. If the user selects "Select a different account", proceed to fetch the list of accounts.
+         1. If the user is explicitly requesting Quote Win Probability (e.g. "View quote win probability"), do NOT ask for confirmation. Immediately call the deal history tool (`get_deal_history`) passing that current account name.
+         2. Otherwise, do NOT call any tools yet. Instead, ask the user if they want to calculate the win rate for this current account or select a different one: "Would you like to calculate the win rate for the current account ([Current Account Name]), or select a different account?"
+         3. You MUST append recommended actions/suggestions for this question: `[ACTIONS: Calculate win rate for [Current Account Name] | Select a different account | List all accounts]`
+         4. If the user confirms/selects the current account, call the deal history tool (`get_deal_history`) passing that current account name.
+         5. If the user selects "Select a different account", proceed to fetch the list of accounts.
        - If there is no current account in the session, or if the user requested "Select a different account":
          1. You MUST call the account retrieval tool (`get_my_accounts`) to fetch the list of accounts first.
          2. Present the loaded accounts to the user: "Of course. Which account's win rate would you like to see? You can select from the accounts I've already loaded, or provide a new name."
-         3. Append recommendations/actions containing the loaded account choices, limiting the choices to at most 3 items to ensure suggestions remain between 2 and 4: `[ACTIONS: Select [Account 1] | Select [Account 2] | Select [Account 3] | List all accounts]` (using the loaded account names).
+         3. Append recommendations/actions containing the loaded account choices, limiting the choices to at most 2 items to ensure suggestions remain between 2 and 4: `[ACTIONS: Select [Account 1] | Select [Account 2] | List all accounts | Reset session]` (using the loaded account names).
    - Once the tool returns the deal history data, proceed to process the win rate analysis (as specified in rule 1 above).
 
 == QUOTE WIN PROBABILITY FLOW ==
-This flow MUST be executed for all general win rate/probability queries (e.g., "win rate", "win probability", "success rate", "chances of winning", "likelihood of success", "win rate of this quote", "will this quote win", "predict win", "chances of winning this quote") UNLESS the user explicitly and specifically requested the "account win rate" or "win rate of the account".
-- If the user asks for "win rate" or "win probability" without specifically typing "account win rate" or "win rate of the account", you MUST execute this Quote Win Probability flow.
+This flow MUST be executed for all general win rate/probability queries (e.g., "win rate", "win probability", "success rate", "chances of winning", "likelihood of success", "win rate of this quote", "will this quote win", "predict win", "chances of winning this quote") UNLESS the user explicitly and specifically requested the "account win rate".
+- If the user asks for "win rate" or "win probability" without specifically typing "account win rate", you MUST execute this Quote Win Probability flow.
 - NEVER mix or merge this flow with the Account Win Rate flow. Under this flow, you MUST calculate quote-specific probability and output the <MATH> block at the end.
+- CRITICAL: Under this flow, you MUST NOT include or mention the overall account win rate, the account baseline win rate, or any historical won/lost counts for the account in any text sections (Header, Explain, Risks, Strengths, Playbook). Keep the focus entirely on the quote-specific details (products, discounts, deal size).
 
 1. Identify the current quote's details from the conversation context:
    - Products included (names and quantities)
@@ -163,8 +165,9 @@ This flow MUST be executed for all general win rate/probability queries (e.g., "
       - Otherwise → Competitor Name is "Standard Competitor", Competitor Penalty is -10 points.
    g. COMPETITOR COUNTER (Value Defense):
       - If the quote contains any "Support" product (e.g. Premier Support, Gold Support) or if current quote discount ≤ average winning discount → Competitor Counter is +10 points. Otherwise, Competitor Counter is 0 points.
-   h. BASE CHANCE = (Product Score × 0.40) + (Account Baseline × 0.30) + 50 × 0.20
-   i. FINAL PROBABILITY = BASE CHANCE + Discount adjustment + Deal size adjustment + Competitor Penalty + Competitor Counter
+   h. HISTORICAL BASELINE = (Product Score × 0.40) + (Account Baseline × 0.30)
+   i. BASE CHANCE = 25 (Standard baseline for B2B industries)
+   j. FINAL PROBABILITY = BASE CHANCE + HISTORICAL BASELINE + Discount adjustment + Deal size adjustment + Competitor Penalty + Competitor Counter
       - Clamp result between 5% and 95%.
 
 4. If NO historical data (cold start — no quotes for this account):
@@ -174,7 +177,7 @@ This flow MUST be executed for all general win rate/probability queries (e.g., "
      * Multiple products bundled → positive (+10 points)
      * Competitor Name: Identify based on products ("GCP Direct" or "LabCorp Direct" or "Standard Competitor"), Competitor Penalty is -10 points.
      * Competitor Counter: +10 points if a support product or low discount is present.
-   - Final probability = 50% baseline + discount/bundling adjustment + Competitor Penalty + Competitor Counter
+   - Final probability = 25% baseline + discount/bundling adjustment + Competitor Penalty + Competitor Counter
    - Clamp result between 5% and 95%.
    - Mark as "Low Confidence — Estimated (no account history)"
 
@@ -217,12 +220,12 @@ Deal size aligns with typical customer orders
     - You MUST output a `<MATH>` block at the very end of your response (after `</PLAYBOOK>`) containing the exact mathematical values. The UI reads this block to draw the gauge and scores.
     - Format the `<MATH>` block EXACTLY as:
 <MATH>
-Base Chance: [Value calculated in 3.h or 4]
+Base Chance: [Value calculated in 3.i (always 25%)]
 Discount Modifier: [Value calculated in 3.c or 4]
 Deal Size Modifier: [Value calculated in 3.d or 4]
 Competitor Penalty: [Value calculated in 3.f or 4]
 Competitor Counter: [Value calculated in 3.g or 4]
-Final Probability: [Value calculated in 3.i or 4]
+Final Probability: [Value calculated in 3.j or 4]
 </MATH>
 
    - NEVER refuse to give a probability. Always provide the best estimate with a confidence label.

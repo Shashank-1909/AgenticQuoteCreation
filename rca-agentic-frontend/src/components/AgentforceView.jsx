@@ -43,25 +43,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const [rightWidth, setRightWidth] = useState(500);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
-  const sendPayload = useCallback((payloadStr) => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
-    try {
-      const t = translations[language] || translations['en'];
-      let parsed = JSON.parse(payloadStr);
-      if (language !== 'en' && t?.languageContext && parsed.text) {
-        parsed.text = `${parsed.text}\n\n[System Context: ${t.languageContext}]`;
-      }
-      ws.current.send(JSON.stringify(parsed));
-    } catch (e) {
-      const t = translations[language] || translations['en'];
-      let text = payloadStr;
-      if (language !== 'en' && t?.languageContext) {
-        text = `${text}\n\n[System Context: ${t.languageContext}]`;
-      }
-      ws.current.send(text);
-    }
-  }, [language]);
-
   const startResizingRight = useCallback((e) => {
     setIsResizingRight(true);
   }, []);
@@ -166,6 +147,40 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     summarizeTimeoutsRef.current.forEach(clearTimeout);
     summarizeTimeoutsRef.current = [];
   };
+
+  const sendPayload = useCallback((payloadStr) => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+    const activeQuoteId = previewData?.records?.[0]?.Id || (quotes && quotes.length > 0 ? quotes[quotes.length - 1]?.id : null);
+    const activeQuoteNumber = previewData?.records?.[0]?.QuoteNumber || (activeQuoteId ? quoteNumberMap[activeQuoteId] : null);
+    const quoteContext = activeQuoteId ? `[System Context: Active Quote ID is ${activeQuoteId}${activeQuoteNumber ? `, Quote Number is ${activeQuoteNumber}` : ''}]` : '';
+
+    try {
+      const t = translations[language] || translations['en'];
+      let parsed = JSON.parse(payloadStr);
+      if (parsed.text) {
+        let suffix = '';
+        if (language !== 'en' && t?.languageContext) {
+          suffix += `\n\n[System Context: ${t.languageContext}]`;
+        }
+        if (quoteContext) {
+          suffix += `\n\n${quoteContext}`;
+        }
+        parsed.text = `${parsed.text}${suffix}`;
+      }
+      ws.current.send(JSON.stringify(parsed));
+    } catch (e) {
+      const t = translations[language] || translations['en'];
+      let text = payloadStr;
+      let suffix = '';
+      if (language !== 'en' && t?.languageContext) {
+        suffix += `\n\n[System Context: ${t.languageContext}]`;
+      }
+      if (quoteContext) {
+        suffix += `\n\n${quoteContext}`;
+      }
+      ws.current.send(`${text}${suffix}`);
+    }
+  }, [language, previewData, quotes, quoteNumberMap]);
 
   const connectWebSocket = useCallback(() => {
     if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
@@ -617,11 +632,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
               .then(res => res.json())
               .then(d => {
-                if (d.records?.[0]?.QuoteNumber) {
-                  setQuoteNumberMap(prev => ({ ...prev, [qId]: d.records[0].QuoteNumber }));
+                const qNum = d.records?.[0]?.QuoteNumber;
+                if (qNum && qNum !== 'Unknown' && qNum !== 'None') {
+                  setQuoteNumberMap(prev => ({ ...prev, [qId]: qNum }));
+                  setPreviewData(d);
+                  setWorkspaceView('preview');
+                } else {
+                  console.warn('[DEBUG] QuoteNumber is still Unknown. Showing the flow/graph only.');
                 }
-                setPreviewData(d);
-                setWorkspaceView('preview');
               })
               .catch(err => console.error('Error fetching quote number:', err));
 
@@ -669,8 +687,41 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             // Parse [ACTIONS: Action 1 | Action 2 | ...]
             const actionsMatch = processedText.match(/\[ACTIONS:\s*([^\]]+)\]/);
             if (actionsMatch) {
-              actions = actionsMatch[1].split('|').map(act => act.trim()).filter(Boolean);
+              const rawActions = actionsMatch[1].split('|').map(act => act.trim()).filter(Boolean);
               processedText = processedText.replace(/\[ACTIONS:\s*[^\]]+\]/, '').trim();
+              
+              // Keep at most 2 selection options starting with "Select " to avoid clutter
+              const selectActions = rawActions.filter(act => act.toLowerCase().startsWith('select '));
+              const otherActions = rawActions.filter(act => !act.toLowerCase().startsWith('select '));
+              
+              const finalActions = [];
+              finalActions.push(...selectActions.slice(0, 2));
+              finalActions.push(...otherActions);
+              
+              // Suggest some other best next actions if we filtered to keep options diverse and clean
+              if (selectActions.length > 2) {
+                const isAccountSel = selectActions.some(act => act.includes('(ID: 001') || act.toLowerCase().includes('account'));
+                if (isAccountSel) {
+                  if (!finalActions.some(a => a.toLowerCase().includes('search') || a.toLowerCase().includes('different'))) {
+                    finalActions.push("Search for another account");
+                  }
+                  if (!finalActions.some(a => a.toLowerCase().includes('recent') || a.toLowerCase().includes('deals'))) {
+                    finalActions.push("View my recent deals");
+                  }
+                } else {
+                  if (!finalActions.some(a => a.toLowerCase().includes('different') || a.toLowerCase().includes('account'))) {
+                    finalActions.push("Select a different account");
+                  }
+                  if (!finalActions.some(a => a.toLowerCase().includes('win rate') || a.toLowerCase().includes('probability'))) {
+                    finalActions.push("View account win rate");
+                  }
+                }
+                if (!finalActions.some(a => a.toLowerCase().includes('reset') || a.toLowerCase().includes('restart') || a.toLowerCase().includes('fresh'))) {
+                  finalActions.push("Reset session");
+                }
+              }
+              
+              actions = finalActions.slice(0, 4);
             }
 
             // Replace any Quote IDs with their Numbers if we have them
@@ -861,9 +912,26 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       setDealHistoryAccount(newlyDetectedAcc);
     }
 
+    // Construct current active quote context if available
+    let currentQuoteContext = "";
+    if (previewData && previewData.records && previewData.records[0]) {
+      const q = previewData.records[0];
+      const lineItemsText = (q.QuoteLineItems || []).map(li => 
+        `- Product: ${li.Product2?.Name || li.Name}, Quantity: ${li.Quantity}, Discount: ${li.Discount || 0}%, Unit Price: $${li.UnitPrice || 0}, Total Price: $${li.TotalPrice || 0}`
+      ).join('\n');
+      
+      currentQuoteContext = `[Current Active Quote:\n` +
+        `Account: ${q.Account?.Name || '—'}\n` +
+        `Opportunity: ${q.Opportunity?.Name || '—'}\n` +
+        `Grand Total: $${q.GrandTotal || 0}\n` +
+        `Overall Discount: ${q.Discount || 0}%\n` +
+        `Line Items:\n${lineItemsText}\n]`;
+    }
+
     // Lazy load deal history for win rate request if not loaded yet or if the account changed
-    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount))) {
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
+    const targetAccount = detectAccountName(text) || dealHistoryAccount || previewData?.records?.[0]?.Account?.Name;
+    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount) || (targetAccount && targetAccount !== dealHistoryAccount))) {
+      const detectedAcc = targetAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         setInputValue('');
@@ -880,20 +948,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
             }).join('\n');
 
+            let payloadText = text;
+            if (isQuoteWinRateRequest && currentQuoteContext) {
+              payloadText += `\n\n${currentQuoteContext}`;
+            }
+            payloadText += `\n\n[Historical Quotes in context:\n${quotesText}]`;
+
             sendPayload(JSON.stringify({
-              text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+              text: payloadText,
               module: selectedModule?.id || 'sales'
             }));
           } else {
+            let payloadText = text;
+            if (isQuoteWinRateRequest && currentQuoteContext) {
+              payloadText += `\n\n${currentQuoteContext}`;
+            }
             sendPayload(JSON.stringify({
-              text: text,
+              text: payloadText,
               module: selectedModule?.id || 'sales'
             }));
           }
         } catch (err) {
           console.error("Error lazy-loading deal history for win rate:", err);
+          let payloadText = text;
+          if (isQuoteWinRateRequest && currentQuoteContext) {
+            payloadText += `\n\n${currentQuoteContext}`;
+          }
           sendPayload(JSON.stringify({
-            text: text,
+            text: payloadText,
             module: selectedModule?.id || 'sales'
           }));
         } finally {
@@ -914,8 +996,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
       }).join('\n');
 
+      let payloadText = text;
+      if (isQuoteWinRateRequest && currentQuoteContext) {
+        payloadText += `\n\n${currentQuoteContext}`;
+      }
+      if (quotesText) {
+        payloadText += `\n\n[Historical Quotes in context:\n${quotesText}]`;
+      }
+
       sendPayload(JSON.stringify({
-        text: text + (quotesText ? `\n\n[Historical Quotes in context:\n${quotesText}]` : ''),
+        text: payloadText,
         module: selectedModule?.id || 'sales'
       }));
       return;
@@ -1571,11 +1661,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 <>
                   <div className="af-bubble">
                     {msg.content
-                      .replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '')
-                      .replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '')
-                      .replace(/<RISKS>[\s\S]*?<\/RISKS>/gi, '')
-                      .replace(/<STRENGTHS>[\s\S]*?<\/STRENGTHS>/gi, '')
-                      .replace(/<MATH>[\s\S]*?<\/MATH>/gi, '')
+                      .replace(/<EXPLAIN>[\s\S]*?(?:<\/EXPLAIN>|(?=<RISKS>|<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/gi, '')
+                      .replace(/<RISKS>[\s\S]*?(?:<\/RISKS>|(?=<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/gi, '')
+                      .replace(/<STRENGTHS>[\s\S]*?(?:<\/STRENGTHS>|(?=<PLAYBOOK>|<MATH>)|$)/gi, '')
+                      .replace(/<PLAYBOOK>[\s\S]*?(?:<\/PLAYBOOK>|(?=<MATH>)|$)/gi, '')
+                      .replace(/<MATH>[\s\S]*?(?:<\/MATH>|$)/gi, '')
                       .replace(/^Header:\s*/i, '')
                       .trim()}
                   </div>
@@ -1800,7 +1890,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         onClose={() => setIsConfigOpen(false)}
         products={configProducts}
         onConfirm={(configuredItems) => {
-          const list = configuredItems.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
+          const list = configuredItems.map(p => `${p.name} (ID: ${p.id}, Quantity: ${p.quantity}, Discount: ${p.discount}%)`).join(', ');
           setInputValue(`Create a quote for: ${list}`);
           handleSend(); // This will add the message to the UI and send the JSON
           setIsConfigOpen(false);

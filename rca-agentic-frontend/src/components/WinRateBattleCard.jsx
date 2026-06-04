@@ -19,12 +19,12 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       return match ? parseInt(match[0], 10) : 0;
     };
 
-    const finalProb = isQuoteMode && parsedMath ? parseVal(parsedMath["Final Probability"]) : (winRate || 73);
-    const baseChance = isQuoteMode && parsedMath ? parseVal(parsedMath["Base Chance"]) : 68;
-    const discountMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Discount Modifier"]) : 5;
-    const dealSizeMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Deal Size Modifier"]) : 10;
-    const competitorPenalty = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Penalty"]) : -7;
-    const competitorCounter = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Counter"]) : 10;
+    const finalProb = isQuoteMode ? (parsedMath ? parseVal(parsedMath["Final Probability"]) : 0) : (winRate || 0);
+    const baseChance = isQuoteMode && parsedMath ? parseVal(parsedMath["Base Chance"]) : 0;
+    const discountMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Discount Modifier"]) : 0;
+    const dealSizeMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Deal Size Modifier"]) : 0;
+    const competitorPenalty = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Penalty"]) : 0;
+    const competitorCounter = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Counter"]) : 0;
 
     // Extract successfully purchased products from history
     const wonProductNames = new Set();
@@ -84,7 +84,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 
     let productsNewName = "New Products Modifier";
     let productsNewExplanation = "New products introduce uncertainty";
-    let productsNewContrib = competitorPenalty !== 0 ? competitorPenalty : -7;
+    let productsNewContrib = competitorPenalty;
 
     if (totalProds > 0) {
       if (newProdsCount === 0) {
@@ -94,19 +94,19 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       } else if (newProdsCount < totalProds) {
         productsNewName = "Product Familiarity Modifier";
         productsNewExplanation = `${newProdsCount} of ${totalProds} products have not been purchased before`;
-        const basePenalty = competitorPenalty !== 0 ? competitorPenalty : -10;
+        const basePenalty = competitorPenalty;
         productsNewContrib = Math.round(basePenalty * (newProdsCount / totalProds));
       } else {
         productsNewName = "New Products Modifier";
         productsNewExplanation = "New products introduce uncertainty";
-        productsNewContrib = competitorPenalty !== 0 ? competitorPenalty : -10;
+        productsNewContrib = competitorPenalty;
       }
     }
 
-    const startingScore = 40;
+    const startingScore = isQuoteMode ? baseChance : (winRate || 0);
     const discountContrib = discountMod;
     const dealSizeContrib = dealSizeMod;
-    const proposalStageContrib = competitorCounter !== 0 ? competitorCounter : 10;
+    const proposalStageContrib = competitorCounter;
 
     const baseSum = discountContrib + dealSizeContrib + productsNewContrib + proposalStageContrib;
     const accountHistoryContrib = finalProb - startingScore - baseSum;
@@ -140,9 +140,11 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
     });
 
     // Dynamic explanation blocks
-    const accountHistoryExpl = accountHistoryContrib >= 0
-      ? `Account has a strong success record. Out of ${totalResolved} resolved quotes, ${wonQuotes.length} were Won and ${lostQuotes.length} were Lost, establishing a highly reliable relationship.`
-      : `Limited purchase history introduces uncertainty. With only ${wonQuotes.length} Won and ${lostQuotes.length} Lost quotes, the historical baseline is less established.`;
+    const accountHistoryExpl = isQuoteMode
+      ? `Historical sales patterns and past opportunity outcomes for this account indicate a stable baseline of engagement.`
+      : (accountHistoryContrib >= 0
+        ? `Account has a strong success record. Out of ${totalResolved} resolved quotes, ${wonQuotes.length} were Won and ${lostQuotes.length} were Lost, establishing a highly reliable relationship.`
+        : `Limited purchase history introduces uncertainty. With only ${wonQuotes.length} Won and ${lostQuotes.length} Lost quotes, the historical baseline is less established.`);
 
     const dealSizeExpl = dealSizeContrib >= 0
       ? `The total quote value is ${formatCurrency(currentQuoteValue)}, which fits well within the typical range of successful deals for this account (${formatCurrency(minWonValue)} - ${formatCurrency(maxWonValue)}).`
@@ -172,7 +174,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 
     const factors = [
       {
-        name: "Account Purchase History",
+        name: isQuoteMode ? "Historical Baseline" : "Account Purchase History",
         explanation: accountHistoryExpl,
         contrib: accountHistoryContrib,
       },
@@ -295,10 +297,10 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                   <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-start gap-4 shadow-sm hover:border-indigo-100 transition-colors">
                     <div className="space-y-1">
                       <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5 uppercase tracking-wide">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500" /> Account Baseline Win Rate
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" /> {isQuoteMode ? "Base Deal Win Probability" : "Account Baseline Win Rate"}
                       </span>
                       <p className="text-[10px] text-slate-500 leading-normal font-semibold">
-                        The historical baseline win rate based on won and lost deals for this account.
+                        {isQuoteMode ? "The starting baseline probability before adjusting for deal-specific parameters." : "The historical baseline win rate based on won and lost deals for this account."}
                       </p>
                     </div>
                     <span className="font-black text-slate-700 text-[11px] bg-slate-100 px-2 py-1 rounded">
@@ -558,7 +560,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
       const lastContent = assistantMessages[assistantMessages.length - 1].content || '';
 
       // Always try to parse the Playbook regardless of mode
-      const playbookMatch = lastContent.match(/<PLAYBOOK>([\s\S]*?)<\/PLAYBOOK>/i);
+      const playbookMatch = lastContent.match(/<PLAYBOOK>([\s\S]*?)(?:<\/PLAYBOOK>|(?=<MATH>)|$)/i);
       if (playbookMatch) {
         const lines = playbookMatch[1].trim().split('\n');
         lines.forEach(line => {
@@ -576,12 +578,12 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
           parsedQuoteWinRate = parseFloat(match[1]);
           isQuoteReady = true;
         }
-        const explainMatch = lastContent.match(/<EXPLAIN>([\s\S]*?)<\/EXPLAIN>/i);
+        const explainMatch = lastContent.match(/<EXPLAIN>([\s\S]*?)(?:<\/EXPLAIN>|(?=<RISKS>|<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/i);
         if (explainMatch) {
           parsedQuoteExplanation = explainMatch[1].trim();
         }
         
-        const mathMatch = lastContent.match(/<MATH>([\s\S]*?)<\/MATH>/i);
+        const mathMatch = lastContent.match(/<MATH>([\s\S]*?)(?:<\/MATH>|$)/i);
         if (mathMatch) {
           parsedMath = {};
           const mathLines = mathMatch[1].trim().split('\n');
@@ -595,12 +597,12 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
           });
         }
 
-        const risksMatch = lastContent.match(/<RISKS>([\s\S]*?)<\/RISKS>/i);
+        const risksMatch = lastContent.match(/<RISKS>([\s\S]*?)(?:<\/RISKS>|(?=<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/i);
         if (risksMatch) {
           parsedRisks = risksMatch[1].trim().split('\n').map(line => line.replace(/^[•\s*-\s*✔️✅⚠️]+/, '').trim()).filter(Boolean);
         }
 
-        const strengthsMatch = lastContent.match(/<STRENGTHS>([\s\S]*?)<\/STRENGTHS>/i);
+        const strengthsMatch = lastContent.match(/<STRENGTHS>([\s\S]*?)(?:<\/STRENGTHS>|(?=<PLAYBOOK>|<MATH>)|$)/i);
         if (strengthsMatch) {
           parsedStrengths = strengthsMatch[1].trim().split('\n').map(line => line.replace(/^[•\s*-\s*✔️✅⚠️]+/, '').trim()).filter(Boolean);
         }
@@ -608,7 +610,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
     }
   }
 
-  const displayWinRate = isQuoteMode && isQuoteReady ? parsedQuoteWinRate : winRate;
+  const displayWinRate = isQuoteMode ? (parsedQuoteWinRate || 0) : winRate;
   const isCalculatingQuote = isQuoteMode && !isQuoteReady;
 
   // --- DYNAMIC COMPETITIVE INTEL MAP ---
@@ -664,7 +666,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
             <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-              <Trophy size={10} className="text-yellow-400" /> Account Intel
+              <Trophy size={10} className="text-yellow-400" /> {isQuoteMode ? "Quote Intel" : "Account Intel"}
             </span>
             <span className="bg-emerald-500/30 text-emerald-200 border border-emerald-400/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
               <Sparkles size={10} /> Dynamic Battle Card
@@ -786,16 +788,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         selectedProducts={selectedProducts}
       />
 
-      {isQuoteMode && (
-        <div className="bg-slate-100/70 rounded-xl px-4 py-2.5 mb-6 flex items-center justify-start gap-4 border border-slate-200 shadow-sm w-fit">
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Account Baseline ({winRate}%)</span>
-          <div className="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden flex">
-            <div style={{ width: `${winRate}%` }} className={`h-full ${winRate >= 70 ? 'bg-emerald-500' : winRate >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} />
-            <div style={{ width: `${totalResolved > 0 ? (lostQuotes.length / totalResolved) * 100 : 0}%` }} className="h-full bg-rose-500/30" />
-          </div>
-          <span className="text-[8px] font-bold uppercase text-slate-400 border-l border-slate-200 pl-4">{totalResolved} resolved quotes</span>
-        </div>
-      )}
+
 
       {/* Strategic Playbook & Competitive Position */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
