@@ -663,9 +663,79 @@ def research_twin_candidates(analysis_id: str, max_results: int = 12) -> str:
         return _json_dumps(research)
 
 
+def _generate_natural_upsell(product_name: str, anchor_name: str, idx: int) -> str:
+    """Generates an easy-to-understand upsell suggestion for sales reps using peer client matching."""
+    templates = [
+        f"This product is frequently bought by other customers in the same field. Since this client matches peer customer {anchor_name}, we recommend upselling {product_name}.",
+        f"{product_name} is a top seller for clients in this vertical. Since they are structurally similar to {anchor_name}, you can recommend {product_name} to them.",
+        f"Peer customer {anchor_name} successfully runs {product_name} for their setups. Recommend this product line as a high-probability cross-sell.",
+        f"Matched clients like {anchor_name} commonly bundle {product_name}. Suggesting this to the client will align them with industry-standard configurations."
+    ]
+    return templates[idx % len(templates)]
+
+
+def _fetch_account_deal_info(account_id: str) -> tuple[dict, list[str]]:
+    """Queries Salesforce for quotes and line items associated with a given Account ID to build history summary."""
+    query = (
+        f"SELECT Id, Name, Status, GrandTotal, Discount, QuoteNumber, CreatedDate, Opportunity.Name, "
+        f"(SELECT Id, Product2.Name, Quantity, UnitPrice, TotalPrice, Discount FROM QuoteLineItems) "
+        f"FROM Quote WHERE AccountId = '{account_id}' ORDER BY CreatedDate DESC LIMIT 100"
+    )
+    try:
+        quotes = _salesforce_query(query)
+    except Exception as e:
+        print(f"[DEBUG] Error querying quotes for lookup: {e}")
+        return {"total_quotes": 0, "status_counts": {}, "avg_discount": "0%", "raw_deals": []}, []
+    
+    deal_history = []
+    product_counts = {}
+    status_counts = {}
+    total_discount = 0.0
+    discount_count = 0
+
+    for q in quotes:
+        q_num = q.get("QuoteNumber") or q.get("Name") or "Quote"
+        opp_name = "Direct Opportunity"
+        if q.get("Opportunity") and q.get("Opportunity", {}).get("Name"):
+            opp_name = q.get("Opportunity", {}).get("Name")
+        status = q.get("Status") or "Draft"
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+        total = q.get("GrandTotal") or 0
+        total_str = f"${total:,.0f}" if total else "—"
+        deal_history.append(f"{q_num} ({opp_name}) — {status} [{total_str}]")
+        
+        disc = q.get("Discount")
+        if disc is not None:
+            total_discount += float(disc)
+            discount_count += 1
+
+        q_lis = q.get("QuoteLineItems", {}).get("records", []) if q.get("QuoteLineItems") else []
+        for li in q_lis:
+            if li.get("Product2") and li.get("Product2", {}).get("Name"):
+                p_name = li.get("Product2", {}).get("Name")
+                product_counts[p_name] = product_counts.get(p_name, 0) + 1
+                
+    mostly_purchased = [p for p, c in sorted(product_counts.items(), key=lambda x: x[1], reverse=True)]
+    
+    avg_disc = (total_discount / discount_count) if discount_count > 0 else 0.0
+    if 0.0 < avg_disc < 1.0:
+        avg_disc *= 100
+    avg_discount_str = f"{avg_disc:.1f}%" if avg_disc > 0 else "0%"
+
+    deal_summary = {
+        "total_quotes": len(quotes),
+        "status_counts": status_counts,
+        "avg_discount": avg_discount_str,
+        "raw_deals": deal_history[:5]
+    }
+    return deal_summary, mostly_purchased[:3]
+
+
 def build_twin_hunter_cards(analysis_id: str, max_cards: int = 6) -> str:
     """
     Builds Twin Hunter preview cards using LLM.
+    Categorizes lookalikes into "existing" matching accounts and "net_new" prospects.
     """
     analysis_id_str = str(analysis_id or "").strip()
     cache_entry = TWIN_HUNTER_CACHE.get(analysis_id_str)
@@ -690,42 +760,74 @@ def build_twin_hunter_cards(analysis_id: str, max_cards: int = 6) -> str:
         }
         return _json_dumps(result)
         
+    # Query Salesforce for AccountIds that have quotes to ensure they have deal history
+    acct_ids_with_quotes = set()
+    try:
+        quote_records = _salesforce_query("SELECT AccountId FROM Quote WHERE AccountId != null LIMIT 500")
+        for qr in quote_records:
+            aid = qr.get("AccountId")
+            if aid:
+                acct_ids_with_quotes.add(aid)
+    except Exception as e:
+        print(f"[DEBUG] Error pre-fetching quote account IDs: {e}")
+
+    existing_candidates = [
+        acc for acc in context.get("accounts", [])
+        if acc.get("name") and (not acct_ids_with_quotes or acc.get("id") in acct_ids_with_quotes)
+    ]
+    if not existing_candidates:
+        existing_candidates = [acc for acc in context.get("accounts", []) if acc.get("name")]
+
     context_for_ai = {
         "target_account": context.get("target_account"),
         "anchor_accounts": context.get("anchor_accounts", [])[:5],
-        "existing_salesforce_accounts": [acc.get("name") for acc in context.get("accounts", []) if acc.get("name")]
+        "existing_salesforce_accounts": [
+            {
+                "name": acc.get("name"),
+                "industry": acc.get("industry") or "Unknown",
+                "description": acc.get("description") or "",
+                "billing_city": acc.get("billing_city") or "",
+                "annual_revenue": f"${acc.get('annual_revenue'):,.0f}" if acc.get('annual_revenue') else "Unknown",
+                "employees": acc.get('employees') or "Unknown"
+            }
+            for acc in existing_candidates
+        ][:50]  # Limit to 50 active accounts to optimize token usage
     }
     
     prompt = f"""
-You are Twin Hunter. Your task is to extract lookalike customer companies from the Tavily search results below, and compare them against the Salesforce anchor account(s). 
-Be extremely careful NOT to confuse the source Salesforce anchor account with the new lookalike company candidate!
+You are Twin Hunter. Your task is to analyze lookalike customers and return them in structured cards.
+You must find and return two types of lookalikes:
+1. "existing": At least 1 or 2 matching companies selected from the "existing_salesforce_accounts" list that closely resemble the target account or anchor accounts.
+2. "net_new": 3 to 4 net-new prospect companies extracted from the public Tavily search results.
 
 Strict Rules:
 - NO ANCHOR / SYSTEM COMPANY IN RESULTS: Never include "ThermoFisher", "Thermo Fisher Scientific", or any variation of the system owner/service provider company name in the lookalike candidates. Lookalikes are external prospects/accounts only.
-- NO EXISTING SALESFORCE ACCOUNTS: Do NOT include any companies listed under "existing_salesforce_accounts" in your lookalike results. They must be net-new prospect accounts only.
-- STRICT INDUSTRY FILTER: You must discard any candidate that operates in unrelated consumer sectors (e.g., wellness, fitness, retail, consumer health). Only accept verified B2B companies that match the anchor's exact industry.
-- Return exactly {min(int(max_cards or 6), 6)} lookalike companies.
-- `company_name`: The name of the NEW lookalike company (NOT the Salesforce anchor account).
+- TYPE CATEGORIZATION: You MUST categorize every card as either "existing" or "net_new" in the "type" field.
+- EXACTLY 5 OR 6 CARDS: Return exactly {min(int(max_cards or 6), 6)} cards (1-2 of type "existing", and the rest of type "net_new").
+- STRICT INDUSTRY FILTER: You must discard any candidate that operates in unrelated consumer sectors (e.g., wellness, fitness, retail, consumer health). Only accept verified B2B companies that match the anchor's industry.
+- `company_name`: The exact name of the lookalike company.
 - `summary`: A concise sentence explaining what this company does.
 - `location`: The headquarters city/state or country (e.g. "Cambridge, MA" or "Germany"), if found. Otherwise, leave empty.
 - `revenue`: Estimated annual revenue or range (e.g. "$120M est." or "$2B+"), if found. Otherwise, leave empty.
-- `match_score`: An integer from 1 to 100 calculated EXACTLY using this rubric: 1) Industry Match (50 pts max), 2) Products & Services (50 pts max).
+- `match_score`: An integer from 1 to 100 calculated using Industry Match (50 pts max) and Products/Services Match (50 pts max).
 - `score_breakdown`: An array of EXACTLY 2 objects detailing the points awarded for each of the 2 rubric metrics. Each object MUST contain: `metric` (either "Industry Match" or "Products & Services"), `score` (e.g. 45), `max` (e.g. 50), and `reason` (1 sentence explaining why this specific score was given).
-- `reasons`: Array of 2-3 short sentences explaining exact commercial synergies, structural/location alignment, or revenue matching compared against the anchor profile (e.g., "Matches the anchor's Basel location with R&D sites in the same area" or "Has comparable employee scale (20k+) and diagnostics product offering").
-- `key_highlights`: Array of 2-3 short, objective facts about the company from public records (e.g. CEO name, year founded, stock ticker, core business domains, global site footprint). WARNING: DO NOT mention the anchor account or repeat/duplicate any details or keywords from the reasons array. Keep these facts completely independent and descriptive of the candidate company only.
+- `reasons`: Array of 2-3 short sentences explaining exact commercial synergies or structural alignment compared against the anchor profile.
+- `key_highlights`: Array of 2-3 short, objective facts about the company from public records. DO NOT mention the anchor account here.
 - `matched_against`: Array with 1 object detailing the closest Salesforce anchor account it resembles.
-  - `account_name`: The name of the SALESFORCE ANCHOR ACCOUNT.
-  - `match_reason`: Why it matches this anchor.
+  - `account_name`: The name of the closest SALESFORCE ANCHOR ACCOUNT.
+  - `match_reason`: Why it resembles this anchor.
   - `shared_terms`: Array of shared business attributes/keywords.
-- `source_urls`: Array of their OFFICIAL company website URLs. ONLY include the official domain. DO NOT include news articles or directories. If the official website is not found, leave this empty.
+- `source_urls`: Array of their OFFICIAL company website URLs.
 - `contact_email`: The company's official contact email, if explicitly found. Otherwise, leave empty.
+- `upsell_opportunities`: ONLY for type: "existing" cards. An array of 1-2 product categories or suggestions we can upsell to this existing customer based on its similarity to other top accounts (e.g., what products they should buy next). Leave empty or omit for type: "net_new".
 
 Return strict JSON only:
 {{
-  "summary": "one concise sentence summarizing the findings",
+  "summary": "one concise sentence summarizing the findings, e.g., 'Found lookalikes for our top accounts containing both existing matching customers and net-new prospects.'",
   "cards": [
     {{
-      "company_name": "New Company Name",
+      "company_name": "Company Name",
+      "type": "existing",
       "summary": "...",
       "location": "Cambridge, MA",
       "revenue": "$120M est.",
@@ -738,13 +840,14 @@ Return strict JSON only:
       "key_highlights": ["..."],
       "matched_against": [
         {{
-          "account_name": "Anchor Salesforce Account Name",
+          "account_name": "Anchor Account Name",
           "match_reason": "...",
           "shared_terms": ["..."]
         }}
       ],
       "source_urls": ["..."],
-      "contact_email": "..."
+      "contact_email": "...",
+      "upsell_opportunities": ["..."]
     }}
   ]
 }}
@@ -779,23 +882,90 @@ Tavily Results:
                 match = re.search(r"\{.*\}", text, re.S)
                 parsed = json.loads(match.group(0)) if match else {}
                 
+            # Post-process cards: Query Salesforce for existing accounts to get real deal history & products
+            final_cards = []
+            for c in parsed.get("cards", []):
+                c_name = c.get("company_name", "")
+                c_type = c.get("type", "net_new")
+                if "thermofisher" in c_name.lower() or "thermo fisher" in c_name.lower():
+                    continue
+                
+                # Check for overlap with Salesforce accounts
+                existing_accts = context.get("accounts", [])
+                matched_acct = None
+                normalized_c_name = _normalise_name(c_name)
+                for acc in existing_accts:
+                    if _normalise_name(acc.get("name")) == normalized_c_name:
+                        matched_acct = acc
+                        break
+                
+                if c_type == "existing":
+                    deal_summary, mostly_bought = {}, []
+                    if matched_acct:
+                        # Fetch real deal history summary and products from Salesforce
+                        deal_summary, mostly_bought = _fetch_account_deal_info(matched_acct.get("id"))
+                        c["company_name"] = matched_acct.get("name") # Use exact Salesforce name
+                    else:
+                        # Fallback if AI outputted a name not exact or not found in our context accounts
+                        for acc in existing_accts:
+                            acc_norm = _normalise_name(acc.get("name"))
+                            if normalized_c_name in acc_norm or acc_norm in normalized_c_name:
+                                matched_acct = acc
+                                deal_summary, mostly_bought = _fetch_account_deal_info(acc.get("id"))
+                                c["company_name"] = acc.get("name")
+                                break
+                    
+                    # Convert to net_new if no deal history is found to prevent blank layouts
+                    if not deal_summary or deal_summary.get("total_quotes", 0) == 0:
+                        c["type"] = "net_new"
+                        c_type = "net_new"
+                    else:
+                        c["deal_history"] = deal_summary.get("raw_deals", [])
+                        c["deal_summary"] = deal_summary
+                        c["mostly_purchased_products"] = mostly_bought
+                        
+                        # Generate intelligent upsell recommendations comparing this account to its peer anchor
+                        anchor_name = ""
+                        if c.get("matched_against") and len(c["matched_against"]) > 0:
+                            anchor_name = c["matched_against"][0].get("account_name", "")
+                        
+                        anchor_products = []
+                        if anchor_name:
+                            normalized_anchor_name = _normalise_name(anchor_name)
+                            for acc in existing_accts:
+                                if _normalise_name(acc.get("name")) == normalized_anchor_name:
+                                    _, anchor_products = _fetch_account_deal_info(acc.get("id"))
+                                    break
+                        
+                        # Calculate recommendations (products anchor bought but this client did not)
+                        my_prods_set = {p.lower() for p in mostly_bought}
+                        recommendations = [p for p in anchor_products if p.lower() not in my_prods_set]
+                        
+                        if recommendations:
+                            c["upsell_opportunities"] = [
+                                _generate_natural_upsell(prod, anchor_name, idx)
+                                for idx, prod in enumerate(recommendations[:2])
+                            ]
+                        else:
+                            c["upsell_opportunities"] = [
+                                f"Upsell advanced solutions: Drive structural alignment with successful configurations deployed at peer account {anchor_name or 'top anchors'}."
+                            ]
+                
+                # Check c_type again (it might have been downgraded to net_new)
+                if c_type != "existing":
+                    # Filter out net_new matches that overlap with existing accounts
+                    if matched_acct:
+                        continue
+                
+                final_cards.append(c)
+
             result = {
                 "status": "success",
                 "analysis_id": analysis_id,
                 "summary": parsed.get("summary") or "Lookalike matches processed successfully.",
                 "source_account": context.get("target_account"),
                 "anchor_accounts": context.get("anchor_accounts", []),
-                "cards": [
-                    c for c in parsed.get("cards", [])
-                    if (
-                        "thermofisher" not in c.get("company_name", "").lower()
-                        and "thermo fisher" not in c.get("company_name", "").lower()
-                        and _normalise_name(c.get("company_name", "")) not in {
-                            _normalise_name(acc.get("name"))
-                            for acc in context.get("accounts", []) if acc.get("name")
-                        }
-                    )
-                ],
+                "cards": final_cards,
                 "limitations": context.get("limitations", [])
             }
             cache_entry["cards"] = result
