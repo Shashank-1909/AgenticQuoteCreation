@@ -458,8 +458,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               if (n.coordinator === 'active') n.coordinator = 'done';
               const tools = n.Quote_Analyst.tools || [];
               const hasAccounts = tools.some(t => t.name === 'get_my_accounts');
-              
-              let newTools = tools.map(t => 
+
+              let newTools = tools.map(t =>
                 t.name === 'get_my_accounts' ? { ...t, state: 'active' } : t
               );
               if (!hasAccounts) {
@@ -479,14 +479,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               if (n.Quote_Analyst) {
                 const tools = n.Quote_Analyst.tools || [];
                 const hasDealHistory = tools.some(t => t.name === 'get_deal_history');
-                
-                let newTools = tools.map(t => 
+
+                let newTools = tools.map(t =>
                   t.name === 'get_my_accounts' ? { ...t, state: 'done' } : t
                 );
                 if (!hasDealHistory) {
                   newTools.push({ name: 'get_deal_history', state: 'active' });
                 } else {
-                  newTools = newTools.map(t => 
+                  newTools = newTools.map(t =>
                     t.name === 'get_deal_history' ? { ...t, state: 'active' } : t
                   );
                 }
@@ -685,21 +685,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
             addMessage({ type: 'text', content: processedText, actions });
 
-            // Detect if AI is asking for a document upload
+            // Detect if AI is asking for a document upload (must combine an action verb with a document/file noun)
             const lcText = processedText.toLowerCase();
-            if (
-              lcText.includes('upload') ||
-              lcText.includes('paste') ||
-              lcText.includes('share') ||
-              lcText.includes('document') ||
-              lcText.includes('transcript') ||
-              lcText.includes('file') ||
-              lcText.includes('sow') ||
-              lcText.includes('rfp') ||
-              lcText.includes('analyse') ||
-              lcText.includes('analyze') ||
-              lcText.includes('[action: show_upload_card]')
-            ) {
+            const hasActionVerb = lcText.includes('upload') || lcText.includes('paste') || lcText.includes('share');
+            const hasDocumentNoun = lcText.includes('document') || lcText.includes('transcript') || lcText.includes('file') || lcText.includes('sow') || lcText.includes('rfp');
+            const hasExplicitInstruction = lcText.includes('[action: show_upload_card]') || lcText.includes('upload to get started') || lcText.includes('upload via the paperclip');
+
+            if (hasExplicitInstruction || (hasActionVerb && hasDocumentNoun)) {
               addMessage({
                 type: 'card',
                 cardType: 'upload',
@@ -808,7 +800,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
-    
+
     // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
     const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
     if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
@@ -829,10 +821,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
     isSummarizeRequestRef.current = isSummarizeOrPrioritize;
     let isDealHistoryRequest = !isSummarizeOrPrioritize && !isWinRateRequest && (
-      isStatusFilterRequest || 
-      cmd.includes('deal history') || 
-      cmd.includes('previous quotes') || 
-      cmd.includes('historical quotes') || 
+      isStatusFilterRequest ||
+      cmd.includes('deal history') ||
+      cmd.includes('previous quotes') ||
+      cmd.includes('historical quotes') ||
       cmd.includes('detailed view of') ||
       cmd.includes('view all deals') ||
       cmd.includes('get all deals') ||
@@ -845,11 +837,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
     // If we're already in a deal history context, keep it alive for follow-up account selection, filters, or resetting account
     if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
-      detectAccountName(text) || 
-      cmd.includes('yes') || 
-      cmd.includes('all') || 
-      cmd.includes('list') || 
-      cmd.includes('show') || 
+      detectAccountName(text) ||
+      cmd.includes('yes') ||
+      cmd.includes('all') ||
+      cmd.includes('list') ||
+      cmd.includes('show') ||
       cmd.includes('current') ||
       cmd.includes('different') ||
       cmd.includes('account')
@@ -880,35 +872,35 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         dealHistoryLoadingRef.current = true;
         try {
           const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-          setDealHistoryData(data.quotes);
-          const quotesText = data.quotes.map(q => {
-            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-          }).join('\n');
+          const data = await resp.json();
+          if (data.status === 'success') {
+            setDealHistoryData(data.quotes);
+            const quotesText = data.quotes.map(q => {
+              const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+              return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+            }).join('\n');
 
-          sendPayload(JSON.stringify({
-            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
-            module: selectedModule?.id || 'sales'
-          }));
-        } else {
+            sendPayload(JSON.stringify({
+              text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+              module: selectedModule?.id || 'sales'
+            }));
+          } else {
+            sendPayload(JSON.stringify({
+              text: text,
+              module: selectedModule?.id || 'sales'
+            }));
+          }
+        } catch (err) {
+          console.error("Error lazy-loading deal history for win rate:", err);
           sendPayload(JSON.stringify({
             text: text,
             module: selectedModule?.id || 'sales'
           }));
+        } finally {
+          setDealHistoryLoading(false);
+          dealHistoryLoadingRef.current = false;
         }
-      } catch (err) {
-        console.error("Error lazy-loading deal history for win rate:", err);
-        sendPayload(JSON.stringify({
-          text: text,
-          module: selectedModule?.id || 'sales'
-        }));
-      } finally {
-        setDealHistoryLoading(false);
-        dealHistoryLoadingRef.current = false;
-      }
-      return;
+        return;
       }
     }
 
@@ -940,42 +932,42 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         dealHistoryLoadingRef.current = true;
         try {
           const resp = await fetch(`${config.API_BASE_URL}/api/deal-history?account_name=${encodeURIComponent(detectedAcc)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-          setDealHistoryData(data.quotes);
-          const quotesText = data.quotes.map(q => {
-            const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
-            return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
-          }).join('\n');
+          const data = await resp.json();
+          if (data.status === 'success') {
+            setDealHistoryData(data.quotes);
+            const quotesText = data.quotes.map(q => {
+              const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
+              return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
+            }).join('\n');
 
-          sendPayload(JSON.stringify({
-            text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
-            module: selectedModule?.id || 'sales'
-          }));
-        } else {
+            sendPayload(JSON.stringify({
+              text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+              module: selectedModule?.id || 'sales'
+            }));
+          } else {
+            sendPayload(JSON.stringify({
+              text: text,
+              module: selectedModule?.id || 'sales'
+            }));
+          }
+        } catch (err) {
+          console.error("Error lazy-loading deal history:", err);
           sendPayload(JSON.stringify({
             text: text,
             module: selectedModule?.id || 'sales'
           }));
+        } finally {
+          setDealHistoryLoading(false);
+          dealHistoryLoadingRef.current = false;
         }
-      } catch (err) {
-        console.error("Error lazy-loading deal history:", err);
-        sendPayload(JSON.stringify({
-          text: text,
-          module: selectedModule?.id || 'sales'
-        }));
-      } finally {
-        setDealHistoryLoading(false);
-        dealHistoryLoadingRef.current = false;
-      }
-      return;
+        return;
       }
     }
 
     if (isDealHistoryRequest) {
       setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
       setInputValue('');
-      
+
       const detectedAcc = detectAccountName(text) || dealHistoryAccount;
       setDealHistoryAccount(detectedAcc);
       setDealHistoryLoading(true);
@@ -989,7 +981,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             const items = (q.lineItems || []).map(li => `${li.name} (Qty: ${li.quantity}, Price: $${li.totalPrice || li.unitPrice})`).join(', ');
             return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
           }).join('\n');
-          
+
           ws.current?.send(JSON.stringify({
             text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
             module: selectedModule?.id || 'sales'
@@ -1013,11 +1005,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     const isPreviewCmd = !isSummarizeOrPrioritize && (cmd.includes('preview') || cmd.includes('overview') || cmd.includes('summary')) && (cmd.includes('quote') || cmd.split(' ').length <= 4);
     if (isPreviewCmd) {
       let quoteIdToPreview = null;
-      
+
       // Check if user explicitly provided an ID or Number
       const explicitNumMatch = text.match(/\b\d{8}\b/);
       const explicitIdMatch = text.match(/\b0Q0[a-zA-Z0-9]{12,15}\b/);
-      
+
       if (explicitIdMatch) {
         quoteIdToPreview = explicitIdMatch[0];
       } else if (explicitNumMatch) {
@@ -1408,99 +1400,99 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 )}
               </div>
             ) : (
-            <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
-              {lookalikeData ? (
-                <LookalikeCards
-                  variant="workspace"
-                  cards={lookalikeData.cards || []}
-                  summary={lookalikeData.summary || ''}
-                  sourceAccount={lookalikeData.source_account}
-                  limitations={lookalikeData.limitations || []}
-                />
-              ) : previewData ? (
-                <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-emerald-500/10 rounded-xl">
-                        <FileText size={20} className="text-emerald-500" />
+              <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar">
+                {lookalikeData ? (
+                  <LookalikeCards
+                    variant="workspace"
+                    cards={lookalikeData.cards || []}
+                    summary={lookalikeData.summary || ''}
+                    sourceAccount={lookalikeData.source_account}
+                    limitations={lookalikeData.limitations || []}
+                  />
+                ) : previewData ? (
+                  <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl">
+                          <FileText size={20} className="text-emerald-500" />
+                        </div>
+                        <div>
+                          <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
+                          <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
+                        </div>
                       </div>
-                      <div>
-                        <h1 className="text-xl font-black tracking-tight">{previewData.records?.[0]?.Name || 'Quote Detail'}</h1>
-                        <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">{previewData.records?.[0]?.QuoteNumber} — {previewData.records?.[0]?.Status}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const qId = previewData.records?.[0]?.Id;
-                        const inst = previewData.instance_url || 'https://login.salesforce.com';
-                        if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
-                      }}
-                      className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
-                    >
-                      Open in Salesforce <ExternalLink size={14} />
-                    </button>
-                  </div>
-
-                  {/* Rich Details Table */}
-                  <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
-                    <div className="p-6 border-b border-white/5 bg-white/[0.02]">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
-                    </div>
-                    <div className="p-0">
-                      <table className="w-full text-left">
-                        <thead className="bg-white/[0.01] border-b border-white/5">
-                          <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                            <th className="px-6 py-4">Account</th>
-                            <th className="px-6 py-4">Opportunity</th>
-                            <th className="px-6 py-4 text-right">Grand Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="text-sm font-bold border-b border-white/5">
-                            <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
-                            <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                            <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+                      <button
+                        onClick={() => {
+                          const qId = previewData.records?.[0]?.Id;
+                          const inst = previewData.instance_url || 'https://login.salesforce.com';
+                          if (qId) window.open(`${inst}/lightning/r/Quote/${qId}/view`, '_blank');
+                        }}
+                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
+                      >
+                        Open in Salesforce <ExternalLink size={14} />
+                      </button>
                     </div>
 
-                    <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
-                    </div>
-                    <div className="p-0">
-                      <table className="w-full text-left">
-                        <thead className="bg-white/[0.01] border-b border-white/5">
-                          <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                            <th className="px-6 py-4">Product</th>
-                            <th className="px-6 py-4 text-center">Qty</th>
-                            <th className="px-6 py-4 text-right">Sales Price</th>
-                            <th className="px-6 py-4 text-center">Discount</th>
-                            <th className="px-6 py-4 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
-                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
-                              <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                              <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
-                              <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                              <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                    {/* Rich Details Table */}
+                    <div className="glass-card rounded-3xl border-white/5 overflow-hidden shadow-2xl">
+                      <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Financial Summary</h3>
+                      </div>
+                      <div className="p-0">
+                        <table className="w-full text-left">
+                          <thead className="bg-white/[0.01] border-b border-white/5">
+                            <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              <th className="px-6 py-4">Account</th>
+                              <th className="px-6 py-4">Opportunity</th>
+                              <th className="px-6 py-4 text-right">Grand Total</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            <tr className="text-sm font-bold border-b border-white/5">
+                              <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
+                              <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
+                              <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="p-6 border-b border-white/5 bg-white/[0.02] mt-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Line Items</h3>
+                      </div>
+                      <div className="p-0">
+                        <table className="w-full text-left">
+                          <thead className="bg-white/[0.01] border-b border-white/5">
+                            <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              <th className="px-6 py-4">Product</th>
+                              <th className="px-6 py-4 text-center">Qty</th>
+                              <th className="px-6 py-4 text-right">Sales Price</th>
+                              <th className="px-6 py-4 text-center">Discount</th>
+                              <th className="px-6 py-4 text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {(previewData.records?.[0]?.QuoteLineItems || []).map((line, idx) => (
+                              <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
+                                <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
+                                <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
+                                <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center opacity-20 py-40">
-                  <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
-                  <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="flex flex-col items-center opacity-20 py-40">
+                    <LayoutDashboard size={64} strokeWidth={1} className="mb-4" />
+                    <p className="font-bold uppercase tracking-widest text-xs">Awaiting Quote Data</p>
+                  </div>
+                )}
+              </div>
             )
           )}
         </div>
@@ -1523,11 +1515,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       <section className="af-sidebar" style={{ width: rightWidth }}>
         <div className="af-sidebar-header">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${(config.theme === 'Meta' || config.theme === 'Thermofisher') ? 'bg-white' : 'bg-indigo-500 shadow-indigo-500/20'}`}>
-              {config.theme === 'Meta' ? (
-                <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
-              ) : config.theme === 'Thermofisher' ? (
-                <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-3 object-contain" />
-              ) : (
+            {config.theme === 'Meta' ? (
+              <img src={config.META_LOGO_URL} alt="Meta" className="h-4 object-contain" />
+            ) : config.theme === 'Thermofisher' ? (
+              <img src={config.THERMOFISHER_LOGO_URL} alt="Thermo Fisher" className="h-3 object-contain" />
+            ) : (
               <img src={config.AGIVANT_LOGO_URL} alt="Agivant" className="h-4 object-contain invert" />
             )}
           </div>
@@ -1778,7 +1770,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         <div className="af-input-area">
           <form onSubmit={handleSend} className="relative group flex items-center gap-2">
             <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
-            
+
             <input
               type="file"
               ref={fileInputRef}
