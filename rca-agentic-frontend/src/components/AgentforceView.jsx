@@ -816,18 +816,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     }
     isWinRateRequestRef.current = isWinRateRequest;
 
-    // A win rate request is a QUOTE win rate request if it mentions 'quote', 'deal', 'probability', 'chance', 'likelihood', 'predict', 'this' or provides an ID/number
-    let isQuoteWinRateRequest = isWinRateRequest && (
-      cmd.includes('quote') || cmd.includes('deal') || cmd.includes('probability') || cmd.includes('chance') || cmd.includes('likelihood') || cmd.includes('predict') || cmd.includes('this') || /\b0[qQ]0\w{12,15}\b/.test(cmd) || /\b\d{8}\b/.test(cmd)
-    );
-    // Persist quote mode if they are just answering follow-ups
-    if (!isQuoteWinRateRequest && isQuoteWinRateRequestRef.current && isWinRateRequest) {
-      isQuoteWinRateRequest = true;
-    }
-    // If they explicitly asked for an ACCOUNT win rate, or if an account is mentioned in the text, turn off quote mode
-    if (cmd.includes('account win rate') || (cmd.includes('account') && !cmd.includes('quote')) || detectAccountName(text)) {
-      isQuoteWinRateRequest = false;
-    }
+    // A win rate request is an ACCOUNT win rate request ONLY if they explicitly mention account win rate
+    const isExplicitAccountWinRate = cmd.includes('account win rate') || 
+                                     cmd.includes('win rate of the account') || 
+                                     cmd.includes('win rate of this account') || 
+                                     cmd.includes('account\'s win rate') || 
+                                     cmd.includes('account win');
+    
+    let isQuoteWinRateRequest = isWinRateRequest && !isExplicitAccountWinRate;
     isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
