@@ -342,7 +342,7 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles size={16} className="text-emerald-600 animate-pulse" />
-                      <span className="text-sm font-bold text-gray-900">AI Upsell & Cross-Sell Opportunities</span>
+                      <span className="text-sm font-bold text-gray-900">Upsell & Cross-Sell Opportunities</span>
                     </div>
                     {card.upsell_opportunities && card.upsell_opportunities.length > 0 ? (
                       <ul className="space-y-2">

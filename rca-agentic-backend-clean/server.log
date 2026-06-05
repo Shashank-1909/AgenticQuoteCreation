@@ -1965,3 +1965,135 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
 [DEBUG] _search_product_direct: Found 0 matches for 'DNA Extraction Kit – Blood'
 [DEBUG] Mapping complete — 0 unique products found
+[06/05/26 11:11:20] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 11:11:35] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_5634bdb7b6", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 11:11:56] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 11:12:13] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:12:44] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:12:52] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_a1b266b830", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:13:03] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:13:18] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:17:34] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:17:42] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_46fb8183a2", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 12:17:53] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:18:10] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:26:20] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:26:30] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_d47eb089f2", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:26:43] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:26:55] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:34:17] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:34:26] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_a285a13de6", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:34:40] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:35:00] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:37:32] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:37:40] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_1370151483", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:37:50] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:38:02] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:38:57] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:39:07] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_d45695acd9", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 12:39:19] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:39:44] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:50:33] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:50:41] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_69f891a48a", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:50:54] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:51:06] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:55:19] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:55:27] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_ca493e7359", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 12:55:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:55:50] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:57:32] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:57:43] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:58:32] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:59:35] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:59:46] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_f6b13cd308", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:59:58] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:00:11] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:23:17] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:23:24] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_30313ab566", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 13:23:37] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:23:56] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:30:28] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:30:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_558d8e2d18", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 13:30:47] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:31:05] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:33:02] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:33:11] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:33:42] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:33:53] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_a3ae45dc77", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 13:34:05] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:34:24] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:47:27] INFO     Processing request of type ListToolsRequest                                  server.py:727
+
+[DEBUG] parse_requirements_doc: Processing 1175 characters...
+[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
+[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
+[DEBUG] _call_gemini_direct: Call succeeded.
+[DEBUG] Gemini extracted 9 items.
+[DEBUG] Extraction complete. Total unique requirements: 9
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
+[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 9 unique products found
+[06/05/26 13:48:10] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:48:27] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:48:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:48:49] INFO     Processing request of type CallToolRequest                                   server.py:727
+[DEBUG] _map_requirements_to_catalog: mapping 9 items
+[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
+[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
+[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
+[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
+[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
+[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
+[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
+[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
+[DEBUG] Mapping complete — 9 unique products found
+[06/05/26 13:49:26] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:49:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:49:55] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:50:05] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:50:26] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:50:40] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:51:03] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:51:40] INFO     Processing request of type ListToolsRequest                                  server.py:727
