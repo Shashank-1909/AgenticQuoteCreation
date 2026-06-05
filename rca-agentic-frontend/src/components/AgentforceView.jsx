@@ -695,7 +695,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               addMessage({
                 type: 'card',
                 cardType: 'upload',
-                content: (translations[language] || translations['en']).uploadDocumentCTA
+                content: (translations[language] || translations['en']).  uploadDocumentCTA
               });
             }
 
