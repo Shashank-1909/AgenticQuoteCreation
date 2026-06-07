@@ -9,7 +9,7 @@ function formatCurrency(val) {
 }
 
 // ── Explainability Accordion ─────────────────────────────────────────────────
-function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, isQuoteMode, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages, previewData, selectedProducts }) {
+function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, totalResolved, winRate, avgDiscountOnWins, primaryProduct, accountName, quoteExplanation, parsedMath, parsedRisks, parsedStrengths, dynamicPlaybook, messages, previewData, selectedProducts }) {
   const [open, setOpen] = useState(false);
 
   const getContributionFactors = () => {
@@ -19,12 +19,12 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       return match ? parseInt(match[0], 10) : 0;
     };
 
-    const finalProb = isQuoteMode ? (parsedMath ? parseVal(parsedMath["Final Probability"]) : 0) : (winRate || 0);
-    const baseChance = isQuoteMode && parsedMath ? parseVal(parsedMath["Base Chance"]) : 0;
-    const discountMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Discount Modifier"]) : 0;
-    const dealSizeMod = isQuoteMode && parsedMath ? parseVal(parsedMath["Deal Size Modifier"]) : 0;
-    const competitorPenalty = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Penalty"]) : 0;
-    const competitorCounter = isQuoteMode && parsedMath ? parseVal(parsedMath["Competitor Counter"]) : 0;
+    const finalProb = (parsedMath ? parseVal(parsedMath["Final Probability"]) : 0);
+    const baseChance = parsedMath ? parseVal(parsedMath["Base Chance"]) : 0;
+    const discountMod = parsedMath ? parseVal(parsedMath["Discount Modifier"]) : 0;
+    const dealSizeMod = parsedMath ? parseVal(parsedMath["Deal Size Modifier"]) : 0;
+    const competitorPenalty = parsedMath ? parseVal(parsedMath["Competitor Penalty"]) : 0;
+    const competitorCounter = parsedMath ? parseVal(parsedMath["Competitor Counter"]) : 0;
 
     // Extract successfully purchased products from history
     const wonProductNames = new Set();
@@ -103,7 +103,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       }
     }
 
-    const startingScore = isQuoteMode ? baseChance : (winRate || 0);
+    const startingScore = baseChance;
     const discountContrib = discountMod;
     const dealSizeContrib = dealSizeMod;
     const proposalStageContrib = competitorCounter;
@@ -140,21 +140,24 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
     });
 
     // Dynamic explanation blocks
-    const accountHistoryExpl = isQuoteMode
-      ? `Historical sales patterns and past opportunity outcomes for this account indicate a stable baseline of engagement.`
-      : (accountHistoryContrib >= 0
-        ? `Account has a strong success record. Out of ${totalResolved} resolved quotes, ${wonQuotes.length} were Won and ${lostQuotes.length} were Lost, establishing a highly reliable relationship.`
-        : `Limited purchase history introduces uncertainty. With only ${wonQuotes.length} Won and ${lostQuotes.length} Lost quotes, the historical baseline is less established.`);
+    const accountHistoryExpl = `Historical sales patterns and past opportunity outcomes for this account indicate a stable baseline of engagement.`;
 
-    const dealSizeExpl = dealSizeContrib >= 0
-      ? `The total quote value is ${formatCurrency(currentQuoteValue)}, which fits well within the typical range of successful deals for this account (${formatCurrency(minWonValue)} - ${formatCurrency(maxWonValue)}).`
-      : `The total quote value is ${formatCurrency(currentQuoteValue)}, which is outside the typical range of successful deals for this account (${formatCurrency(minWonValue)} - ${formatCurrency(maxWonValue)}).`;
+    let dealSizeExpl = "";
+    if (dealSizeContrib > 0) {
+      dealSizeExpl = `The total quote value is ${formatCurrency(currentQuoteValue)}, aligning with typical successful deal structures.`;
+    } else if (dealSizeContrib < 0) {
+      dealSizeExpl = `The total quote value is ${formatCurrency(currentQuoteValue)}, which diverges significantly from standard successful deal ranges.`;
+    } else {
+      dealSizeExpl = `The total quote value is ${formatCurrency(currentQuoteValue)}, which has a neutral historical impact.`;
+    }
 
     let discountExpl = "";
-    if (currentDiscount > avgDiscountOnWins) {
-      discountExpl = `The applied discount (${currentDiscount}%) is higher than the typical successful average of ${avgDiscountOnWins}%.`;
+    if (discountContrib > 0) {
+      discountExpl = `The applied discount (${currentDiscount}%) is highly competitive and falls well within successful historical thresholds.`;
+    } else if (discountContrib < 0) {
+      discountExpl = `The applied discount (${currentDiscount}%) is aggressively outside the typical successful range, introducing risk.`;
     } else {
-      discountExpl = `The discount applied (${currentDiscount}%) is healthy and falls well within the typical win tolerance threshold (average is ${avgDiscountOnWins}%).`;
+      discountExpl = `The applied discount (${currentDiscount}%) is standard and has a neutral impact on the overall probability.`;
     }
 
     let productExpl = "No products specified in the active context.";
@@ -174,7 +177,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 
     const factors = [
       {
-        name: isQuoteMode ? "Historical Baseline" : "Account Purchase History",
+        name: "Historical Baseline",
         explanation: accountHistoryExpl,
         contrib: accountHistoryContrib,
       },
@@ -242,10 +245,10 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
           </div>
           <div className="text-left">
             <span className="text-xs font-black text-slate-700 uppercase tracking-wide">
-              {isQuoteMode ? `Why This Quote Received ${finalProb}%` : 'How is this Win Rate Calculated?'}
+              Why This Quote Received {finalProb}%
             </span>
             <span className="block text-[10px] text-slate-400 font-medium mt-0.5">
-              {isQuoteMode ? "These are the key factors that influenced the win likelihood score." : "Click to understand the methodology behind these numbers"}
+              These are the key factors that influenced the win likelihood score.
             </span>
           </div>
         </div>
@@ -265,7 +268,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       <div className={`transition-all duration-300 ease-in-out ${open ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
         <div className="px-5 pb-5 space-y-5 border-t border-slate-100">
 
-          {isQuoteMode ? (
+
             <div className="pt-4 space-y-5">
               {/* AI Coach Summary Card */}
               <div className="bg-gradient-to-br from-indigo-50/40 to-slate-50/40 border border-indigo-100 rounded-2xl p-5 shadow-sm">
@@ -297,10 +300,10 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                   <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-start gap-4 shadow-sm hover:border-indigo-100 transition-colors">
                     <div className="space-y-1">
                       <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5 uppercase tracking-wide">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500" /> {isQuoteMode ? "Base Deal Win Probability" : "Account Baseline Win Rate"}
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" /> Base Deal Win Probability
                       </span>
                       <p className="text-[10px] text-slate-500 leading-normal font-semibold">
-                        {isQuoteMode ? "The starting baseline probability before adjusting for deal-specific parameters." : "The historical baseline win rate based on won and lost deals for this account."}
+                        The starting baseline probability before adjusting for deal-specific parameters.
                       </p>
                     </div>
                     <span className="font-black text-slate-700 text-[11px] bg-slate-100 px-2 py-1 rounded">
@@ -389,79 +392,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                 </div>
               </div>
             </div>
-          ) : (
-            <>
-              {/* Data Source */}
-              <div className="pt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Hash size={12} className="text-indigo-500" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Source</span>
-                </div>
-                <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                  This analysis is based on <span className="font-black text-slate-800">{quotes.length} historical quote{quotes.length !== 1 ? 's' : ''}</span> retrieved directly from Salesforce for <span className="font-black text-slate-800">{accountName}</span>.
-                  Of these, <span className="font-black text-emerald-600">{wonQuotes.length} are classified as Won</span>, <span className="font-black text-rose-600">{lostQuotes.length} as Lost</span>, and <span className="font-black text-indigo-600">{activeQuotes.length} are still Active or Draft</span> (excluded from the win rate calculation).
-                </p>
-              </div>
 
-              {/* Formula */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <BarChart2 size={12} className="text-indigo-500" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">The Formula</span>
-                </div>
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 space-y-2">
-                  <p className="text-[11px] text-indigo-700 font-mono font-bold">
-                    Win Rate = Won Quotes ÷ (Won + Lost Quotes) × 100
-                  </p>
-                  <p className="text-[11px] text-indigo-600 font-mono">
-                    = {wonQuotes.length} ÷ ({wonQuotes.length} + {lostQuotes.length}) × 100 = <span className="font-black">{winRate}%</span>
-                  </p>
-                  <p className="text-[10px] text-indigo-500 mt-1">
-                    Active and Draft quotes are intentionally excluded — they haven't been resolved yet, so including them would distort the result.
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Definitions */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <BookOpen size={12} className="text-indigo-500" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How Statuses Are Classified</span>
-                </div>
-                <div className="text-[11px] text-slate-700 space-y-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-                  <p><strong className="text-slate-900 font-black tracking-wide">WON:</strong>  Accepted — these represent positive deal outcomes where the customer agreed.</p>
-                  <p><strong className="text-slate-900 font-black tracking-wide">LOST:</strong>  Rejected — these represent deals that didn't close, were declined, or timed out.</p>
-                </div>
-              </div>
-
-              {/* Key Win Driver explanation */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Trophy size={12} className="text-indigo-500" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How the Key Win Driver is Found</span>
-                </div>
-                <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                  The agent looks at every product line item across all <span className="font-black text-slate-800">Won</span> quotes and counts how many times each product appeared.
-                  The product that appeared most frequently in winning deals is labelled the <span className="font-black text-indigo-600">Key Win Driver</span> — currently <span className="font-black text-slate-800">"{primaryProduct}"</span>.
-                  This helps you understand which product anchors successful deals for this account.
-                </p>
-              </div>
-
-              {/* Avg Discount explanation */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Percent size={12} className="text-indigo-500" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Average Discount on Wins</span>
-                </div>
-                <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                  {wonQuotes.length > 0
-                    ? <>This is calculated by averaging the discount percentage of only the <span className="font-black text-slate-800">{wonQuotes.length} Won</span> quote{wonQuotes.length !== 1 ? 's' : ''}. The current average is <span className="font-black text-indigo-600">{avgDiscountOnWins}%</span>. Quotes offering discounts above this threshold show a significantly higher chance of getting rejected or escalated for manager review.</>
-                    : <>No won quotes exist yet, so this metric cannot be calculated. Once deals close, the discount sweet spot will become visible here.</>
-                  }
-                </p>
-              </div>
-            </>
-          )}
 
           {/* Confidence explanation */}
           <div className={`flex items-start gap-3 p-3 rounded-xl border ${confidence.bg} ${confidence.border}`}>
@@ -487,7 +418,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function WinRateBattleCard({ data, accountName, isLoading, isQuoteMode, messages, previewData, selectedProducts }) {
+export default function WinRateBattleCard({ data, accountName, isLoading, messages, previewData, selectedProducts }) {
   const [historyTab, setHistoryTab] = useState('accepted');
 
   if (isLoading) {
@@ -572,7 +503,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
       }
 
       // Quote mode specific parsing
-      if (isQuoteMode) {
+      if (true) {
         const match = lastContent.match(/(?:Deal Win Likelihood|Quote Win Probability):\s*([\d.]+)%/i);
         if (match) {
           parsedQuoteWinRate = parseFloat(match[1]);
@@ -610,8 +541,8 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
     }
   }
 
-  const displayWinRate = isQuoteMode ? (parsedQuoteWinRate || 0) : winRate;
-  const isCalculatingQuote = isQuoteMode && !isQuoteReady;
+  const displayWinRate = parsedQuoteWinRate || 0;
+  const isCalculatingQuote = !isQuoteReady;
 
   // --- DYNAMIC COMPETITIVE INTEL MAP ---
   const competitiveIntelMap = {
@@ -666,7 +597,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
             <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-              <Trophy size={10} className="text-yellow-400" /> {isQuoteMode ? "Quote Intel" : "Account Intel"}
+              <Trophy size={10} className="text-yellow-400" /> Quote Intel
             </span>
             <span className="bg-emerald-500/30 text-emerald-200 border border-emerald-400/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
               <Sparkles size={10} /> Dynamic Battle Card
@@ -685,7 +616,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         {/* Dynamic Win Rate Circle Gauge */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center justify-center">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-1.5 self-start">
-            <Target size={12} className="text-indigo-500" /> {isQuoteMode ? 'Deal Win Likelihood' : 'Account Win Rate'}
+            <Target size={12} className="text-indigo-500" /> Deal Win Likelihood
           </h3>
           <div className="relative w-32 h-32 flex items-center justify-center mb-2">
             {isCalculatingQuote ? (
@@ -710,13 +641,13 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
                 </svg>
                 <div className="absolute text-center">
                   <span className="text-3xl font-black text-slate-800 leading-none">{displayWinRate}%</span>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase mt-0.5">{isQuoteMode ? 'Win Likelihood' : 'Win Rate'}</span>
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase mt-0.5">Win Likelihood</span>
                 </div>
               </>
             )}
           </div>
 
-          {!isQuoteMode && (
+          {!(
             <div className="flex gap-4 text-[10px] font-bold text-slate-500 mt-2">
               <span className="flex items-center gap-1 text-emerald-600">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" /> {wonQuotes.length} Won
@@ -735,7 +666,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
 
         {/* Stats List */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm md:col-span-2 grid grid-cols-2 gap-4">
-          {!isQuoteMode && (
+          {!(
             <>
               <div className="flex flex-col justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
@@ -755,11 +686,11 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
             </>
           )}
 
-          <div className={`flex flex-col justify-between p-4 bg-slate-50 rounded-2xl ${isQuoteMode ? 'col-span-2 row-span-2 justify-center items-center text-center' : 'col-span-2'}`}>
+          <div className={`flex flex-col justify-between p-4 bg-slate-50 rounded-2xl col-span-2 row-span-2 justify-center items-center text-center`}>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
               <Trophy size={10} className="text-indigo-500" /> Primary Win Driver
             </span>
-            <span className={`${isQuoteMode ? 'text-xl' : 'text-sm'} font-black text-slate-800 truncate`}>{primaryProduct}</span>
+            <span className={`text-xl font-black text-slate-800 truncate`}>{primaryProduct}</span>
             <span className="text-[9px] text-slate-400 mt-1 font-bold uppercase">Most frequently included product category</span>
           </div>
         </div>
@@ -777,7 +708,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         avgDiscountOnWins={avgDiscountOnWins}
         primaryProduct={primaryProduct}
         accountName={accountName}
-        isQuoteMode={isQuoteMode}
+        
         quoteExplanation={parsedQuoteExplanation}
         parsedMath={parsedMath}
         parsedRisks={parsedRisks}
@@ -844,7 +775,7 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
         </div>
 
         {/* Deal Intelligence */}
-        {isQuoteMode && (
+        {(
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
               <ShieldAlert size={14} className="text-indigo-500" /> Deal Intelligence
@@ -976,3 +907,4 @@ export default function WinRateBattleCard({ data, accountName, isLoading, isQuot
     </div>
   );
 }
+

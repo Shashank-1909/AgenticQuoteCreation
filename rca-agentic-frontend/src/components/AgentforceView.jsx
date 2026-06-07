@@ -13,6 +13,7 @@ import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
 import DealHistoryPanel from './DealHistoryPanel';
 import WinRateBattleCard from './WinRateBattleCard';
+import AccountBattleCard from './AccountBattleCard';
 import LanguageToggle from './LanguageToggle';
 import LookalikeCards from './LookalikeCards';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
@@ -143,6 +144,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const isDealHistoryRequestRef = useRef(false);
   const isQuoteWinRateRequestRef = useRef(false);
   const summarizeTimeoutsRef = useRef([]);
+  const isAwaitingSelectionRef = useRef(false);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
     summarizeTimeoutsRef.current = [];
@@ -206,7 +208,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
   useEffect(() => {
     if (workflowState === 'completed') {
-      if (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current) {
+      if (!isAwaitingSelectionRef.current && (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current)) {
         setWorkspaceView('preview');
       }
     }
@@ -243,25 +245,37 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             const n = { ...prev };
             if (isWinRateRequestRef.current) {
               n.coordinator = 'done';
-              n.Quote_Analyst = {
-                state: 'done',
-                routedByDm: true,
-                tools: [
+              let analystTools = [];
+              if (isAwaitingSelectionRef.current) {
+                analystTools = [{ name: 'get_my_accounts', state: 'done' }];
+              } else {
+                analystTools = [
                   { name: 'get_my_accounts', state: 'done' },
                   { name: 'get_deal_history', state: 'done' },
                   { name: 'win_rate', state: 'done' }
-                ]
-              };
-            } else if (isSummarizeRequestRef.current) {
-              n.coordinator = 'done';
+                ];
+              }
               n.Quote_Analyst = {
                 state: 'done',
                 routedByDm: true,
-                tools: [
+                tools: analystTools
+              };
+            } else if (isSummarizeRequestRef.current) {
+              n.coordinator = 'done';
+              let analystTools = [];
+              if (isAwaitingSelectionRef.current) {
+                analystTools = [{ name: 'get_my_accounts', state: 'done' }];
+              } else {
+                analystTools = [
                   { name: 'get_my_accounts', state: 'done' },
                   { name: 'get_deal_history', state: 'done' },
                   { name: 'summary_node', state: 'done' }
-                ]
+                ];
+              }
+              n.Quote_Analyst = {
+                state: 'done',
+                routedByDm: true,
+                tools: analystTools
               };
             } else {
               if (n.coordinator === 'active') n.coordinator = 'done';
@@ -279,7 +293,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           if (dealHistoryLoadingRef.current) {
             setDealHistoryLoading(false);
             dealHistoryLoadingRef.current = false;
-            setWorkspaceView('preview');
+            if (!isAwaitingSelectionRef.current) {
+              setWorkspaceView('preview');
+            }
           }
         }
         break;
@@ -671,6 +687,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             content: `Please select an ${pendingSelectionRef.current.type}:`
           });
           pendingSelectionRef.current = null;
+          isAwaitingSelectionRef.current = true;
+        } else {
+          isAwaitingSelectionRef.current = false;
         }
         if (pendingUpdateRef.current || pendingCreationRef.current) {
           setShowPreviewSuggestion(true);
@@ -732,6 +751,19 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             const idMatch = processedText.match(/0Q0[a-zA-Z0-9]{12,15}/);
             if (idMatch && quoteNumberMap[idMatch[0]]) {
               processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
+            }
+            
+            // Suppress the redundant bulleted list of quotes in chat response
+            if (/Here is a list|Here are the/i.test(processedText) && processedText.includes('- **Quote')) {
+              const splitIdx = processedText.indexOf('\n- **Quote');
+              if (splitIdx !== -1) {
+                processedText = processedText.substring(0, splitIdx).trim();
+                processedText = processedText.replace(/:$/, '.');
+              }
+            }
+
+            if (processedText.includes('<ACCOUNT_PLAYBOOK>')) {
+              isQuoteWinRateRequestRef.current = false;
             }
 
             addMessage({ type: 'text', content: processedText, actions });
@@ -852,9 +884,10 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
 
-    // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
+    // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview or deal history
     const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
-    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
+    const isDealHistoryKeyword = cmd.includes('deal history') || cmd.includes('quotes') || cmd.includes('view all deals') || cmd.includes('show all deals');
+    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && !isDealHistoryKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
       isWinRateRequest = true;
     }
     isWinRateRequestRef.current = isWinRateRequest;
@@ -864,7 +897,11 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                                      cmd.includes('win rate of the account') || 
                                      cmd.includes('win rate of this account') || 
                                      cmd.includes('account\'s win rate') || 
-                                     cmd.includes('account win');
+                                     cmd.includes('account win') ||
+                                     cmd.includes('novartis') ||
+                                     cmd.includes('united partners') ||
+                                     cmd.includes('genomic') ||
+                                     (dealHistoryAccount && cmd.includes(dealHistoryAccount.toLowerCase()));
     
     let isQuoteWinRateRequest = isWinRateRequest && !isExplicitAccountWinRate;
     isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
@@ -1471,15 +1508,23 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || (dealHistoryData && isDealHistoryRequestRef.current)) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
-                  <WinRateBattleCard
-                    data={dealHistoryData}
-                    accountName={dealHistoryAccount}
-                    isLoading={dealHistoryLoading}
-                    isQuoteMode={isQuoteWinRateRequestRef.current}
-                    messages={messages}
-                    previewData={previewData}
-                    selectedProducts={selectedProducts}
-                  />
+                  isQuoteWinRateRequestRef.current ? (
+                    <WinRateBattleCard
+                      data={dealHistoryData}
+                      accountName={dealHistoryAccount}
+                      isLoading={dealHistoryLoading}
+                      messages={messages}
+                      previewData={previewData}
+                      selectedProducts={selectedProducts}
+                    />
+                  ) : (
+                    <AccountBattleCard
+                      data={dealHistoryData}
+                      accountName={dealHistoryAccount}
+                      isLoading={dealHistoryLoading}
+                      messages={messages}
+                    />
+                  )
                 ) : (
                   <DealHistoryPanel
                     data={dealHistoryData ? dealHistoryData.filter(q => dealHistoryFilter === 'All' || (q.status && q.status.toLowerCase() === dealHistoryFilter.toLowerCase())) : null}
@@ -1665,6 +1710,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                       .replace(/<RISKS>[\s\S]*?(?:<\/RISKS>|(?=<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/gi, '')
                       .replace(/<STRENGTHS>[\s\S]*?(?:<\/STRENGTHS>|(?=<PLAYBOOK>|<MATH>)|$)/gi, '')
                       .replace(/<PLAYBOOK>[\s\S]*?(?:<\/PLAYBOOK>|(?=<MATH>)|$)/gi, '')
+                      .replace(/<ACCOUNT_PLAYBOOK>[\s\S]*?(?:<\/ACCOUNT_PLAYBOOK>|$)/gi, '')
                       .replace(/<MATH>[\s\S]*?(?:<\/MATH>|$)/gi, '')
                       .replace(/^Header:\s*/i, '')
                       .trim()}

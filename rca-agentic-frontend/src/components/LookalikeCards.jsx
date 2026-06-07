@@ -1,17 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { 
-  Target, 
-  Activity, 
-  ChevronLeft, 
-  CheckCircle2, 
-  Building2, 
-  Info, 
-  ExternalLink, 
-  Mail, 
-  History, 
-  ShoppingBag, 
-  TrendingUp, 
-  Sparkles 
+import {
+  Target,
+  Activity,
+  ChevronLeft,
+  CheckCircle2,
+  Building2,
+  Info,
+  ExternalLink,
+  Mail,
+  History,
+  ShoppingBag,
+  TrendingUp,
+  Sparkles
 } from 'lucide-react';
 
 const scoreTone = (score) => {
@@ -68,7 +68,7 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
   const [selectedCard, setSelectedCard] = useState(null);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const isWorkspace = variant === 'workspace';
-  
+
   const handleSelectCard = (card) => {
     setSelectedCard(card);
     setIsHistoryExpanded(false);
@@ -118,32 +118,31 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
     const breakdown = card.score_breakdown || [];
 
     // Calculate quote summaries
-    const wonCount = ((card.deal_summary?.status_counts?.['Accepted'] || 0) + 
-                      (card.deal_summary?.status_counts?.['Approved'] || 0) + 
-                      (card.deal_summary?.status_counts?.['Closed Won'] || 0));
-    
-    const lostCount = ((card.deal_summary?.status_counts?.['Rejected'] || 0) + 
-                       (card.deal_summary?.status_counts?.['Denied'] || 0) + 
-                       (card.deal_summary?.status_counts?.['Closed Lost'] || 0));
+    const wonCount = ((card.deal_summary?.status_counts?.['Accepted'] || 0) +
+      (card.deal_summary?.status_counts?.['Approved'] || 0) +
+      (card.deal_summary?.status_counts?.['Closed Won'] || 0));
+
+    const lostCount = ((card.deal_summary?.status_counts?.['Rejected'] || 0) +
+      (card.deal_summary?.status_counts?.['Denied'] || 0) +
+      (card.deal_summary?.status_counts?.['Closed Lost'] || 0));
 
     return (
       <div className="animate-in slide-in-from-right-4 fade-in w-full h-full flex flex-col">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col flex-1 max-h-[700px]">
-          
+
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-            <button 
+            <button
               onClick={() => setSelectedCard(null)}
               className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
             >
               <ChevronLeft size={16} /> Back
             </button>
-            <div className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border ${
-              card.type === 'existing' 
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+            <div className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border ${card.type === 'existing'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                 : 'bg-indigo-50 border-indigo-200 text-indigo-700'
-            }`}>
-              <Building2 size={14} /> 
+              }`}>
+              <Building2 size={14} />
               {card.type === 'existing' ? 'Existing Customer Profile' : 'Net New Prospect Profile'}
             </div>
           </div>
@@ -181,7 +180,7 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
                 <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
                   {card.summary}
                 </p>
-                
+
                 {(card.location || card.revenue) && (
                   <div className="flex items-center gap-4 mt-2.5 text-xs font-semibold text-gray-500">
                     {card.location && (
@@ -196,11 +195,11 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
                     )}
                   </div>
                 )}
-                
+
                 {card.contact_email && (
                   <p className="text-xs text-indigo-600 mt-2 font-medium">Contact: {card.contact_email}</p>
                 )}
-                
+
                 {/* Score Breakdown Inline */}
                 {breakdown.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
@@ -264,7 +263,7 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
 
                   {/* Expandable Quote List Details */}
                   <div className="mt-4">
-                    <button 
+                    <button
                       onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
                       className="w-full flex items-center justify-center gap-1.5 py-2 border border-gray-100 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-all focus:outline-none"
                     >
@@ -463,18 +462,18 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
               <span className="text-sm font-bold leading-none">{score}</span>
               <span className="text-[8px] font-semibold uppercase tracking-wider mt-0.5 opacity-70">Fit</span>
             </div>
-            
+
             {/* Hover Tooltip */}
             <div className="absolute left-14 top-1/2 -translate-y-1/2 ml-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl p-3 opacity-0 pointer-events-none group-hover/score:opacity-100 group-hover/score:pointer-events-auto transition-opacity z-50">
               <div className="text-xs font-bold text-gray-900 mb-2 pb-2 border-b border-gray-100">Score Breakdown</div>
-              
+
               {breakdown.length > 0 ? (
                 <div className="space-y-1">
                   {breakdown.map((m, i) => (
                     <div key={i} className="group/metric relative flex justify-between items-center text-xs p-1 hover:bg-gray-50 rounded cursor-help transition-colors">
                       <span className="text-gray-500 text-[11px]">{m.metric}</span>
                       <span className="font-semibold text-gray-900 text-[11px]">{m.score}/{m.max}</span>
-                      
+
                       {/* Nested Specific Reason Tooltip */}
                       <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-48 bg-gray-900 text-white text-[10px] leading-relaxed p-2.5 rounded-lg opacity-0 pointer-events-none group-hover/metric:opacity-100 transition-opacity z-[60] shadow-xl">
                         {m.reason}
@@ -514,13 +513,13 @@ const LookalikeCards = ({ cards = [], summary = '', limitations = [], variant = 
             )}
           </div>
         </div>
-        
+
         <div className="flex-1">
           <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
             {card.summary || 'No summary returned.'}
           </p>
         </div>
-        
+
         <div className="mt-4 pt-3 border-t border-gray-100 text-xs font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
           View Details →
         </div>
