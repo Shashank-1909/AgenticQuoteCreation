@@ -63,8 +63,8 @@ Workflow Rules:
      c. Call `build_twin_hunter_cards` with the analysis_id.
    - Reply in exactly one concise sentence summarizing the lookalikes found.
    - You MUST append exactly one recommended action at the end of your response:
-     `[ACTIONS: Find lookalikes for top accounts]`
-3. **Find lookalikes for top/all accounts** (when the user asks for top accounts or general lookalikes):
+     `[ACTIONS: Find lookalikes for top 10 accounts]`
+3. **Find lookalikes for top/all accounts or top 10 accounts** (when the user asks for top/all accounts, top 10 accounts, or general lookalikes):
    - Run the lookalike matching flow:
      a. Call `get_thermofisher_account_context` with target_account_name empty.
      b. Call `research_twin_candidates` with the analysis_id.

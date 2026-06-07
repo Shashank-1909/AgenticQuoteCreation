@@ -780,7 +780,17 @@ const OrchestratorView = ({ onBack, selectedModule, isDark = false, setIsDark, l
     setConfirmedSelections(prev => [...prev, { ...option, type: selectionType }]);
     setVaultHistory(prev => [...prev, confirmedItem]);
     setSelectionPanel(null);
-    const text = option.name;
+    const isTwinHunter = orchestration?.Twin_Hunter?.state === 'active' || 
+      (orchestration?.Twin_Hunter?.state === 'done' && 
+       orchestration?.Quote_Architect?.state !== 'done' && 
+       orchestration?.Quote_Architect?.state !== 'active' && 
+       orchestration?.Quote_Updator?.state !== 'done' && 
+       orchestration?.Quote_Updator?.state !== 'active' && 
+       orchestration?.Quote_Analyst?.state !== 'done' && 
+       orchestration?.Quote_Analyst?.state !== 'active');
+    const text = (isTwinHunter && selectionType === 'account')
+      ? `Find lookalikes for ${option.name}`
+      : option.name;
     setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text }]);
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(text);
   };

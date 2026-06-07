@@ -1819,7 +1819,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                   <SelectionPanel
                     panel={msg.data}
                     onSelect={(opt, selectionType) => {
-                      const isTwinHunter = orchestration?.Twin_Hunter?.state === 'active';
+                      const isTwinHunter = orchestration?.Twin_Hunter?.state === 'active' || 
+                        (orchestration?.Twin_Hunter?.state === 'done' && 
+                         orchestration?.Quote_Architect?.state !== 'done' && 
+                         orchestration?.Quote_Architect?.state !== 'active' && 
+                         orchestration?.Quote_Updator?.state !== 'done' && 
+                         orchestration?.Quote_Updator?.state !== 'active' && 
+                         orchestration?.Quote_Analyst?.state !== 'done' && 
+                         orchestration?.Quote_Analyst?.state !== 'active');
                       const text = (isTwinHunter && selectionType === 'account')
                         ? `Find lookalikes for ${opt.name}`
                         : opt.name;
