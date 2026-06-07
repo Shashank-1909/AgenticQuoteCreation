@@ -303,9 +303,18 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             is_win_rate = "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower or "success rate" in clean_lower
             _app_state.win_rate_flow[session_id] = is_win_rate
 
-            is_lookalike_query = "lookalike" in clean_lower or "twin" in clean_lower or "icp" in clean_lower or "similar customer" in clean_lower
+            is_lookalike_query = (
+                "lookalike" in clean_lower or
+                "look-alike" in clean_lower or
+                "look a like" in clean_lower or
+                "twin" in clean_lower or
+                "icp" in clean_lower or
+                "similar customer" in clean_lower or
+                "similar account" in clean_lower
+            )
             is_deal_history_query = "deal history" in clean_lower or "previous quotes" in clean_lower or "historical quotes" in clean_lower or "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower
             is_reset = "reset" in clean_lower or "restart" in clean_lower or "start fresh" in clean_lower
+
 
             last_agent = _app_state.active_agent.get(session_id)
             in_update_flow = _app_state.update_flow.get(session_id, False)
@@ -315,9 +324,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 is_upload or
                 is_reset or
                 is_req_doc_intent or
+                (last_agent == "Twin_Hunter" and not is_lookalike_query) or
+                (last_agent == "Quote_Analyst" and not is_deal_history_query) or
                 (is_lookalike_query and last_agent != "Twin_Hunter") or
                 (is_deal_history_query and not (in_quote_flow or in_update_flow) and last_agent != "Quote_Analyst")
             )
+
 
             if should_reset_session:
                 logger.info("Resetting session flags and recreating session database for session %s", session_id)

@@ -881,13 +881,15 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
     let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
 
+    const isLookalikeQuery = cmd.includes('lookalike') || cmd.includes('look-alike') || cmd.includes('look a like') || cmd.includes('twin') || cmd.includes('icp') || cmd.includes('similar customer') || cmd.includes('similar account');
+
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
 
     // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview or deal history
     const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
     const isDealHistoryKeyword = cmd.includes('deal history') || cmd.includes('quotes') || cmd.includes('view all deals') || cmd.includes('show all deals');
-    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && !isDealHistoryKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
+    if (!isWinRateRequest && !isLookalikeQuery && !isStatusFilterRequest && !isQuoteUpdateKeyword && !isDealHistoryKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
       isWinRateRequest = true;
     }
     isWinRateRequestRef.current = isWinRateRequest;
@@ -924,7 +926,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     );
 
     // If we're already in a deal history context, keep it alive for follow-up account selection, filters, or resetting account
-    if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
+    if (!isDealHistoryRequest && !isLookalikeQuery && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
       detectAccountName(text) ||
       cmd.includes('yes') ||
       cmd.includes('all') ||

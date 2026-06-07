@@ -1965,12 +1965,77 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Complete Fallback (TYPO RESOLUTION) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150
 [DEBUG] _search_product_direct: Found 0 matches for 'DNA Extraction Kit – Blood'
 [DEBUG] Mapping complete — 0 unique products found
-[06/04/26 15:02:09] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:11:18] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:19:42] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
+[06/05/26 11:11:20] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 11:11:35] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_5634bdb7b6", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 11:11:56] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 11:12:13] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:12:44] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:12:52] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_a1b266b830", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:13:03] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:13:18] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:17:34] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:17:42] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_46fb8183a2", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 12:17:53] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:18:10] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:26:20] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:26:30] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_d47eb089f2", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:26:43] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:26:55] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:34:17] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:34:26] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_a285a13de6", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:34:40] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:35:00] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:37:32] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:37:40] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_1370151483", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:37:50] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:38:02] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:38:57] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:39:07] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_d45695acd9", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 12:39:19] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:39:44] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:50:33] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:50:41] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_69f891a48a", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:50:54] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:51:06] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:55:19] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:55:27] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_ca493e7359", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 12:55:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:55:50] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:57:32] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:57:43] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 12:58:32] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:59:35] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 12:59:46] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_f6b13cd308", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 12:59:58] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:00:11] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:23:17] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:23:24] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_30313ab566", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 13:23:37] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:23:56] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:30:28] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:30:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_558d8e2d18", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 13:30:47] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:31:05] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:33:02] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:33:11] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:33:42] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:33:53] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_a3ae45dc77", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
+[06/05/26 13:34:05] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:34:24] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:47:27] INFO     Processing request of type ListToolsRequest                                  server.py:727
 
 [DEBUG] parse_requirements_doc: Processing 1175 characters...
 [DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
@@ -1999,14 +2064,10 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
 [DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
 [DEBUG] Mapping complete — 9 unique products found
-[06/04/26 15:20:52] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:21:05] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:21:20] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:21:36] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
+[06/05/26 13:48:10] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:48:27] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:48:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:48:49] INFO     Processing request of type CallToolRequest                                   server.py:727
 [DEBUG] _map_requirements_to_catalog: mapping 9 items
 [DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
 [DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
@@ -2025,78 +2086,18 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
 [DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
 [DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
-[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit - Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit - Blood'
+[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
+[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
 [DEBUG] Mapping complete — 9 unique products found
-[06/04/26 15:22:04] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:22:15] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:22:29] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:22:38] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:22:53] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:23:05] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:23:24] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:24:04] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:24:39] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:43:08] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 15:43:43] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:43:52] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:44:00] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:44:18] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 15:44:36] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:44:50] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:45:26] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:45:38] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:46:00] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 15:46:11] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:46:28] INFO     Processing request of type           server.py:720
-                             CallToolRequest                                   
-[06/04/26 15:46:55] INFO     Processing request of type           server.py:720
-                             ListToolsRequest                                  
-[06/04/26 22:09:14] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:10:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/05/26 13:49:26] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:49:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:49:55] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:50:05] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:50:26] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 13:50:40] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:51:03] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 13:51:40] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:40:28] INFO     Processing request of type ListToolsRequest                                  server.py:727
 
 [DEBUG] parse_requirements_doc: Processing 1175 characters...
 [DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
@@ -2125,10 +2126,10 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
 [DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
 [DEBUG] Mapping complete — 9 unique products found
-[06/04/26 22:11:07] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:11:17] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:11:28] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:11:41] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/05/26 14:41:40] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:41:55] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:42:08] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:42:25] INFO     Processing request of type CallToolRequest                                   server.py:727
 [DEBUG] _map_requirements_to_catalog: mapping 9 items
 [DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
 [DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
@@ -2150,545 +2151,51 @@ Processing request of type CallToolRequest
 [DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
 [DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
 [DEBUG] Mapping complete — 9 unique products found
-[06/04/26 22:12:44] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:12:54] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:13:30] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:13:39] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:14:01] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:14:12] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:14:32] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:20:29] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:24:04] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:25:03] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 22:25:33] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:25:43] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:25:52] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:26:01] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 22:27:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:27:33] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:27:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:28:00] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:28:22] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:28:33] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:28:45] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:29:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:29:29] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:31:15] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:32:01] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:32:43] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:36:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:36:12] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:36:37] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:36:47] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:36:55] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:37:02] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:37:42] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:38:15] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:38:45] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:48:32] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:49:16] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:49:36] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:50:47] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 22:51:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:51:30] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:51:41] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:51:53] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 22:52:11] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:52:19] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:52:30] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:52:37] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:52:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:53:00] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:53:12] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:53:53] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:55:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:55:32] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:55:41] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:56:45] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:56:53] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:57:03] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 22:57:54] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 22:58:21] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:11:24] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 23:12:42] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:12:51] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:13:01] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:13:12] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 23:13:30] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:13:39] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:13:53] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:14:03] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:14:26] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:14:37] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:14:51] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:16:50] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:17:08] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:20:52] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:22:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:27:58] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 23:29:41] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:29:51] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:30:00] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:30:12] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/04/26 23:30:42] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:30:51] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:31:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:31:31] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:33:20] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:33:45] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:34:04] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:35:34] INFO     Processing request of type ListToolsRequest                                  server.py:720
-C:\Users\KalyanChakravarthi\AppData\Local\Programs\Python\Python311\Lib\site-packages\google\adk\features\_feature_decorator.py:72: UserWarning: [EXPERIMENTAL] feature FeatureName.BASE_AUTHENTICATED_TOOL is enabled.
-  check_feature_enabled()
-[06/04/26 23:37:32] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:37:41] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:37:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:38:30] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:38:39] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:39:08] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:39:20] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:39:37] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:39:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:40:04] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:40:33] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:56:20] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:56:32] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:56:41] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:57:29] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:57:38] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:57:56] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:58:11] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:58:38] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/04/26 23:58:51] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/04/26 23:59:07] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 00:00:12] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 09:45:07] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 09:47:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/05/26 09:48:15] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 09:48:31] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 09:48:46] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 09:49:03] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/05/26 09:49:34] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 09:49:46] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 09:50:49] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 09:51:09] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 09:51:33] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 09:51:46] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 09:52:04] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 09:53:03] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:31:25] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:31:38] INFO     Processing request of type CallToolRequest                                   server.py:720
-[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_c5731254ac", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
-[06/05/26 10:31:55] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:32:16] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:34:45] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:34:54] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:35:28] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:35:37] INFO     Processing request of type CallToolRequest                                   server.py:720
-[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_133d14bbc0", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
-[06/05/26 10:35:48] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:36:01] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:37:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:38:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:38:29] INFO     Processing request of type CallToolRequest                                   server.py:720
-[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_c1fd001b7b", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Pfizer", "anchors": ["Pfizer"]}
-[06/05/26 10:38:41] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:39:04] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:44:13] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:46:11] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:46:20] INFO     Processing request of type CallToolRequest                                   server.py:720
-[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_04c29060bb", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Novartis", "anchors": ["Novartis"]}
-[06/05/26 10:46:30] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:46:46] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:53:43] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:53:51] INFO     Processing request of type CallToolRequest                                   server.py:720
-[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_dffd6bba7b", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
-[06/05/26 10:54:25] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:54:39] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:55:43] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:55:54] INFO     Processing request of type CallToolRequest                                   server.py:720
-[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_36885a3de5", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
-[06/05/26 10:56:08] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:56:21] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:58:10] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:58:19] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:59:19] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 10:59:31] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 10:59:40] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:02:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:02:27] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:02:43] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:02:52] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:03:26] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:03:36] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:03:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:04:16] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:20:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 1175 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 9 items.
-[DEBUG] Extraction complete. Total unique requirements: 9
-[DEBUG] _map_requirements_to_catalog: mapping 9 items
-[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
-[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
-[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
-[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
-[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
-[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
-[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
-[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
-[DEBUG] Mapping complete — 9 unique products found
-[06/05/26 11:22:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:22:20] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:22:36] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:22:54] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 9 items
-[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
-[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
-[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
-[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
-[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
-[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
-[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
-[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
-[DEBUG] Mapping complete — 9 unique products found
-[06/05/26 11:23:38] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:23:55] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:24:29] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:24:43] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:25:01] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:25:22] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:25:52] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 11:26:37] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 11:29:56] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 12:04:22] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 12:04:37] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 12:04:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 12:05:39] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 12:05:54] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 12:06:36] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 12:06:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 12:07:41] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/05/26 12:07:54] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 12:08:13] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/05/26 12:09:06] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:20:13] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:20:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 261 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 3 items.
-[DEBUG] Extraction complete. Total unique requirements: 3
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/07/26 09:20:56] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:21:06] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:21:16] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:21:27] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 3 items
-[DEBUG] _search_product_direct: Querying 'Standard User' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Standard%' AND Name LIKE '%User%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Standard User'
-[DEBUG] _search_product_direct: Querying 'Observability' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Observability%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Observability'
-[DEBUG] _search_product_direct: Querying 'Automation & Orchestration' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Automation%' AND Name LIKE '%Orchestration%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Automation & Orchestration'
-[DEBUG] Mapping complete — 3 unique products found
-[06/07/26 09:21:50] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:21:58] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:23:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:23:26] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:23:40] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:23:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:28:05] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:28:13] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:28:23] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:29:08] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:29:17] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:29:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:30:00] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:30:10] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:30:21] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:30:35] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:31:34] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:35:08] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:36:39] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:46:57] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:47:07] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:47:18] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:47:39] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:47:49] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:48:01] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:48:46] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:48:53] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:48:59] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:49:20] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:49:29] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:49:45] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:50:31] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:52:34] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:54:45] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:54:58] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:55:09] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:55:41] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:57:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:57:14] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:57:24] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 09:57:52] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 09:59:11] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:01:20] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:02:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:02:33] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:02:39] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:03:31] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:04:35] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:13:22] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:15:09] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:15:16] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:17:24] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:20:33] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:20:44] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:25:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:37:25] INFO     Processing request of type ListToolsRequest                                  server.py:720
-C:\Users\KalyanChakravarthi\AppData\Local\Programs\Python\Python311\Lib\site-packages\google\adk\features\_feature_decorator.py:72: UserWarning: [EXPERIMENTAL] feature FeatureName.BASE_AUTHENTICATED_TOOL is enabled.
-  check_feature_enabled()
-[06/07/26 10:38:59] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:41:50] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:47:35] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:50:53] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:51:09] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:54:18] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:55:56] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:56:04] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:57:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:57:24] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 10:58:51] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 10:58:58] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:03:27] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:03:37] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:04:40] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:14:39] INFO     Processing request of type ListToolsRequest                                  server.py:720
-
-[DEBUG] parse_requirements_doc: Processing 1175 characters...
-[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
-[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
-[DEBUG] _call_gemini_direct: Call succeeded.
-[DEBUG] Gemini extracted 9 items.
-[DEBUG] Extraction complete. Total unique requirements: 9
-[DEBUG] _map_requirements_to_catalog: mapping 9 items
-[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
-[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
-[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
-[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
-[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
-[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
-[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
-[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
-[DEBUG] Mapping complete — 9 unique products found
-[06/07/26 11:15:27] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:15:36] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:15:45] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:15:57] INFO     Processing request of type CallToolRequest                                   server.py:720
-[DEBUG] _map_requirements_to_catalog: mapping 9 items
-[DEBUG] _search_product_direct: Querying 'Plasmid DNA Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Plasmid%' AND Name LIKE '%DNA%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Plasmid DNA Purification Kits'
-[DEBUG] _search_product_direct: Querying 'Endotoxin-Free Plasmid Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Kits%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Fallback Querying 'Endotoxin-Free Plasmid Kits' (LOOSE) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Endotoxin-Free%' OR Name LIKE '%Plasmid%' OR Name LIKE '%Kits%') AND IsActive = true LIMIT 500
-[DEBUG] _search_product_direct: Found 3 matches for 'Endotoxin-Free Plasmid Kits'
-[DEBUG] _search_product_direct: Querying 'Maxi Plasmid Purification Kits' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Maxi%' AND Name LIKE '%Plasmid%' AND Name LIKE '%Purification%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Maxi Plasmid Purification Kits'
-[DEBUG] _search_product_direct: Querying 'UV-Vis Spectrophotometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%UV-Vis%' AND Name LIKE '%Spectrophotometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'UV-Vis Spectrophotometer'
-[DEBUG] _search_product_direct: Querying 'Orbitrap Mass Spectrometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Orbitrap%' AND Name LIKE '%Mass%' AND Name LIKE '%Spectrometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Orbitrap Mass Spectrometer'
-[DEBUG] _search_product_direct: Querying 'Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Flow%' AND Name LIKE '%Cytometer%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 3 matches for 'Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'Cell Sorting Flow Cytometer' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%Cell%' AND Name LIKE '%Sorting%' AND Name LIKE '%Flow%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'Cell Sorting Flow Cytometer'
-[DEBUG] _search_product_direct: Querying 'qPCR Probe Master Mix' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%qPCR%' AND Name LIKE '%Probe%' AND Name LIKE '%Master%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 1 matches for 'qPCR Probe Master Mix'
-[DEBUG] _search_product_direct: Querying 'DNA Extraction Kit – Blood' (STRICT) -> SELECT Id, Name, ProductCode, Family FROM Product2 WHERE (Name LIKE '%DNA%' AND Name LIKE '%Extraction%' AND Name LIKE '%Kit%') AND IsActive = true LIMIT 5
-[DEBUG] _search_product_direct: Found 2 matches for 'DNA Extraction Kit – Blood'
-[DEBUG] Mapping complete — 9 unique products found
-[06/07/26 11:16:23] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:16:32] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:17:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:17:25] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:17:49] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:18:01] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:18:17] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:18:41] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:21:45] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:22:40] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:22:53] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:23:30] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:24:15] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:24:33] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:25:17] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:27:03] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:33:36] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:35:07] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:35:15] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:35:27] INFO     Processing request of type CallToolRequest                                   server.py:720
-[06/07/26 11:35:39] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:36:49] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:44:12] INFO     Processing request of type ListToolsRequest                                  server.py:720
-[06/07/26 11:44:57] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/05/26 14:43:29] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:43:41] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:44:10] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:44:23] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:44:58] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:45:12] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:45:36] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:48:05] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:48:21] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:48:34] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:49:38] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:54:46] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:55:01] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_b787ce4548", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 14:55:20] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:55:45] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:57:16] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:57:27] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:58:03] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:58:27] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 14:58:39] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_f368c13784", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 14:58:56] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 14:59:15] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 15:32:29] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 15:32:50] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 15:40:16] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 15:40:24] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_2ccc053d0d", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/05/26 15:40:38] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 15:41:00] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 16:09:22] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 16:10:16] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 16:10:32] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 16:11:33] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 16:11:41] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 16:12:04] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/05/26 16:12:15] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_3626daed83", "mode": "single_account", "accounts": 23, "opportunities": 80, "target": "Agilent Technologies", "anchors": ["Agilent Technologies"]}
+[06/05/26 16:12:27] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/05/26 16:12:45] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/07/26 17:35:25] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/07/26 17:35:32] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/07/26 17:36:35] INFO     Processing request of type ListToolsRequest                                  server.py:727
+[06/07/26 17:36:44] INFO     Processing request of type CallToolRequest                                   server.py:727
+[Twin Hunter] Salesforce Context: retrieved ThermoFisher context {"analysis_id": "twin_501ec2dcb3", "mode": "icp_profile", "accounts": 23, "opportunities": 80, "target": null, "anchors": ["Pfizer", "Merck", "Moderna", "Roche", "Novartis"]}
+[06/07/26 17:36:56] INFO     Processing request of type CallToolRequest                                   server.py:727
+[06/07/26 17:37:21] INFO     Processing request of type CallToolRequest                                   server.py:727
