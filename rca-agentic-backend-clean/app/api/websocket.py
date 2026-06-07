@@ -320,10 +320,17 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             in_update_flow = _app_state.update_flow.get(session_id, False)
             in_quote_flow  = _app_state.quote_flow.get(session_id, False)
 
+            is_specific_lookalike_init = (
+                "specific account" in clean_lower or
+                "top accounts" in clean_lower or
+                "top 10 accounts" in clean_lower
+            )
+
             should_reset_session = (
                 is_upload or
                 is_reset or
                 is_req_doc_intent or
+                is_specific_lookalike_init or
                 (last_agent == "Twin_Hunter" and not is_lookalike_query) or
                 (last_agent == "Quote_Analyst" and not is_deal_history_query) or
                 (is_lookalike_query and last_agent != "Twin_Hunter") or
