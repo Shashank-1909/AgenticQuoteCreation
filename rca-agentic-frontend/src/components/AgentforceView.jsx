@@ -746,7 +746,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               addMessage({
                 type: 'card',
                 cardType: 'upload',
-                content: (translations[language] || translations['en']).uploadDocumentCTA
+                content: (translations[language] || translations['en']).  uploadDocumentCTA
               });
             }
 
@@ -1541,7 +1541,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                             <tr className="text-sm font-bold border-b border-white/5">
                               <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
                               <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                              <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                              <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString('en-US')}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -1566,9 +1566,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                               <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                                 <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
                                 <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                                <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString('en-US')}</td>
                                 <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                                <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString('en-US')}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1770,10 +1770,13 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 <div className="af-card">
                   <SelectionPanel
                     panel={msg.data}
-                    onSelect={(opt) => {
-                      const text = opt.name;
+                    onSelect={(opt, selectionType) => {
+                      const isTwinHunter = orchestration?.Twin_Hunter?.state === 'active';
+                      const text = (isTwinHunter && selectionType === 'account')
+                        ? `Find lookalikes for ${opt.name}`
+                        : opt.name;
                       setInputValue(text);
-                      handleSend();
+                      handleSend(null, text);
                     }}
                   />
                 </div>

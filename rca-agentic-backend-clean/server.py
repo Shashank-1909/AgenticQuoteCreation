@@ -42,6 +42,8 @@ TWIN_HUNTER_CACHE: dict = {}
 THERMOFISHER_CATEGORY = "ThermoFisher"
 
 
+
+
 # Global GenAI Client Initialization
 def _get_genai_client():
     raw_val = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "false")
@@ -499,6 +501,8 @@ def get_thermofisher_account_context(target_account_name: str = "") -> str:
     one Salesforce account to compare against.
     """
     analysis_id = f"twin_{uuid.uuid4().hex[:10]}"
+
+
     try:
         accounts, limitations, category_field = _load_thermofisher_accounts()
         opportunities = _load_opportunities([acct.get("id") for acct in accounts if acct.get("id")])
@@ -585,6 +589,8 @@ def research_twin_candidates(analysis_id: str, max_results: int = 12) -> str:
             return _json_dumps({"status": "error", "analysis_id": analysis_id, "message": "Unknown analysis_id. Call get_thermofisher_account_context first.", "results": []})
 
     context = cache_entry["context"]
+
+
     tavily_key = os.getenv("TAVILY_API_KEY", "").strip()
     
     if not tavily_key:
@@ -601,12 +607,36 @@ def research_twin_candidates(analysis_id: str, max_results: int = 12) -> str:
     icp = context.get("icp_profile") or {}
     
     if target:
-        terms = [target.get("industry"), target.get("type"), target.get("billing_city")]
+        terms = [target.get("industry"), target.get("type")]
     else:
         terms = [item.get("value") for item in icp.get("top_industries", [])[:2]]
         
     terms = [t for t in terms if t]
-    query = f"{' '.join(terms)} b2b companies official website" if terms else "B2B customer profile official website"
+
+    # Calculate target revenue to inject tier keywords into search query
+    target_revenue = 0.0
+    if target:
+        try:
+            target_revenue = float(target.get("annual_revenue") or 0.0)
+        except (ValueError, TypeError):
+            pass
+    elif icp.get("top_accounts"):
+        try:
+            revenues = [float(acc.get("annual_revenue") or 0.0) for acc in icp.get("top_accounts")]
+            if revenues:
+                target_revenue = max(revenues)
+        except (ValueError, TypeError):
+            pass
+
+    rev_keyword = "global B2B"
+    if target_revenue >= 1_000_000_000:
+        rev_keyword = "billion dollar global B2B enterprise"
+    elif target_revenue >= 100_000_000:
+        rev_keyword = "large-scale global B2B"
+    elif target_revenue >= 10_000_000:
+        rev_keyword = "mid-market global B2B"
+
+    query = f"{' '.join(terms)} {rev_keyword} companies website" if terms else f"{rev_keyword} companies website"
 
     headers = {"Authorization": f"Bearer {tavily_key}", "Content-Type": "application/json"}
     payload = {
@@ -666,10 +696,10 @@ def research_twin_candidates(analysis_id: str, max_results: int = 12) -> str:
 def _generate_natural_upsell(product_name: str, anchor_name: str, idx: int) -> str:
     """Generates an easy-to-understand upsell suggestion for sales reps using peer client matching."""
     templates = [
-        f"This product is frequently bought by other customers in the same field. Since this client matches peer customer {anchor_name}, we recommend upselling {product_name}.",
-        f"{product_name} is a top seller for clients in this vertical. Since they are structurally similar to {anchor_name}, you can recommend {product_name} to them.",
-        f"Peer customer {anchor_name} successfully runs {product_name} for their setups. Recommend this product line as a high-probability cross-sell.",
-        f"Matched clients like {anchor_name} commonly bundle {product_name}. Suggesting this to the client will align them with industry-standard configurations."
+        f"Suggest {product_name} as it is commonly added by peer accounts like {anchor_name} to complement their primary setup.",
+        f"Pitch {product_name} – this represents a high-potential cross-sell opportunity, matching the configuration of {anchor_name}.",
+        f"Introduce {product_name} to optimize their performance, matching the upgrade path of peer profile {anchor_name}.",
+        f"Recommend {product_name} to align their configuration with the industry-standard setup deployed at {anchor_name}."
     ]
     return templates[idx % len(templates)]
 
@@ -805,6 +835,26 @@ Strict Rules:
 - TYPE CATEGORIZATION: You MUST categorize every card as either "existing" or "net_new" in the "type" field.
 - EXACTLY 5 OR 6 CARDS: Return exactly {min(int(max_cards or 6), 6)} cards (1-2 of type "existing", and the rest of type "net_new").
 - STRICT INDUSTRY FILTER: You must discard any candidate that operates in unrelated consumer sectors (e.g., wellness, fitness, retail, consumer health). Only accept verified B2B companies that match the anchor's industry.
+- STRICT 90-100% MATCH SCORE: Every prospect you select MUST have a high match score between 90 and 100. Discard candidates that do not meet key alignment factors (such as product footprint compatibility and industry synergy). Every match score in the cards MUST be 90 or higher.
+- STRICT REVENUE TIER MATCHING (CRITICAL):
+  - You MUST select lookalike candidates whose annual revenue is extremely close to the matched anchor account's revenue scale.
+  - If the target/anchor is in the billions (e.g., $1B+ or $2B+), lookalikes MUST also be in the billions. A million-dollar company is NOT a valid lookalike for a billion-dollar account.
+  - If the anchors are mid-market ($50M-$200M), lookalikes must match that range. Revenue matching is your primary and most critical filtering criterion, followed by industry and product alignment.
+- STRICT ANCHOR REVENUE SCALE SYNERGY (CRITICAL):
+  - If a lookalike resembles a specific anchor account (`matched_against.account_name`), their annual revenues must be extremely close (e.g., within the same tier or bracket, not off by orders of magnitude). Do not match a candidate to an anchor if their annual revenues differ significantly.
+- DISCLOSED REVENUE PREFERENCE (CRITICAL):
+  - Avoid selecting lookalike candidates whose annual revenue is undisclosed, hidden, or unknown. If a company's revenue is not disclosed, try to find alternative candidates (either from the existing Salesforce list or via Tavily research) that have publicly disclosed or estimable revenues so that scale compatibility can be verified.
+- GLOBAL SEARCH RANGE:
+  - You must evaluate and suggest lookalike candidates globally. Do not restrict candidates to the anchor's billing city or country unless explicitly requested. Find the best matches worldwide.
+- STRICT ZERO REPETITION RULE (CRITICAL):
+  - You MUST ensure there is absolutely NO semantic overlap, shared facts, or similar phrasing between the `key_highlights` array (objective company facts) and the `reasons` array (fit reasons).
+  - Highlights must strictly list objective, public-record events (e.g. facility openings, funding rounds, distribution contracts).
+  - Fit reasons must strictly detail technical workflow alignment and commercial comparisons to the anchor's model (e.g., shared bioreactor tiers, sterile hoods usage).
+  - If a fact, event, or attribute is mentioned in Highlights, it is STRICTLY FORBIDDEN to mention it or refer to it in Reasons, and vice versa. Keep them 100% separate and distinct.
+- CRISP CRM COMPARISONS IN fit REASONS (CRITICAL):
+  - In `reasons` (why it fits), write short, crisp, high-impact bullet points explaining exactly *why* and *where* they matched (e.g. sharing identical research goals, specific biological product workflows, process automation requirements, or equipment footprints).
+  - Do NOT repeat the company's base location, annual revenue, or general company descriptions in these reasons, as those values are already displayed in the location, revenue, and summary fields.
+  - Every reason MUST highlight a direct business parallel or workflow synergy compared directly against the matched anchor account.
 - `company_name`: The exact name of the lookalike company.
 - `summary`: A concise sentence explaining what this company does.
 - `location`: The headquarters city/state or country (e.g. "Cambridge, MA" or "Germany"), if found. Otherwise, leave empty.
@@ -858,6 +908,8 @@ Salesforce Context:
 Tavily Results:
 {json.dumps(research_results[:8], default=str)}
 """
+
+
     try:
         import subprocess
         worker_path = os.path.join(os.path.dirname(__file__), "app", "tools", "twin_ai_cards_worker.py")
@@ -2482,6 +2534,7 @@ if agent_type in ["twin", "all"]:
     mcp.add_tool(get_thermofisher_account_context)
     mcp.add_tool(research_twin_candidates)
     mcp.add_tool(build_twin_hunter_cards)
+    mcp.add_tool(get_my_accounts)
 
 if __name__ == "__main__":
     # Start the standard MCP stdio server
