@@ -145,16 +145,14 @@ async def upload_file(file: UploadFile = File(...)):
             print(f"[DEBUG] WARNING: Extracted text is empty for {filename}")
             return {"status": "error", "message": "Could not extract any text from the document. It may be a scanned image or password-protected."}
 
-        # FIX: Truncate before sending to agent to avoid WebSocket / LLM context overflows
+        # Send the full text to the agent to allow full analysis by Gemini.
         full_text = text.strip()
-        truncated_text = full_text[:MAX_CHARS]
-        was_truncated = len(full_text) > MAX_CHARS
+        truncated_text = full_text
+        was_truncated = False
 
         user_message = f"Document uploaded: {filename}\n\nContent:\n{truncated_text}"
-        if was_truncated:
-            user_message += f"\n\n[Note: Document truncated to {MAX_CHARS} characters for processing. Full document has {len(full_text)} characters.]"
 
-        print(f"[DEBUG] Sending {len(truncated_text)} chars to agent (truncated: {was_truncated})")
+        print(f"[DEBUG] Sending {len(truncated_text)} chars to agent")
 
         return {
             "status": "success", 

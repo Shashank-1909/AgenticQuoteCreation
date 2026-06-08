@@ -2165,9 +2165,7 @@ def parse_transcript_to_requirements(transcript_text: str) -> str:
     """
     sys.stderr.write(f"\n[DEBUG] Parsing transcript ({len(transcript_text)} chars)...\n")
     
-    # Slice if too long to prevent LLM hang
-    if len(transcript_text) > 15000:
-        transcript_text = transcript_text[:15000] + "... [truncated]"
+    # No slice limit; Gemini's 1-million token context window processes the entire text natively.
 
     prompt = (
         "Extract all product/service requirements from the following call transcript. "
@@ -2204,7 +2202,7 @@ def parse_requirements_doc(document_content: str) -> str:
         "'10% discount on all consumables', or similar), you MUST apply that discount percentage to all matching products in the list.\n"
         "IMPORTANT: Do NOT extract table headers, index columns, serial numbers, or row numbers (such as 'S.No', '1', '2', etc.) as product names. "
         "The product name must be the actual name of the product or service being requested."
-        f"\n\nDocument:\n{document_content[:20000]}"
+        f"\n\nDocument:\n{document_content}"
     )
 
     try:
