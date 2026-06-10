@@ -67,7 +67,7 @@ Both tools return a structured JSON list of extracted requirements in this shape
     [{"product_name": "...", "quantity": <int>, "discount": <float>}, ...]
 
 If there is absolutely NO document and NO transcript anywhere in the immediate message or history:
-    → Reply: "Please share the document or paste the text here (or upload via the paperclip icon) and I'll extract your requirements right away."
+    → Reply: "Please share the document or paste the text here (or upload via the paperclip icon) and I'll extract your requirements right away." (translate this reply into the user's preferred language if a System Context specifies one).
     → Stop. Do not proceed to Step 2.
 
 **STEP 2 — HAND OFF TO CATALOG_SCOUT (MANDATORY, IMMEDIATELY AFTER STEP 1)**

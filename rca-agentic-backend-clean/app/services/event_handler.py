@@ -72,6 +72,7 @@ async def handle_tool_result(
     if tool_name in (TOOL_ACCOUNTS, TOOL_OPPORTUNITIES):
         try:
             parsed = json.loads(text_content)
+            active_agent = current_agent or state.active_agent.get(session_id)
             if tool_name == TOOL_ACCOUNTS and parsed.get("accounts"):
                 await websocket.send_json({
                     "type":          "USER_SELECTION_NEEDED",
@@ -79,11 +80,11 @@ async def handle_tool_result(
                     "options":       parsed["accounts"],
                 })
                 logger.info("Account picklist sent → %d options", len(parsed["accounts"]))
-                if current_agent != "Quote_Analyst":
+                if active_agent not in ("Quote_Analyst", "Twin_Hunter"):
                     state.quote_flow[session_id] = True
-                    logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                    logger.info("Session %s → quote flow ACTIVE (direct runner: %s)", session_id, active_agent)
                 else:
-                    logger.info("Session %s → Quote_Analyst active, keeping quote flow INACTIVE", session_id)
+                    logger.info("Session %s → %s active, keeping quote flow INACTIVE", session_id, active_agent)
 
             elif tool_name == TOOL_OPPORTUNITIES and parsed.get("opportunities") is not None:
                 await websocket.send_json({
@@ -95,11 +96,12 @@ async def handle_tool_result(
                     "Opportunity picklist sent → %d options",
                     len(parsed["opportunities"]),
                 )
-                if current_agent != "Quote_Analyst":
+                if active_agent not in ("Quote_Analyst", "Twin_Hunter"):
                     state.quote_flow[session_id] = True
-                    logger.info("Session %s → quote flow ACTIVE (direct runner)", session_id)
+                    logger.info("Session %s → quote flow ACTIVE (direct runner: %s)", session_id, active_agent)
                 else:
-                    logger.info("Session %s → Quote_Analyst active, keeping quote flow INACTIVE", session_id)
+                    logger.info("Session %s → %s active, keeping quote flow INACTIVE", session_id, active_agent)
+
 
         except json.JSONDecodeError as exc:
             logger.warning("Could not parse picklist tool response: %s", exc)

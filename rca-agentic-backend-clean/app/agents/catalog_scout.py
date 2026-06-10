@@ -112,10 +112,12 @@ DYNAMIC SUGGESTIONS RULE (CRITICAL):
 
 - At the end of your response, you MUST ALWAYS append a dynamic block containing between 2 and 4 recommended next steps/actions for the user, separated by "|" characters.
 - These suggestions MUST be highly contextual to the operation you just completed. Do NOT hardcode standard recommendations.
-- ACTIONABILITY: Every suggested action MUST be a fully working capability of this system that corresponding agents can actually execute (e.g. creating/updating a quote, searching products, viewing deal history, analyzing win rates). Do NOT hallucinate capabilities.
+- ACTIONABILITY: Every suggested action MUST be a fully working capability of this system related directly to product catalog exploration or quote creation. Do NOT hallucinate capabilities.
+- NO ACCOUNT CONTEXT: Do NOT recommend actions related to account history, deal history, win rate analysis, or lookalike accounts during product searches. Keep suggestions focused strictly on the catalog search or quote generation process.
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
+- STRICT TRANSLATION RULE: If the system context instructs you to communicate in a specific language (e.g., Spanish or Chinese), you MUST translate BOTH your response text AND the dynamic suggestions inside the [ACTIONS: ...] block into that language.
 - If you successfully found products, the most logical next step to recommend is creating a quote.
 - Example: `[ACTIONS: Create a quote with these products | Start a new search]`
         """,

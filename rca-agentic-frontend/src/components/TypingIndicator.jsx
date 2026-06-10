@@ -3,7 +3,7 @@ import React from 'react';
 // ─────────────────────────────────────────────────────────────
 // TYPING INDICATOR — shown in left pane while agent is composing reply after tools
 // ─────────────────────────────────────────────────────────────
-const TypingIndicator = () => (
+const TypingIndicator = ({ text = "Composing" }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 4,
     padding: '8px 13px',
@@ -23,7 +23,7 @@ const TypingIndicator = () => (
       fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
       textTransform: 'uppercase', color: 'rgba(129,140,248,0.45)',
       marginLeft: 7,
-    }}>Composing</span>
+    }}>{text}</span>
   </div>
 );
 

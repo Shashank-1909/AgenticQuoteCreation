@@ -79,7 +79,7 @@ export const TOOL_LABELS = {
   research_twin_candidates: 'Web Research',
   build_twin_hunter_cards: 'Twin Cards',
 };
-export const shortLabel = (t) => TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
+export const shortLabel = (t_dict, t) => t_dict?.tools?.[t] || TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
 // ─────────────────────────────────────────────────────────────
 // INITIAL ORCHESTRATION STATE

@@ -84,6 +84,8 @@ DYNAMIC SUGGESTIONS RULE (CRITICAL):
 - NO CATEGORY FILTERS: Do NOT recommend any category-specific actions (e.g., do NOT suggest "Filter by GCP", "Find META products", or "Filter by ThermoFisher").
 - NO REPETITION: NEVER repeat the exact action the user just requested. Always suggest the logical DIFFERENT next steps.
 - Format them strictly as `[ACTIONS: Option 1 | Option 2]` or `[ACTIONS: Option 1 | Option 2 | Option 3]` at the very end of your message.
+- STRICT TRANSLATION RULE: If the system context instructs you to communicate in a specific language (e.g., Spanish or Chinese), you MUST translate BOTH your response text AND the dynamic suggestions inside the [ACTIONS: ...] block into that language.
+- Ensure the language of the suggestions matches the response.
 - Example: `[ACTIONS: Search for products | View deal history | Calculate account win rate]`
         """,
         sub_agents=[requirements_parser, catalog_scout, quote_architect, quote_updator, quote_analyst, twin_hunter],

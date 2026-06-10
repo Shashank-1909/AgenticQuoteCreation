@@ -303,21 +303,40 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             is_win_rate = "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower or "success rate" in clean_lower
             _app_state.win_rate_flow[session_id] = is_win_rate
 
-            is_lookalike_query = "lookalike" in clean_lower or "twin" in clean_lower or "icp" in clean_lower or "similar customer" in clean_lower
+            is_lookalike_query = (
+                "lookalike" in clean_lower or
+                "look-alike" in clean_lower or
+                "look a like" in clean_lower or
+                "twin" in clean_lower or
+                "icp" in clean_lower or
+                "similar customer" in clean_lower or
+                "similar account" in clean_lower
+            )
             is_deal_history_query = "deal history" in clean_lower or "previous quotes" in clean_lower or "historical quotes" in clean_lower or "win rate" in clean_lower or "win percentage" in clean_lower or "win probability" in clean_lower
             is_reset = "reset" in clean_lower or "restart" in clean_lower or "start fresh" in clean_lower
+
 
             last_agent = _app_state.active_agent.get(session_id)
             in_update_flow = _app_state.update_flow.get(session_id, False)
             in_quote_flow  = _app_state.quote_flow.get(session_id, False)
 
+            is_specific_lookalike_init = (
+                "specific account" in clean_lower or
+                "top accounts" in clean_lower or
+                "top 10 accounts" in clean_lower
+            )
+
             should_reset_session = (
                 is_upload or
                 is_reset or
                 is_req_doc_intent or
+                is_specific_lookalike_init or
+                (last_agent == "Twin_Hunter" and not is_lookalike_query) or
+                (last_agent == "Quote_Analyst" and not is_deal_history_query) or
                 (is_lookalike_query and last_agent != "Twin_Hunter") or
                 (is_deal_history_query and not (in_quote_flow or in_update_flow) and last_agent != "Quote_Analyst")
             )
+
 
             if should_reset_session:
                 logger.info("Resetting session flags and recreating session database for session %s", session_id)
@@ -359,19 +378,23 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if "\n" in doc_body:
                     doc_body = doc_body.split("\n", 1)[1].strip()
 
-                parsed_reqs = _parse_document_inline(doc_body)
+                parsed_reqs = None
+                # Call Gemini parser first as it handles general discounts and unstructured structures perfectly.
+                logger.info("Calling direct Gemini parser...")
+                try:
+                    from server import parse_requirements_doc
+                    raw_json_str = parse_requirements_doc(doc_body)
+                    parsed_json = json.loads(raw_json_str)
+                    if isinstance(parsed_json, list) and parsed_json:
+                        parsed_reqs = parsed_json
+                        logger.info("Direct Gemini parser succeeded in extracting %d items.", len(parsed_reqs))
+                except Exception as parse_err:
+                    logger.warning("Direct Gemini parser failed: %s", parse_err)
 
+                # Fallback to local regex strategies if Gemini failed or returned nothing
                 if parsed_reqs is None:
-                    logger.info("Regex strategies returned no clean matches — calling direct Gemini parser...")
-                    try:
-                        from server import parse_requirements_doc
-                        raw_json_str = parse_requirements_doc(doc_body)
-                        parsed_json = json.loads(raw_json_str)
-                        if isinstance(parsed_json, list) and parsed_json:
-                            parsed_reqs = parsed_json
-                            logger.info("Direct Gemini parser succeeded in extracting %d items.", len(parsed_reqs))
-                    except Exception as parse_err:
-                        logger.warning("Direct Gemini parser failed: %s", parse_err)
+                    logger.info("Gemini parser failed or returned empty - falling back to regex strategies...")
+                    parsed_reqs = _parse_document_inline(doc_body)
 
                 if parsed_reqs is not None:
                     # Ignore header elements if any got parsed
@@ -387,12 +410,19 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     # Proactively run the mapping logic to match items and get quantities/discounts
                     mapping_res_json = _map_requirements_to_catalog(parsed_reqs)
 
+                    import re
+                    sys_ctx_match = re.search(r"(\[System Context: .*?\])", text_content)
+                    sys_ctx = sys_ctx_match.group(1) if sys_ctx_match else ""
+
                     # Build a Catalog_Scout–style handoff message with the extracted JSON.
                     reqs_json = json.dumps(parsed_reqs, indent=2)
                     text_content = (
                         "Here are the extracted requirements for catalog discovery and mapping:\n"
                         + reqs_json
                     )
+                    if sys_ctx:
+                        text_content += f"\n\n{sys_ctx}"
+                        
                     active_runner = _app_state.scout_runner
                     logger.info(
                         "Inline parser succeeded (%d items) — routing directly to Catalog_Scout runner.",
@@ -431,9 +461,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         await asyncio.sleep(0.5)
                         
                         # 4. Final Reply Event
+                        if "in Spanish." in text_content:
+                            final_msg = "Requisitos del producto extraídos exitosamente."
+                        elif "in Chinese." in text_content:
+                            final_msg = "已成功提取产品需求。"
+                        else:
+                            final_msg = "Extracted product requirements successfully."
+                            
                         await websocket.send_json({
                             "type": "FINAL_REPLY",
-                            "data": "Extracted product requirements successfully."
+                            "data": final_msg
                         })
                         await asyncio.sleep(0.3)
                     except Exception as simulated_err:

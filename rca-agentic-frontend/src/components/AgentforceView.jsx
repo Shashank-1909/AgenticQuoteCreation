@@ -13,6 +13,7 @@ import QuotePreviewModal from './QuotePreviewModal';
 import ProductConfigModal from './ProductConfigModal';
 import DealHistoryPanel from './DealHistoryPanel';
 import WinRateBattleCard from './WinRateBattleCard';
+import AccountBattleCard from './AccountBattleCard';
 import LanguageToggle from './LanguageToggle';
 import LookalikeCards from './LookalikeCards';
 import { INIT_ORCH, SUGGESTIONS } from '../constants';
@@ -43,25 +44,6 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const [rightWidth, setRightWidth] = useState(500);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
-  const sendPayload = useCallback((payloadStr) => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
-    try {
-      const t = translations[language] || translations['en'];
-      let parsed = JSON.parse(payloadStr);
-      if (language !== 'en' && t?.languageContext && parsed.text) {
-        parsed.text = `${parsed.text}\n\n[System Context: ${t.languageContext}]`;
-      }
-      ws.current.send(JSON.stringify(parsed));
-    } catch (e) {
-      const t = translations[language] || translations['en'];
-      let text = payloadStr;
-      if (language !== 'en' && t?.languageContext) {
-        text = `${text}\n\n[System Context: ${t.languageContext}]`;
-      }
-      ws.current.send(text);
-    }
-  }, [language]);
-
   const startResizingRight = useCallback((e) => {
     setIsResizingRight(true);
   }, []);
@@ -89,6 +71,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       window.removeEventListener('mouseup', stopResizingRight);
     };
   }, [isResizingRight, resizeRight, stopResizingRight]);
+  useEffect(() => { setMessages(prev => prev.map(msg => msg.isGreeting ? { ...msg, content: (translations[language?.toLowerCase()] || translations['en']).greeting.replace('{name}', config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator') } : msg)); }, [language]);
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -161,10 +144,45 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
   const isDealHistoryRequestRef = useRef(false);
   const isQuoteWinRateRequestRef = useRef(false);
   const summarizeTimeoutsRef = useRef([]);
+  const isAwaitingSelectionRef = useRef(false);
   const clearSummarizeTimeouts = () => {
     summarizeTimeoutsRef.current.forEach(clearTimeout);
     summarizeTimeoutsRef.current = [];
   };
+
+  const sendPayload = useCallback((payloadStr) => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+    const activeQuoteId = previewData?.records?.[0]?.Id || (quotes && quotes.length > 0 ? quotes[quotes.length - 1]?.id : null);
+    const activeQuoteNumber = previewData?.records?.[0]?.QuoteNumber || (activeQuoteId ? quoteNumberMap[activeQuoteId] : null);
+    const quoteContext = activeQuoteId ? `[System Context: Active Quote ID is ${activeQuoteId}${activeQuoteNumber ? `, Quote Number is ${activeQuoteNumber}` : ''}]` : '';
+
+    try {
+      const t = translations[language] || translations['en'];
+      let parsed = JSON.parse(payloadStr);
+      if (parsed.text) {
+        let suffix = '';
+        if (language !== 'en' && t?.languageContext) {
+          suffix += `\n\n[System Context: ${t.languageContext}]`;
+        }
+        if (quoteContext) {
+          suffix += `\n\n${quoteContext}`;
+        }
+        parsed.text = `${parsed.text}${suffix}`;
+      }
+      ws.current.send(JSON.stringify(parsed));
+    } catch (e) {
+      const t = translations[language] || translations['en'];
+      let text = payloadStr;
+      let suffix = '';
+      if (language !== 'en' && t?.languageContext) {
+        suffix += `\n\n[System Context: ${t.languageContext}]`;
+      }
+      if (quoteContext) {
+        suffix += `\n\n${quoteContext}`;
+      }
+      ws.current.send(`${text}${suffix}`);
+    }
+  }, [language, previewData, quotes, quoteNumberMap]);
 
   const connectWebSocket = useCallback(() => {
     if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
@@ -190,7 +208,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
   useEffect(() => {
     if (workflowState === 'completed') {
-      if (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current) {
+      if (!isAwaitingSelectionRef.current && (isWinRateRequestRef.current || isSummarizeRequestRef.current || isDealHistoryRequestRef.current)) {
         setWorkspaceView('preview');
       }
     }
@@ -227,25 +245,37 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             const n = { ...prev };
             if (isWinRateRequestRef.current) {
               n.coordinator = 'done';
-              n.Quote_Analyst = {
-                state: 'done',
-                routedByDm: true,
-                tools: [
+              let analystTools = [];
+              if (isAwaitingSelectionRef.current) {
+                analystTools = [{ name: 'get_my_accounts', state: 'done' }];
+              } else {
+                analystTools = [
                   { name: 'get_my_accounts', state: 'done' },
                   { name: 'get_deal_history', state: 'done' },
                   { name: 'win_rate', state: 'done' }
-                ]
-              };
-            } else if (isSummarizeRequestRef.current) {
-              n.coordinator = 'done';
+                ];
+              }
               n.Quote_Analyst = {
                 state: 'done',
                 routedByDm: true,
-                tools: [
+                tools: analystTools
+              };
+            } else if (isSummarizeRequestRef.current) {
+              n.coordinator = 'done';
+              let analystTools = [];
+              if (isAwaitingSelectionRef.current) {
+                analystTools = [{ name: 'get_my_accounts', state: 'done' }];
+              } else {
+                analystTools = [
                   { name: 'get_my_accounts', state: 'done' },
                   { name: 'get_deal_history', state: 'done' },
                   { name: 'summary_node', state: 'done' }
-                ]
+                ];
+              }
+              n.Quote_Analyst = {
+                state: 'done',
+                routedByDm: true,
+                tools: analystTools
               };
             } else {
               if (n.coordinator === 'active') n.coordinator = 'done';
@@ -263,7 +293,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           if (dealHistoryLoadingRef.current) {
             setDealHistoryLoading(false);
             dealHistoryLoadingRef.current = false;
-            setWorkspaceView('preview');
+            if (!isAwaitingSelectionRef.current) {
+              setWorkspaceView('preview');
+            }
           }
         }
         break;
@@ -499,7 +531,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           break;
         }
 
-        setReasoning(`Running tool: ${data.tool.replace('_', ' ')}...`);
+        setReasoning(`${(translations[language?.toLowerCase()] || translations['en']).nodes?.executing?.replace('…', '') || 'Running tool:'} ${data.tool.replace('_', ' ')}...`);
         setOrchestration(prev => {
           const n = { ...prev };
           for (const k of ['Requirements_Parser', 'Catalog_Scout', 'Quote_Architect', 'Quote_Updator', 'Quote_Analyst', 'Twin_Hunter']) {
@@ -616,11 +648,14 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             fetch(`${config.API_BASE_URL}/api/quote-preview/${qId}`)
               .then(res => res.json())
               .then(d => {
-                if (d.records?.[0]?.QuoteNumber) {
-                  setQuoteNumberMap(prev => ({ ...prev, [qId]: d.records[0].QuoteNumber }));
+                const qNum = d.records?.[0]?.QuoteNumber;
+                if (qNum && qNum !== 'Unknown' && qNum !== 'None') {
+                  setQuoteNumberMap(prev => ({ ...prev, [qId]: qNum }));
+                  setPreviewData(d);
+                  setWorkspaceView('preview');
+                } else {
+                  console.warn('[DEBUG] QuoteNumber is still Unknown. Showing the flow/graph only.');
                 }
-                setPreviewData(d);
-                setWorkspaceView('preview');
               })
               .catch(err => console.error('Error fetching quote number:', err));
 
@@ -652,6 +687,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             content: `Please select an ${pendingSelectionRef.current.type}:`
           });
           pendingSelectionRef.current = null;
+          isAwaitingSelectionRef.current = true;
+        } else {
+          isAwaitingSelectionRef.current = false;
         }
         if (pendingUpdateRef.current || pendingCreationRef.current) {
           setShowPreviewSuggestion(true);
@@ -668,8 +706,41 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             // Parse [ACTIONS: Action 1 | Action 2 | ...]
             const actionsMatch = processedText.match(/\[ACTIONS:\s*([^\]]+)\]/);
             if (actionsMatch) {
-              actions = actionsMatch[1].split('|').map(act => act.trim()).filter(Boolean);
+              const rawActions = actionsMatch[1].split('|').map(act => act.trim()).filter(Boolean);
               processedText = processedText.replace(/\[ACTIONS:\s*[^\]]+\]/, '').trim();
+              
+              // Keep at most 2 selection options starting with "Select " to avoid clutter
+              const selectActions = rawActions.filter(act => act.toLowerCase().startsWith('select '));
+              const otherActions = rawActions.filter(act => !act.toLowerCase().startsWith('select '));
+              
+              const finalActions = [];
+              finalActions.push(...selectActions.slice(0, 2));
+              finalActions.push(...otherActions);
+              
+              // Suggest some other best next actions if we filtered to keep options diverse and clean
+              if (selectActions.length > 2) {
+                const isAccountSel = selectActions.some(act => act.includes('(ID: 001') || act.toLowerCase().includes('account'));
+                if (isAccountSel) {
+                  if (!finalActions.some(a => a.toLowerCase().includes('search') || a.toLowerCase().includes('different'))) {
+                    finalActions.push("Search for another account");
+                  }
+                  if (!finalActions.some(a => a.toLowerCase().includes('recent') || a.toLowerCase().includes('deals'))) {
+                    finalActions.push("View my recent deals");
+                  }
+                } else {
+                  if (!finalActions.some(a => a.toLowerCase().includes('different') || a.toLowerCase().includes('account'))) {
+                    finalActions.push("Select a different account");
+                  }
+                  if (!finalActions.some(a => a.toLowerCase().includes('win rate') || a.toLowerCase().includes('probability'))) {
+                    finalActions.push("View account win rate");
+                  }
+                }
+                if (!finalActions.some(a => a.toLowerCase().includes('reset') || a.toLowerCase().includes('restart') || a.toLowerCase().includes('fresh'))) {
+                  finalActions.push("Reset session");
+                }
+              }
+              
+              actions = finalActions.slice(0, 4);
             }
 
             // Replace any Quote IDs with their Numbers if we have them
@@ -681,28 +752,33 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             if (idMatch && quoteNumberMap[idMatch[0]]) {
               processedText = processedText.replace(idMatch[0], quoteNumberMap[idMatch[0]]);
             }
+            
+            // Suppress the redundant bulleted list of quotes in chat response
+            if (/Here is a list|Here are the/i.test(processedText) && processedText.includes('- **Quote')) {
+              const splitIdx = processedText.indexOf('\n- **Quote');
+              if (splitIdx !== -1) {
+                processedText = processedText.substring(0, splitIdx).trim();
+                processedText = processedText.replace(/:$/, '.');
+              }
+            }
+
+            if (processedText.includes('<ACCOUNT_PLAYBOOK>')) {
+              isQuoteWinRateRequestRef.current = false;
+            }
 
             addMessage({ type: 'text', content: processedText, actions });
 
-            // Detect if AI is asking for a document upload
+            // Detect if AI is asking for a document upload (must combine an action verb with a document/file noun)
             const lcText = processedText.toLowerCase();
-            if (
-              lcText.includes('upload') ||
-              lcText.includes('paste') ||
-              lcText.includes('share') ||
-              lcText.includes('document') ||
-              lcText.includes('transcript') ||
-              lcText.includes('file') ||
-              lcText.includes('sow') ||
-              lcText.includes('rfp') ||
-              lcText.includes('analyse') ||
-              lcText.includes('analyze') ||
-              lcText.includes('[action: show_upload_card]')
-            ) {
+            const hasActionVerb = lcText.includes('upload') || lcText.includes('paste') || lcText.includes('share');
+            const hasDocumentNoun = lcText.includes('document') || lcText.includes('transcript') || lcText.includes('file') || lcText.includes('sow') || lcText.includes('rfp');
+            const hasExplicitInstruction = lcText.includes('[action: show_upload_card]') || lcText.includes('upload to get started') || lcText.includes('upload via the paperclip');
+
+            if (hasExplicitInstruction || (hasActionVerb && hasDocumentNoun)) {
               addMessage({
                 type: 'card',
                 cardType: 'upload',
-                content: "Upload your document to get started."
+                content: (translations[language] || translations['en']).  uploadDocumentCTA
               });
             }
 
@@ -805,33 +881,31 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
 
     let isStatusFilterRequest = cmd.includes('drafted quote') || cmd.includes('draft quote') || cmd.includes('accepted quote') || cmd.includes('rejected quote') || cmd.includes('all quote') || cmd.includes('all quotes') || cmd.includes('view quote');
 
+    const isLookalikeQuery = cmd.includes('lookalike') || cmd.includes('look-alike') || cmd.includes('look a like') || cmd.includes('twin') || cmd.includes('icp') || cmd.includes('similar customer') || cmd.includes('similar account');
+
     // Deal history intent – intercept before WebSocket ONLY for explicit deal history requests
     let isWinRateRequest = (cmd.includes('win rate') || cmd.includes('win percentage') || cmd.includes('win probability') || cmd.includes('success rate') || cmd.includes('winning chance') || cmd.includes('quote analysis') || cmd.includes('analyze quote')) && !cmd.includes('preview') && !cmd.includes('overview');
 
-    // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview
+    // If we're already in a win rate context, keep it alive for follow-up answers, quote numbers, or account selections, unless they ask for a filter or updating/modifying quotes, or requesting quote preview/overview or deal history
     const isQuoteUpdateKeyword = cmd.includes('update') || cmd.includes('modify') || cmd.includes('change') || cmd.includes('add') || cmd.includes('delete') || cmd.includes('remove') || cmd.includes('discount');
-    if (!isWinRateRequest && !isStatusFilterRequest && !isQuoteUpdateKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
+    const isDealHistoryKeyword = cmd.includes('deal history') || cmd.includes('quotes') || cmd.includes('view all deals') || cmd.includes('show all deals');
+    if (!isWinRateRequest && !isLookalikeQuery && !isStatusFilterRequest && !isQuoteUpdateKeyword && !isDealHistoryKeyword && isWinRateRequestRef.current && !cmd.includes('preview') && !cmd.includes('overview')) {
       isWinRateRequest = true;
     }
     isWinRateRequestRef.current = isWinRateRequest;
 
-    // A win rate request defaults to a QUOTE win rate request
-    let isQuoteWinRateRequest = isWinRateRequest;
-    const isExplicitAccountWinRate = cmd.includes('account win rate') ||
-      cmd.includes('win rate of account') ||
-      cmd.includes('win rate of the account') ||
-      cmd.includes('win rate for account') ||
-      cmd.includes('win rate for this account') ||
-      cmd.includes('account-level win rate') ||
-      (cmd.includes('account') && cmd.includes('win rate') && !cmd.includes('quote') && !cmd.includes('deal'));
-
-    if (isWinRateRequest) {
-      if (isExplicitAccountWinRate) {
-        isQuoteWinRateRequest = false;
-      } else if (isQuoteWinRateRequestRef.current && !cmd.includes('account')) {
-        isQuoteWinRateRequest = true;
-      }
-    }
+    // A win rate request is an ACCOUNT win rate request ONLY if they explicitly mention account win rate
+    const isExplicitAccountWinRate = cmd.includes('account win rate') || 
+                                     cmd.includes('win rate of the account') || 
+                                     cmd.includes('win rate of this account') || 
+                                     cmd.includes('account\'s win rate') || 
+                                     cmd.includes('account win') ||
+                                     cmd.includes('novartis') ||
+                                     cmd.includes('united partners') ||
+                                     cmd.includes('genomic') ||
+                                     (dealHistoryAccount && cmd.includes(dealHistoryAccount.toLowerCase()));
+    
+    let isQuoteWinRateRequest = isWinRateRequest && !isExplicitAccountWinRate;
     isQuoteWinRateRequestRef.current = isQuoteWinRateRequest;
 
     const isSummarizeOrPrioritize = !isWinRateRequest && (cmd.includes('summarize') || cmd.includes('summarise') || cmd.includes('prioritize') || cmd.includes('prioritise') || cmd.includes('which deal'));
@@ -852,7 +926,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
     );
 
     // If we're already in a deal history context, keep it alive for follow-up account selection, filters, or resetting account
-    if (!isDealHistoryRequest && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
+    if (!isDealHistoryRequest && !isLookalikeQuery && !isSummarizeOrPrioritize && !isWinRateRequest && isDealHistoryRequestRef.current && (
       detectAccountName(text) ||
       cmd.includes('yes') ||
       cmd.includes('all') ||
@@ -877,9 +951,26 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
       setDealHistoryAccount(newlyDetectedAcc);
     }
 
+    // Construct current active quote context if available
+    let currentQuoteContext = "";
+    if (previewData && previewData.records && previewData.records[0]) {
+      const q = previewData.records[0];
+      const lineItemsText = (q.QuoteLineItems || []).map(li => 
+        `- Product: ${li.Product2?.Name || li.Name}, Quantity: ${li.Quantity}, Discount: ${li.Discount || 0}%, Unit Price: $${li.UnitPrice || 0}, Total Price: $${li.TotalPrice || 0}`
+      ).join('\n');
+      
+      currentQuoteContext = `[Current Active Quote:\n` +
+        `Account: ${q.Account?.Name || '—'}\n` +
+        `Opportunity: ${q.Opportunity?.Name || '—'}\n` +
+        `Grand Total: $${q.GrandTotal || 0}\n` +
+        `Overall Discount: ${q.Discount || 0}%\n` +
+        `Line Items:\n${lineItemsText}\n]`;
+    }
+
     // Lazy load deal history for win rate request if not loaded yet or if the account changed
-    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount))) {
-      const detectedAcc = detectAccountName(text) || dealHistoryAccount;
+    const targetAccount = detectAccountName(text) || dealHistoryAccount || previewData?.records?.[0]?.Account?.Name;
+    if (isWinRateRequest && (!dealHistoryData || dealHistoryData.length === 0 || (detectAccountName(text) && detectAccountName(text) !== dealHistoryAccount) || (targetAccount && targetAccount !== dealHistoryAccount))) {
+      const detectedAcc = targetAccount;
       if (detectedAcc) {
         setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: text, type: 'text' }]);
         setInputValue('');
@@ -896,20 +987,34 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
             }).join('\n');
 
+            let payloadText = text;
+            if (isQuoteWinRateRequest && currentQuoteContext) {
+              payloadText += `\n\n${currentQuoteContext}`;
+            }
+            payloadText += `\n\n[Historical Quotes in context:\n${quotesText}]`;
+
             sendPayload(JSON.stringify({
-              text: text + `\n\n[Historical Quotes in context:\n${quotesText}]`,
+              text: payloadText,
               module: selectedModule?.id || 'sales'
             }));
           } else {
+            let payloadText = text;
+            if (isQuoteWinRateRequest && currentQuoteContext) {
+              payloadText += `\n\n${currentQuoteContext}`;
+            }
             sendPayload(JSON.stringify({
-              text: text,
+              text: payloadText,
               module: selectedModule?.id || 'sales'
             }));
           }
         } catch (err) {
           console.error("Error lazy-loading deal history for win rate:", err);
+          let payloadText = text;
+          if (isQuoteWinRateRequest && currentQuoteContext) {
+            payloadText += `\n\n${currentQuoteContext}`;
+          }
           sendPayload(JSON.stringify({
-            text: text,
+            text: payloadText,
             module: selectedModule?.id || 'sales'
           }));
         } finally {
@@ -930,8 +1035,16 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         return `Quote: ${q.quoteNumber || q.id}, Name: ${q.name}, Status: ${q.status}, Amount: $${q.grandTotal}, Discount: ${q.discount}%, Opportunity: ${q.opportunityName || '—'}, Line Items: [${items}]`;
       }).join('\n');
 
+      let payloadText = text;
+      if (isQuoteWinRateRequest && currentQuoteContext) {
+        payloadText += `\n\n${currentQuoteContext}`;
+      }
+      if (quotesText) {
+        payloadText += `\n\n[Historical Quotes in context:\n${quotesText}]`;
+      }
+
       sendPayload(JSON.stringify({
-        text: text + (quotesText ? `\n\n[Historical Quotes in context:\n${quotesText}]` : ''),
+        text: payloadText,
         module: selectedModule?.id || 'sales'
       }));
       return;
@@ -1127,7 +1240,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         });
 
         // Immediately notify the user in the UI
-        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `Uploaded ${data.filename}`, type: 'text' }]);
+        setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'user', content: `${(translations[language?.toLowerCase()] || translations['en']).documentUploaded}: ${data.filename}`, type: 'text' }]);
 
         // FIX: Must enter orchestrating state before sending — otherwise the
         // frontend state machine desyncs and FINAL_REPLY renders nothing.
@@ -1335,7 +1448,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             </button>
             <div className="flex flex-col">
               <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                {config.theme === 'Meta' ? 'Meta Workspace' : config.theme === 'Thermofisher' ? 'Thermo Fisher Workspace' : 'Quoting Accelerator'}
+                {config.theme === 'Meta' ? `Meta ${(translations[language?.toLowerCase()] || translations['en']).workspace}` : config.theme === 'Thermofisher' ? `Thermo Fisher ${(translations[language?.toLowerCase()] || translations['en']).workspace}` : 'Quoting Accelerator'}
               </h2>
             </div>
           </div>
@@ -1345,7 +1458,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 onClick={() => setWorkspaceView('graph')}
                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'graph' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
               >
-                Orchestration Flow
+                {(translations[language?.toLowerCase()] || translations['en']).orchestrationFlow || 'Orchestration Flow'}
               </button>
               <button
                 onClick={() => {
@@ -1356,7 +1469,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 }}
                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workspaceView === 'preview' ? 'bg-white shadow-sm text-indigo-500' : 'text-slate-500 hover:text-indigo-400'}`}
               >
-                Record Preview
+                {(translations[language?.toLowerCase()] || translations['en']).recordPreview || 'Record Preview'}
               </button>
             </div>
             <LanguageToggle language={language} setLanguage={setLanguage} isDark={isDark} />
@@ -1389,7 +1502,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 </button>
               </div>
               <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease-out' }} className="origin-center">
-                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} />
+                <AgentGraph orchestration={orchestration} graphActive={true} graphReady={true} isDark={isDark} t={translations[language?.toLowerCase()] || translations['en']} />
               </div>
             </div>
           )}
@@ -1397,15 +1510,23 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             (isWinRateRequestRef.current || isSummarizeRequestRef.current || dealHistoryLoading || (dealHistoryData && isDealHistoryRequestRef.current)) ? (
               <div className="w-full h-full bg-slate-50 overflow-hidden">
                 {isWinRateRequestRef.current ? (
-                  <WinRateBattleCard
-                    data={dealHistoryData}
-                    accountName={dealHistoryAccount}
-                    isLoading={dealHistoryLoading}
-                    isQuoteMode={isQuoteWinRateRequestRef.current}
-                    messages={messages}
-                    previewData={previewData}
-                    selectedProducts={selectedProducts}
-                  />
+                  isQuoteWinRateRequestRef.current ? (
+                    <WinRateBattleCard
+                      data={dealHistoryData}
+                      accountName={dealHistoryAccount}
+                      isLoading={dealHistoryLoading}
+                      messages={messages}
+                      previewData={previewData}
+                      selectedProducts={selectedProducts}
+                    />
+                  ) : (
+                    <AccountBattleCard
+                      data={dealHistoryData}
+                      accountName={dealHistoryAccount}
+                      isLoading={dealHistoryLoading}
+                      messages={messages}
+                    />
+                  )
                 ) : (
                   <DealHistoryPanel
                     data={dealHistoryData ? dealHistoryData.filter(q => dealHistoryFilter === 'All' || (q.status && q.status.toLowerCase() === dealHistoryFilter.toLowerCase())) : null}
@@ -1467,7 +1588,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                             <tr className="text-sm font-bold border-b border-white/5">
                               <td className="px-6 py-6">{previewData.records?.[0]?.Account?.Name || '—'}</td>
                               <td className="px-6 py-6">{previewData.records?.[0]?.Opportunity?.Name || '—'}</td>
-                              <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString()}</td>
+                              <td className="px-6 py-6 text-right text-indigo-400 text-lg font-black">${(previewData.records?.[0]?.GrandTotal || 0).toLocaleString('en-US')}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -1492,9 +1613,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                               <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                                 <td className="px-6 py-4 text-xs font-bold">{line.Product2?.Name}</td>
                                 <td className="px-6 py-4 text-xs font-bold text-center">{line.Quantity}</td>
-                                <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-xs font-bold text-right text-slate-400">${line.UnitPrice?.toLocaleString('en-US')}</td>
                                 <td className="px-6 py-4 text-xs font-black text-indigo-400 text-center">{line.Discount || 0}%</td>
-                                <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-xs font-black text-right">${line.TotalPrice?.toLocaleString('en-US')}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1541,9 +1662,9 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
           </div>
           <div className="flex flex-col">
             <h3 className="text-xs font-black uppercase tracking-tighter">
-              {config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales Assistant' : 'Quoting Accelerator'}
+              {config.theme === 'Meta' ? `Meta ${(translations[language?.toLowerCase()] || translations['en']).salesAssistant || 'Assistant'}` : config.theme === 'Thermofisher' ? `Thermo Fisher ${(translations[language?.toLowerCase()] || translations['en']).salesAssistant || 'Sales Assistant'}` : 'Quoting Accelerator'}
             </h3>
-            <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Active & Thinking</span>
+            <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">{(translations[language?.toLowerCase()] || translations['en']).activeThinking || 'Active & Thinking'}</span>
           </div>
           <Settings size={14} className="ml-auto text-slate-500 cursor-pointer" />
         </div>
@@ -1565,7 +1686,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                     <Sparkles size={9} className="text-indigo-500" />
                     <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500">Solution Advisor</span>
                   </div>
-                  <div className="af-bubble mb-3">{msg.content}</div>
+                  <div className="af-bubble mb-3">{msg.isGreeting ? (translations[language?.toLowerCase()] || translations['en']).greeting.replace('{name}', config.theme === 'Meta' ? 'Meta' : config.theme === 'Thermofisher' ? 'Thermo Fisher Sales' : 'Quoting Accelerator') : msg.content}</div>
                   <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Quick Replies</div>
                   <div className="flex flex-col gap-2">
                     {[
@@ -1587,11 +1708,12 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 <>
                   <div className="af-bubble">
                     {msg.content
-                      .replace(/<EXPLAIN>[\s\S]*?<\/EXPLAIN>/gi, '')
-                      .replace(/<PLAYBOOK>[\s\S]*?<\/PLAYBOOK>/gi, '')
-                      .replace(/<RISKS>[\s\S]*?<\/RISKS>/gi, '')
-                      .replace(/<STRENGTHS>[\s\S]*?<\/STRENGTHS>/gi, '')
-                      .replace(/<MATH>[\s\S]*?<\/MATH>/gi, '')
+                      .replace(/<EXPLAIN>[\s\S]*?(?:<\/EXPLAIN>|(?=<RISKS>|<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/gi, '')
+                      .replace(/<RISKS>[\s\S]*?(?:<\/RISKS>|(?=<STRENGTHS>|<PLAYBOOK>|<MATH>)|$)/gi, '')
+                      .replace(/<STRENGTHS>[\s\S]*?(?:<\/STRENGTHS>|(?=<PLAYBOOK>|<MATH>)|$)/gi, '')
+                      .replace(/<PLAYBOOK>[\s\S]*?(?:<\/PLAYBOOK>|(?=<MATH>)|$)/gi, '')
+                      .replace(/<ACCOUNT_PLAYBOOK>[\s\S]*?(?:<\/ACCOUNT_PLAYBOOK>|$)/gi, '')
+                      .replace(/<MATH>[\s\S]*?(?:<\/MATH>|$)/gi, '')
                       .replace(/^Header:\s*/i, '')
                       .trim()}
                   </div>
@@ -1696,10 +1818,20 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 <div className="af-card">
                   <SelectionPanel
                     panel={msg.data}
-                    onSelect={(opt) => {
-                      const text = opt.name;
+                    onSelect={(opt, selectionType) => {
+                      const isTwinHunter = orchestration?.Twin_Hunter?.state === 'active' || 
+                        (orchestration?.Twin_Hunter?.state === 'done' && 
+                         orchestration?.Quote_Architect?.state !== 'done' && 
+                         orchestration?.Quote_Architect?.state !== 'active' && 
+                         orchestration?.Quote_Updator?.state !== 'done' && 
+                         orchestration?.Quote_Updator?.state !== 'active' && 
+                         orchestration?.Quote_Analyst?.state !== 'done' && 
+                         orchestration?.Quote_Analyst?.state !== 'active');
+                      const text = (isTwinHunter && selectionType === 'account')
+                        ? `Find lookalikes for ${opt.name}`
+                        : opt.name;
                       setInputValue(text);
-                      handleSend();
+                      handleSend(null, text);
                     }}
                   />
                 </div>
@@ -1713,8 +1845,8 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                         <FileText size={20} className="text-white" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">Requirements Analyst</span>
-                        <span className="text-[10px] font-medium text-slate-500">Document Analysis Service</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">{(translations[language?.toLowerCase()] || translations['en']).uploadCard.title}</span>
+                        <span className="text-[10px] font-medium text-slate-500">{(translations[language?.toLowerCase()] || translations['en']).uploadCard.subtitle}</span>
                       </div>
                     </div>
                     <button
@@ -1723,7 +1855,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                       className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 text-white rounded-xl text-[12px] font-bold hover:bg-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
                     >
                       {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
-                      Click here to upload document
+                      {(translations[language?.toLowerCase()] || translations['en']).uploadCard.buttonText}
                     </button>
                   </div>
                 </div>
@@ -1778,7 +1910,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
             </div>
           )}
 
-          {workflowState === 'orchestrating' && <TypingIndicator />}
+          {workflowState === 'orchestrating' && <TypingIndicator text={(translations[language?.toLowerCase()] || translations['en']).nodes?.composing?.replace('…', '') || 'COMPOSING'} />}
 
           <div ref={chatEndRef} />
         </div>
@@ -1800,7 +1932,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
                 type="text"
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
-                placeholder={config.theme === 'Meta' ? 'Ask Meta Assistant...' : config.theme === 'Thermofisher' ? 'Ask Thermo Fisher AI...' : 'Ask Quoting Accelerator...'}
+                placeholder={(translations[language?.toLowerCase()] || translations['en']).chatInputPlaceholder.replace('{name}', config.theme === 'Meta' ? 'Meta Assistant' : config.theme === 'Thermofisher' ? 'Thermo Fisher AI' : 'Quoting Accelerator')}
                 className="w-full bg-black/20 border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none focus:border-indigo-500/50 transition-all relative z-10"
               />
               <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-indigo-500 hover:scale-110 transition-transform">
@@ -1816,7 +1948,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
         onClose={() => setIsConfigOpen(false)}
         products={configProducts}
         onConfirm={(configuredItems) => {
-          const list = configuredItems.map(p => `${p.name} (Qty: ${p.quantity}, Disc: ${p.discount}%)`).join(', ');
+          const list = configuredItems.map(p => `${p.name} (ID: ${p.id}, Quantity: ${p.quantity}, Discount: ${p.discount}%)`).join(', ');
           setInputValue(`Create a quote for: ${list}`);
           handleSend(); // This will add the message to the UI and send the JSON
           setIsConfigOpen(false);

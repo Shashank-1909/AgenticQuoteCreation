@@ -41,7 +41,7 @@ def main() -> None:
             ],
             "generationConfig": {
                 "responseMimeType": "application/json",
-                "temperature": 0.2,
+                "temperature": 0.0,
                 "maxOutputTokens": 8192,
                 "thinkingConfig": {"thinkingBudget": 0},
             },
