@@ -419,6 +419,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function WinRateBattleCard({ data, accountName, isLoading, messages, previewData, selectedProducts }) {
+  const isQuoteMode = true;
   const [historyTab, setHistoryTab] = useState('accepted');
 
   if (isLoading) {
@@ -556,31 +557,43 @@ export default function WinRateBattleCard({ data, accountName, isLoading, messag
   const displayWinRate = parsedQuoteWinRate || 0;
   const isCalculatingQuote = !isQuoteReady;
 
-  // --- DYNAMIC COMPETITIVE INTEL MAP ---
+  // ===========================================================================
+  // DYNAMIC COMPETITIVE INTELLIGENCE MAP
+  // ===========================================================================
+  // Design Pattern: UI Configuration Mapping
+  //
+  // Rationale:
+  //   This structure maps active product categories (e.g. Workspace, Lucidchart,
+  //   Thermal) directly to custom dynamic cards. By decoupling user-facing text 
+  //   from rendering code, we ensure:
+  //     1. Maintainability: Copy edits do not touch React's return/render path.
+  //     2. Dynamic Adaptation: Real-time opportunity data dynamically pulls 
+  //        curated competitive insights according to the resolved catalog.
+  // ===========================================================================
   const competitiveIntelMap = {
-    'GCP': [
+    'Workspace': [
       {
-        title: 'Market Competition: GCP',
-        description: `${accountName || 'This account'} often considers GCP alternatives. Focus on our native integration features and premium 24/7 support instead of competing on price.`,
+        title: 'Market Competition: Microsoft 365',
+        description: `${accountName || 'This account'} often considers Microsoft 365 alternatives. Focus on our native integration features and premium 24/7 support instead of competing on price.`,
         color: 'rose'
       }
     ],
-    'META': [
+    'Lucidchart': [
       {
-        title: 'Preferred Category: META Systems',
-        description: `Customers show high engagement with META products. These deals also move through the cycle faster (9 days instead of 24 days).`,
+        title: 'Preferred Category: Visual Collaboration',
+        description: `Customers show high engagement with Lucidchart products. These deals also move through the cycle faster.`,
         color: 'indigo'
       }
     ],
-    'ThermoFisher': [
+    'Thermal': [
       {
-        title: 'Market Competition: LabCorp',
+        title: 'Market Competition: Zion Thermal',
         description: `Customers in this sector frequently request alternative options. Emphasize how our solutions seamlessly integrate with their existing Salesforce setup.`,
         color: 'rose'
       },
       {
         title: 'High Retention Rate',
-        description: `95% of customers renew ThermoFisher products. Emphasize the long-term value and multi-year savings rather than short-term discounting.`,
+        description: `95% of customers renew Thermal Compound products. Emphasize the long-term value and multi-year savings rather than short-term discounting.`,
         color: 'indigo'
       }
     ],
@@ -596,9 +609,9 @@ export default function WinRateBattleCard({ data, accountName, isLoading, messag
   let currentIntel = competitiveIntelMap['default'];
   if (primaryProduct) {
     const prodLower = primaryProduct.toLowerCase();
-    if (prodLower.includes('gcp')) currentIntel = competitiveIntelMap['GCP'];
-    else if (prodLower.includes('meta')) currentIntel = competitiveIntelMap['META'];
-    else if (prodLower.includes('thermofisher') || prodLower.includes('thermo')) currentIntel = competitiveIntelMap['ThermoFisher'];
+    if (prodLower.includes('workspace') || prodLower.includes('google')) currentIntel = competitiveIntelMap['Workspace'];
+    else if (prodLower.includes('lucid')) currentIntel = competitiveIntelMap['Lucidchart'];
+    else if (prodLower.includes('thermal')) currentIntel = competitiveIntelMap['Thermal'];
   }
 
   return (
@@ -806,10 +819,12 @@ export default function WinRateBattleCard({ data, accountName, isLoading, messag
 
                       const lowerRisk = cleanRisk.toLowerCase();
                       if (lowerRisk.includes('competitor') || lowerRisk.includes('competition') || lowerRisk.includes('threat')) {
-                        if (lowerRisk.includes('gcp')) {
-                          cleanRisk = "Other vendors like GCP are also being considered";
-                        } else if (lowerRisk.includes('labcorp')) {
-                          cleanRisk = "Other vendors like LabCorp are also being considered";
+                        if (lowerRisk.includes('microsoft') || lowerRisk.includes('365')) {
+                          cleanRisk = "Other vendors like Microsoft are also being considered";
+                        } else if (lowerRisk.includes('miro')) {
+                          cleanRisk = "Other vendors like Miro are also being considered";
+                        } else if (lowerRisk.includes('zion')) {
+                          cleanRisk = "Other vendors like Zion Thermal are also being considered";
                         } else if (lowerRisk.includes('discounter') || lowerRisk.includes('aggressive')) {
                           cleanRisk = "Other options are available to the customer in this segment";
                         } else {

@@ -1,0 +1,26 @@
+[06/10/26 11:25:40] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[ERROR] get_deal_history failed: Auth state not found. Please run auth.py first to authenticate.
+[ERROR] get_deal_history failed: Auth state not found. Please run auth.py first to authenticate.
+[ERROR] get_deal_history failed: Auth state not found. Please run auth.py first to authenticate.
+[06/10/26 11:26:07] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[ERROR] get_deal_history failed: Auth state not found. Please run auth.py first to authenticate.
+[ERROR] get_deal_history failed: Auth state not found. Please run auth.py first to authenticate.
+[ERROR] get_deal_history failed: Auth state not found. Please run auth.py first to authenticate.

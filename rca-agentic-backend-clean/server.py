@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from concurrent.futures import ThreadPoolExecutor
+from app.services.win_rate_calculator import WinRateCalculator
 
 load_dotenv()
 
@@ -1829,17 +1830,29 @@ def get_deal_history(account_name: str = "Edge Communications") -> str:
     Args:
         account_name: The name of the account to fetch deal history for.
     """
-    import json, requests as _req
-    
     try:
         headers, instance_url = get_salesforce_auth()
 
+        # Sanitize single quotes to prevent SOQL injection
+        sanitized_account_name = account_name.replace("'", "\\'")
+
         # 1. Find account by name
-        q_acc = f"SELECT Id, Name FROM Account WHERE Name LIKE '%{account_name}%' LIMIT 5"
-        acc_resp = _req.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_acc})
+        q_acc = f"SELECT Id, Name FROM Account WHERE Name LIKE '%{sanitized_account_name}%' LIMIT 5"
+        acc_resp = requests.get(f"{instance_url}/services/data/v65.0/query", headers=headers, params={"q": q_acc}, timeout=15.0)
         accounts = acc_resp.json().get("records", [])
         if not accounts:
             return json.dumps({"status": "empty", "message": f"No account found matching '{account_name}'", "quotes": []}, indent=2)
+
+        # Ambiguity check: If multiple accounts match, return status ambiguous
+        if len(accounts) > 1:
+            matching_names = [acc["Name"] for acc in accounts]
+            sys.stderr.write(f"[DEBUG] Ambiguous account name search: '{account_name}' matches {matching_names}\n")
+            return json.dumps({
+                "status": "ambiguous",
+                "message": f"Multiple accounts found matching '{account_name}'. Please choose one.",
+                "options": matching_names,
+                "quotes": []
+            }, indent=2)
 
         account = accounts[0]
         account_id = account["Id"]
@@ -1851,7 +1864,7 @@ def get_deal_history(account_name: str = "Edge Communications") -> str:
             f"(SELECT Id, Product2.Name, Quantity, UnitPrice, TotalPrice, Discount FROM QuoteLineItems) "
             f"FROM Quote WHERE AccountId = '{account_id}' ORDER BY CreatedDate DESC LIMIT 100"
         )
-        qt_resp = _req.get(f"{instance_url}/services/data/v59.0/query", headers=headers, params={"q": q_quotes})
+        qt_resp = requests.get(f"{instance_url}/services/data/v65.0/query", headers=headers, params={"q": q_quotes}, timeout=15.0)
         quotes = qt_resp.json().get("records", [])
 
         all_quotes = []
@@ -1907,7 +1920,87 @@ def get_deal_history(account_name: str = "Edge Communications") -> str:
         }, indent=2)
 
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e), "quotes": []}, indent=2)
+        sys.stderr.write(f"[ERROR] get_deal_history failed: {str(e)}\n")
+        return json.dumps({
+            "status": "error", 
+            "message": "An error occurred while fetching deal history. Please check the logs.", 
+            "quotes": []
+        }, indent=2)
+
+
+def calculate_win_rate_analysis(
+    account_name: str = "Edge Communications",
+    current_quote_discount: float | None = None,
+    current_quote_total: float | None = None,
+    current_quote_products: list[str] | None = None
+) -> str:
+    """
+    Computes account-level historical win metrics and/or quote-specific win probability.
+
+    WHEN TO CALL: Call this tool when you need to calculate the win rate of an account
+    or the win probability of a specific active quote based on historical deal outcomes.
+
+    Args:
+        account_name: The name of the account to analyze.
+        current_quote_discount: The discount percentage of the active quote (e.g. 10.0 for 10%).
+        current_quote_total: The grand total value of the active quote.
+        current_quote_products: The list of product names in the active quote.
+    """
+    try:
+        headers, instance_url = get_salesforce_auth()
+
+        # Sanitize single quotes to prevent SOQL injection
+        sanitized_account_name = account_name.replace("'", "\\'")
+
+        # 1. Find account by name
+        q_acc = f"SELECT Id, Name FROM Account WHERE Name LIKE '%{sanitized_account_name}%' LIMIT 5"
+        acc_resp = requests.get(f"{instance_url}/services/data/v65.0/query", headers=headers, params={"q": q_acc}, timeout=15.0)
+        accounts = acc_resp.json().get("records", [])
+        if not accounts:
+            return json.dumps({
+                "status": "empty",
+                "message": f"No account found matching '{account_name}'",
+                "quotes": []
+            }, indent=2)
+
+        # Ambiguity check
+        if len(accounts) > 1:
+            matching_names = [acc["Name"] for acc in accounts]
+            return json.dumps({
+                "status": "ambiguous",
+                "message": f"Multiple accounts found matching '{account_name}'. Please choose one.",
+                "options": matching_names,
+                "quotes": []
+            }, indent=2)
+
+        account = accounts[0]
+        account_id = account["Id"]
+        display_name = account["Name"]
+
+        # 2. Get all quotes across all opportunities for this account
+        q_quotes = (
+            f"SELECT Id, Name, Status, GrandTotal, Discount, "
+            f"(SELECT Id, Product2.Name, Quantity, UnitPrice, TotalPrice, Discount FROM QuoteLineItems) "
+            f"FROM Quote WHERE AccountId = '{account_id}' ORDER BY CreatedDate DESC LIMIT 100"
+        )
+        qt_resp = requests.get(f"{instance_url}/services/data/v65.0/query", headers=headers, params={"q": q_quotes}, timeout=15.0)
+        quotes = qt_resp.json().get("records", [])
+
+        # 3. Delegate business rules & math to the WinRateCalculator Service
+        result = WinRateCalculator.compute(
+            quotes=quotes,
+            display_name=display_name,
+            account_id=account_id,
+            current_quote_products=current_quote_products,
+            current_quote_total=current_quote_total,
+            current_quote_discount=current_quote_discount
+        )
+
+        return json.dumps(result, indent=2)
+
+    except Exception as e:
+        sys.stderr.write(f"[ERROR] calculate_win_rate_analysis failed: {str(e)}\n")
+        return json.dumps({"status": "error", "message": str(e)}, indent=2)
 
 
 def get_quote_line_items(quote_id: str) -> str:
@@ -2578,6 +2671,7 @@ if agent_type in ["parser", "all"]:
 
 if agent_type in ["analyst", "all"]:
     mcp.add_tool(get_deal_history)
+    mcp.add_tool(calculate_win_rate_analysis)
     mcp.add_tool(get_my_accounts)
 
 if agent_type in ["twin", "all"]:

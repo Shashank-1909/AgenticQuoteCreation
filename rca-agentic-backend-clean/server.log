@@ -2263,3 +2263,136 @@ Processing request of type CallToolRequest
                              CallToolRequest                                   
 [06/03/26 23:22:37] INFO     Processing request of type           server.py:720
                              ListToolsRequest                                  
+[06/10/26 11:26:24] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/10/26 11:26:37] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/10/26 11:26:51] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[DEBUG] Ambiguous account name search: 'SFC' matches ['SFC Contracting PLC', 'SFC Contracting Plus PLC', 'SFC Partners']
+[06/10/26 11:57:00] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[DEBUG] Ambiguous account name search: 'SFC' matches ['SFC Contracting PLC', 'SFC Contracting Plus PLC', 'SFC Partners']
+[06/10/26 11:57:17] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[DEBUG] Ambiguous account name search: 'SFC' matches ['SFC Contracting PLC', 'SFC Contracting Plus PLC', 'SFC Partners']
+[06/10/26 11:57:46] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[DEBUG] Ambiguous account name search: 'SFC' matches ['SFC Contracting PLC', 'SFC Contracting Plus PLC', 'SFC Partners']
+[06/10/26 12:02:57] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:03:07] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:03:18] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:04:10] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:04:21] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:05:10] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:05:21] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:05:40] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:05:53] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:06:11] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] Successfully retrieved QuoteNumber: 00000516 on attempt 1
+[06/10/26 12:07:01] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:07:14] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:09:48] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/10/26 12:25:13] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:25:24] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:25:41] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:27:16] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:27:29] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:28:06] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:28:20] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:29:02] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:29:17] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:29:39] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] Successfully retrieved QuoteNumber: 00000517 on attempt 1
+[06/10/26 12:30:37] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:30:51] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:32:34] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:40:16] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/10/26 12:40:45] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/10/26 12:51:02] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/10/26 12:53:28] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+[06/10/26 12:56:28] WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_opportunities_for_account                     
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             resolve_pricebook_entries                         
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
+                    WARNING  Tool already exists:            tool_manager.py:70
+                             get_my_accounts                                   
