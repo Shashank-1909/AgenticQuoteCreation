@@ -75,9 +75,9 @@ export const TOOL_LABELS = {
   get_deal_history: 'Deal History',
   summary_node: 'Summary Node',
   win_rate: 'Win Rate',
-  get_thermofisher_account_context: 'SF Context',
+  get_twin_account_context: 'SF Context',
   research_twin_candidates: 'Web Research',
-  build_twin_hunter_cards: 'Twin Cards',
+  build_twin_cards: 'Twin Cards',
 };
 export const shortLabel = (t_dict, t) => t_dict?.tools?.[t] || TOOL_LABELS[t] || t.replace(/_/g, ' ').slice(0, 12);
 
