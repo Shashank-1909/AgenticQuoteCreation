@@ -2259,122 +2259,7 @@ def search_products(search_term: str, region: str = None, page_size: int = 15) -
     }, indent=2)
 
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
-
-class RequirementItem(BaseModel):
-    product_name: str = Field(description="The exact name of the product or service needed.")
-    quantity: int = Field(default=1, description="The quantity requested. Default to 1 if not specified.")
-    discount: float = Field(default=0.0, description="The discount percentage requested, e.g. 10.0 for 10%. Default to 0.0.")
-
-class RequirementsPayload(BaseModel):
-    requirements: List[RequirementItem]
-
-
-def _call_gemini_direct(
-    prompt: str,
-    mime_type: str = "application/json",
-    temperature: float = 0.0,
-    response_schema: any = None
-) -> str:
-    """
-    Helper to make a Gemini API call using the official, pre-configured GenAI Client.
-    Bypasses raw REST requests and manual credential refreshes to avoid Windows grandchild pipe deadlocks.
-    """
-    sys.stderr.write("[DEBUG] _call_gemini_direct: Calling Gemini via official Client...\n")
-    try:
-        client = _get_genai_client()
-        
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type=mime_type,
-                temperature=temperature,
-                response_schema=response_schema,
-            )
-        )
-        if response and response.text:
-            sys.stderr.write("[DEBUG] _call_gemini_direct: Call succeeded.\n")
-            return response.text.strip()
-        else:
-            raise ValueError("Empty response received from Gemini.")
-    except Exception as e:
-        sys.stderr.write(f"[DEBUG] _call_gemini_direct Error: {str(e)}\n")
-        raise e
-
-
-def parse_transcript_to_requirements(transcript_text: str) -> str:
-    """
-    Extracts product requirements and customer intent from a call transcript or meeting notes.
-    """
-    sys.stderr.write(f"\n[DEBUG] Parsing transcript ({len(transcript_text)} chars)...\n")
-    
-    # No slice limit; Gemini's 1-million token context window processes the entire text natively.
-
-    prompt = (
-        "Extract all product/service requirements from the following call transcript. "
-        "For each item, identify its name, quantity, and discount.\n"
-        "If the transcript mentions a general discount rule (for example, '12% discount on all consumables', "
-        "'10% institutional discount has been applied to consumables', or similar), you MUST apply that discount percentage "
-        "to all matching products in the list.\n"
-        f"\n\nTranscript:\n{transcript_text}"
-    )
-
-    try:
-        sys.stderr.write("[DEBUG] Calling Gemini directly for transcript parsing via Pydantic schema...\n")
-        raw_text = _call_gemini_direct(prompt, response_schema=RequirementsPayload)
-        data = json.loads(raw_text)
-        requirements = data.get("requirements", [])
-        sys.stderr.write(f"[DEBUG] LLM extraction complete: {len(requirements)} items.\n")
-    except Exception as e:
-        sys.stderr.write(f"[DEBUG] LLM extraction error: {str(e)}\n")
-        requirements = []
-        
-    return json.dumps(requirements, indent=2)
-
-
-def parse_requirements_doc(document_content: str) -> str:
-    """
-    Extracts requirements from RFP/SOW documents and maps them to the catalog.
-    """
-    sys.stderr.write(f"\n[DEBUG] parse_requirements_doc: Processing {len(document_content)} characters...\n")
-
-    prompt = (
-        "Extract all product/service requirements from the following document. "
-        "For each item, identify its exact product name, quantity, and discount.\n"
-        "If the document mentions a general discount rule (for example, 'A 12% institutional discount has been applied to consumables', "
-        "'10% discount on all consumables', or similar), you MUST apply that discount percentage to all matching products in the list.\n"
-        "IMPORTANT: Do NOT extract table headers, index columns, serial numbers, or row numbers (such as 'S.No', '1', '2', etc.) as product names. "
-        "The product name must be the actual name of the product or service being requested."
-        f"\n\nDocument:\n{document_content}"
-    )
-
-    try:
-        sys.stderr.write("[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...\n")
-        raw = _call_gemini_direct(prompt, response_schema=RequirementsPayload)
-        data = json.loads(raw)
-        all_requirements = data.get("requirements", [])
-        sys.stderr.write(f"[DEBUG] Gemini extracted {len(all_requirements)} items.\n")
-    except Exception as e:
-        sys.stderr.write(f"[DEBUG] Gemini extraction error: {str(e)}\n")
-        return json.dumps({"status": "error", "message": f"Error analyzing document: {str(e)}"})
-
-    # Deduplicate
-    unique_reqs = {}
-    for r in all_requirements:
-        name = r.get("product_name", "").strip()
-        if name and name.lower() not in unique_reqs:
-            unique_reqs[name.lower()] = {
-                "product_name": name,
-                "quantity": r.get("quantity", 1),
-                "discount": r.get("discount", 0.0)
-            }
-
-    transformed = list(unique_reqs.values())
-    sys.stderr.write(f"[DEBUG] Extraction complete. Total unique requirements: {len(transformed)}\n")
-
-    return json.dumps(transformed, indent=2)
+from app.services.requirements_doc import parse_requirements_doc, parse_transcript_to_requirements
    
 
 def _search_product_direct(prod_name: str, page_size: int = 5) -> list:
@@ -2552,11 +2437,68 @@ def _get_similarity_score(str1: str, str2: str) -> float:
     return 0.5 * token_score + 0.3 * bigram_score + 0.2 * seq_score
 
 
+def _batch_search_salesforce(queries: list[str]) -> list[list[dict]]:
+    """
+    Executes a list of SOQL query strings in batches of 25 using the Salesforce Composite Batch API.
+    Returns a list of list of dicts (each sublist corresponds to the query results).
+    """
+    if not queries:
+        return []
+    
+    headers, instance_url = get_salesforce_auth()
+    api_version = "v65.0"
+    endpoint = f"{instance_url}/services/data/{api_version}/composite/batch"
+    
+    all_results = []
+    
+    # Split queries into chunks of 25
+    chunk_size = 25
+    for i in range(0, len(queries), chunk_size):
+        chunk = queries[i:i + chunk_size]
+        batch_requests = []
+        for q in chunk:
+            from urllib.parse import quote as url_quote
+            batch_requests.append({
+                "method": "GET",
+                "url": f"{api_version}/query/?q={url_quote(q)}"
+            })
+            
+        payload = {
+            "haltOnError": False,
+            "batchRequests": batch_requests
+        }
+        
+        try:
+            sys.stderr.write(f"[DEBUG] _batch_search_salesforce: Sending batch of {len(chunk)} queries...\n")
+            resp = requests.post(endpoint, headers=headers, json=payload, timeout=30)
+            if resp.status_code not in (200, 201):
+                sys.stderr.write(f"[DEBUG] _batch_search_salesforce error ({resp.status_code}): {resp.text}\n")
+                # Fallback to empty results for this chunk
+                all_results.extend([[] for _ in chunk])
+                continue
+                
+            body = resp.json()
+            results = body.get("results", [])
+            for idx, res in enumerate(results):
+                status_code = res.get("statusCode", 500)
+                if status_code in (200, 201):
+                    records = res.get("result", {}).get("records", [])
+                    all_results.append(records)
+                else:
+                    sys.stderr.write(f"[DEBUG] Batch subrequest {idx} failed with {status_code}: {res.get('result')}\n")
+                    all_results.append([])
+        except Exception as e:
+            sys.stderr.write(f"[DEBUG] _batch_search_salesforce exception: {str(e)}\n")
+            all_results.extend([[] for _ in chunk])
+            
+    return all_results
+
+
 def _map_requirements_to_catalog(requirements: list) -> str:
     """
     Internal implementation — shared by parse_requirements_doc, parse_transcript_to_requirements,
     and the public map_requirements_to_catalog tool.
-    Uses _search_product_direct (plain function, no MCP) to avoid deadlocks.
+    Uses Composite Batch API to execute queries in bulk to prevent deadlocks and minimize API calls.
     """
     ignored_names = {"product name", "product_name", "quantity", "discount", "price"}
     valid_reqs = []
@@ -2570,29 +2512,120 @@ def _map_requirements_to_catalog(requirements: list) -> str:
             if name.lower() not in ignored_names and _is_valid_product_name(name):
                 valid_reqs.append({"product_name": name})
     
-    requirements = valid_reqs[:12]
+    # Increase processing cap from 12 to 50 requirements
+    requirements = valid_reqs[:50]
 
     if not requirements:
         return json.dumps({"status": "empty", "message": "No valid product names to search."})
 
-    sys.stderr.write(f"[DEBUG] _map_requirements_to_catalog: mapping {len(requirements)} items\n")
+    sys.stderr.write(f"[DEBUG] _map_requirements_to_catalog: mapping {len(requirements)} items via Composite Batch API\n")
 
+    # Map from requirement index to search terms
+    req_terms = []
+    for req in requirements:
+        name = req.get("product_name", "").strip()
+        terms = [t for t in name.replace('"', '').replace("'", "").split() if len(t) > 2]
+        if not terms:
+            terms = [name]
+        # Escape single quotes for SOQL safety
+        safe_terms = [t.replace("'", "\\'") for t in terms[:3]]
+        req_terms.append((name, safe_terms))
+
+    # Phase 1: Build STRICT queries (AND matching)
+    strict_queries = []
+    for name, safe_terms in req_terms:
+        where_clause = " AND ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
+        query = (
+            f"SELECT Id, Name, ProductCode, Family FROM Product2 "
+            f"WHERE ({where_clause}) AND IsActive = true LIMIT 5"
+        )
+        strict_queries.append(query)
+
+    # Execute STRICT queries in batch
+    strict_results = _batch_search_salesforce(strict_queries)
+
+    # Phase 2: Identify failed items for LOOSE queries (OR matching)
+    loose_query_indices = []
+    loose_queries = []
+    
+    for idx, records in enumerate(strict_results):
+        if not records:
+            name, safe_terms = req_terms[idx]
+            if len(safe_terms) > 1:
+                where_clause_loose = " OR ".join([f"Name LIKE '%{t}%'" for t in safe_terms])
+                query_loose = (
+                    f"SELECT Id, Name, ProductCode, Family FROM Product2 "
+                    f"WHERE ({where_clause_loose}) AND IsActive = true LIMIT 5"
+                )
+                loose_query_indices.append(idx)
+                loose_queries.append(query_loose)
+
+    # Execute LOOSE queries in batch
+    loose_results_map = {}
+    if loose_queries:
+        loose_results = _batch_search_salesforce(loose_queries)
+        for i, idx in enumerate(loose_query_indices):
+            loose_results_map[idx] = loose_results[i]
+
+    # Combine Phase 1 and Phase 2 results
+    final_records_by_req = []
+    failed_indices = []
+    for idx in range(len(requirements)):
+        records = strict_results[idx]
+        if not records and idx in loose_results_map:
+            records = loose_results_map[idx]
+        
+        if not records:
+            failed_indices.append(idx)
+            
+        final_records_by_req.append(records)
+
+    # Phase 3: Typo/Fuzzy fallback (download active catalog ONCE if any products failed both searches)
+    fallback_records = []
+    if failed_indices:
+        sys.stderr.write(f"[DEBUG] _map_requirements_to_catalog: {len(failed_indices)} items failed strict/loose search. Fetching active catalog fallback...\n")
+        try:
+            headers, instance_url = get_salesforce_auth()
+            from urllib.parse import quote as url_quote
+            query_all = "SELECT Id, Name, ProductCode, Family FROM Product2 WHERE IsActive = true LIMIT 150"
+            resp_all = requests.get(
+                f"{instance_url}/services/data/v65.0/query/?q={url_quote(query_all)}",
+                headers=headers,
+                timeout=20,
+            )
+            if resp_all.status_code == 200:
+                fallback_records = resp_all.json().get("records", [])
+                sys.stderr.write(f"[DEBUG] Fetch active catalog fallback success: {len(fallback_records)} products retrieved.\n")
+        except Exception as e:
+            sys.stderr.write(f"[DEBUG] Active catalog fallback exception: {str(e)}\n")
+
+    # If we retrieved fallback records, assign them to failed items for local similarity scoring
+    if fallback_records:
+        for idx in failed_indices:
+            final_records_by_req[idx] = fallback_records
+
+    # Now calculate similarity scores, filter, and format the output
     all_catalog_products = []
     mapped_requirements = []
     seen_ids = set()
 
-    def _search_one(req):
-        name = req.get("product_name", "").strip()
-        return req, _search_product_direct(name, page_size=5)
-
-    # FIX: Run sequentially to prevent deadlocks in MCP execution
-    results = [_search_one(req) for req in requirements]
-
-    for req, products_found in results:
+    for idx, req in enumerate(requirements):
         req_name = req.get("product_name", "").strip()
+        products_found = final_records_by_req[idx]
+        
+        # Clean products format
+        formatted_products = [
+            {
+                "name": r.get("Name", ""),
+                "id": r.get("Id", ""),
+                "code": r.get("ProductCode", ""),
+                "category": r.get("Family", "General")
+            }
+            for r in products_found
+        ]
         
         scored_products = []
-        for p in products_found:
+        for p in formatted_products:
             p_name = p.get("name", "").strip()
             score = _get_similarity_score(req_name, p_name)
             scored_products.append((p, score))
