@@ -22,8 +22,8 @@ def build_twin_hunter(toolset: McpToolset) -> LlmAgent:
         model=MODEL_NAME,
         description=(
             "Finds lookalike customers, ICP patterns, and best-fit target accounts "
-            "from ThermoFisher Salesforce Accounts and Opportunities, with Tavily "
-            "web research and Gemini-shaped recommendation cards."
+            "from Salesforce Accounts and Opportunities, with Tavily "
+            "web research and Python-powered recommendation cards."
         ),
         disallow_transfer_to_parent=True,
         instruction="""
@@ -39,11 +39,10 @@ Your job is to answer requests about:
 - prospect matching based on existing customers
 
 Scope:
-- For now, use ONLY ThermoFisher-category Salesforce Accounts and Opportunities.
+- Use Salesforce Accounts and Opportunities to find ICP patterns and lookalike candidates.
 - Do not use product catalog tools.
 - Do not create or update Salesforce records.
-- Do not fabricate account attributes. The org may only have Account and Opportunity
-  fields populated. Use populated Salesforce fields such as Industry,
+- Do not fabricate account attributes. Use populated Salesforce fields such as Industry,
   Description, Website, Type, AnnualRevenue, NumberOfEmployees, BillingCity,
   and Opportunity names/stages/amounts. If enrichment fields are missing, say
   which available fields were used instead.

@@ -91,9 +91,9 @@ export const translations = {
       get_deal_history: 'Deal History',
       summary_node: 'Summary Node',
       win_rate: 'Win Rate',
-      get_thermofisher_account_context: 'SF Context',
+      get_twin_account_context: 'SF Context',
       research_twin_candidates: 'Web Research',
-      build_twin_hunter_cards: 'Twin Cards'
+      build_twin_cards: 'Twin Cards'
     },
     uploadDocumentCTA: "Upload your document to get started.",
     uploadCard: {
@@ -166,9 +166,9 @@ export const translations = {
       get_deal_history: 'Historial',
       summary_node: 'Resumen',
       win_rate: 'Tasa de Éxito',
-      get_thermofisher_account_context: 'Contexto SF',
+      get_twin_account_context: 'Contexto SF',
       research_twin_candidates: 'Búsqueda Web',
-      build_twin_hunter_cards: 'Tarjetas Gemelas'
+      build_twin_cards: 'Tarjetas Gemelas'
     },
     greeting: "¡Hola! Soy su asistente de {name}. ¿Cómo puedo ayudarle hoy?",
     uploadDocumentCTA: "Sube tu documento para empezar.",
@@ -271,9 +271,9 @@ export const translations = {
     get_deal_history: '交易历史',
     summary_node: '摘要节点',
     win_rate: '胜率',
-    get_thermofisher_account_context: 'SF上下文',
+    get_twin_account_context: 'SF上下文',
     research_twin_candidates: '网络搜索',
-    build_twin_hunter_cards: '双子卡片'
+    build_twin_cards: '双子卡片'
   },
   greeting: "您好！我是您的 {name} 助手。今天我能为您提供什么帮助？",
   uploadDocumentCTA: "上传您的文档以开始。",

@@ -1,5 +1,6 @@
 export const config = {
-  theme: 'Thermofisher', 
+  theme: 'Default',
+  //  Thermofisher
   // Meta (Meta-like UI)
   // Default (Google-like UI)
   AGIVANT_LOGO_URL: 'https://www.agivant.com/wp-content/uploads/2022/06/Agivant-SVG-Logo.svg',

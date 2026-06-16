@@ -590,7 +590,7 @@ const AgentforceView = ({ onBack, selectedModule, isDark = false, language, setL
               setDealHistoryAccount(parsed.accountName || '');
             }
           }
-          if (data.tool === 'build_twin_hunter_cards' && Array.isArray(parsed.cards)) {
+          if (data.tool === 'build_twin_cards' && Array.isArray(parsed.cards)) {
             setLookalikeData(parsed);
             setPreviewData(null);
             setWorkspaceView('preview');
