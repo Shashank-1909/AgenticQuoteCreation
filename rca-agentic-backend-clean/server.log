@@ -2396,3 +2396,41 @@ Processing request of type CallToolRequest
                              get_my_accounts                                   
                     WARNING  Tool already exists:            tool_manager.py:70
                              get_my_accounts                                   
+[06/17/26 20:36:15] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:36:24] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:36:31] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:37:44] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:37:50] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:38:10] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:38:18] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:38:28] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:38:38] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:38:52] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] Successfully retrieved QuoteNumber: 00000527 on attempt 1
+[06/17/26 20:39:25] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:39:37] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:41:52] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:42:47] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:43:06] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:45:44] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:47:34] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:47:42] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:48:59] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:50:52] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[DEBUG] Ambiguous account name search: '' matches ['SFC Partners', 'SFC Contracting PLC', 'SFC Contracting Plus PLC', 'Any Partner Inc', 'Global Excel']
+[06/17/26 20:52:40] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[DEBUG] Ambiguous account name search: '' matches ['SFC Partners', 'SFC Contracting PLC', 'SFC Contracting Plus PLC', 'Any Partner Inc', 'Global Excel']
+[06/17/26 20:53:57] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:54:09] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:54:18] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:55:33] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:55:45] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:56:24] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:56:35] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:56:56] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:57:11] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 20:57:28] INFO     Processing request of type CallToolRequest                                   server.py:720
+[DEBUG] Successfully retrieved QuoteNumber: 00000528 on attempt 1
+[06/17/26 20:57:59] INFO     Processing request of type ListToolsRequest                                  server.py:720
+[06/17/26 20:58:08] INFO     Processing request of type CallToolRequest                                   server.py:720
+[06/17/26 21:00:39] INFO     Processing request of type ListToolsRequest                                  server.py:720

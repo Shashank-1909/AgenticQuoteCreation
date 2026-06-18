@@ -106,9 +106,8 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
     const startingScore = baseChance;
     const discountContrib = discountMod;
     const dealSizeContrib = dealSizeMod;
-    const proposalStageContrib = competitorCounter;
 
-    const baseSum = discountContrib + dealSizeContrib + productsNewContrib + proposalStageContrib;
+    const baseSum = discountContrib + dealSizeContrib + productsNewContrib;
     const accountHistoryContrib = finalProb - startingScore - baseSum;
 
     // Helper math values for display
@@ -173,8 +172,6 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       }
     }
 
-    const stageExpl = "Since the opportunity is currently in the Proposal stage, it indicates active customer engagement and higher probability of closing.";
-
     const factors = [
       {
         name: "Historical Baseline",
@@ -195,11 +192,6 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
         name: "Product Familiarity",
         explanation: productExpl,
         contrib: productsNewContrib,
-      },
-      {
-        name: "Opportunity Stage (Proposal Stage)",
-        explanation: stageExpl,
-        contrib: proposalStageContrib,
       }
     ];
 
@@ -211,7 +203,6 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
       dealSizeContrib,
       discountContrib,
       productsNewContrib,
-      proposalStageContrib,
     };
   };
 
@@ -223,7 +214,6 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
     dealSizeContrib,
     discountContrib,
     productsNewContrib,
-    proposalStageContrib
   } = getContributionFactors();
 
   const confidence =
@@ -279,13 +269,11 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                     const f1 = factors[1];
                     const f2 = factors[2];
                     const f3 = factors[3];
-                    const f4 = factors[4];
                     const f0Sign = f0.contrib >= 0 ? '+' : '';
                     const f1Sign = f1.contrib >= 0 ? '+' : '';
                     const f2Sign = f2.contrib >= 0 ? '+' : '';
                     const f3Sign = f3.contrib >= 0 ? '+' : '';
-                    const f4Sign = f4.contrib >= 0 ? '+' : '';
-                    return `This quote has a win chance of ${finalProb}%. What helps the deal: ${f0.name.toLowerCase()} (${f0Sign}${f0.contrib}%), ${f1.name.toLowerCase()} (${f1Sign}${f1.contrib}%), and ${f2.name.toLowerCase()} (${f2Sign}${f2.contrib}%). The ${f4.name.toLowerCase()} adds ${f4Sign}${f4.contrib}%. Also, ${f3.name.toLowerCase()} (${f3Sign}${f3.contrib}%) introduces some uncertainty.`;
+                    return `This quote has a win chance of ${finalProb}%. What helps the deal: ${f0.name.toLowerCase()} (${f0Sign}${f0.contrib}%), ${f1.name.toLowerCase()} (${f1Sign}${f1.contrib}%), and ${f2.name.toLowerCase()} (${f2Sign}${f2.contrib}%). Also, ${f3.name.toLowerCase()} (${f3Sign}${f3.contrib}%) reflects product match with past orders.`;
                   })()}
                 </p>
               </div>
@@ -373,11 +361,7 @@ function ExplainabilityAccordion({ quotes, wonQuotes, lostQuotes, activeQuotes, 
                           <span className="text-[8px] uppercase text-indigo-200">Products</span>
                           <span>{productsNewContrib > 0 ? `+${productsNewContrib}%` : productsNewContrib < 0 ? `${productsNewContrib}%` : '0% (neutral)'}</span>
                         </div>
-                        <span className="text-indigo-300 font-bold">+</span>
-                        <div className="bg-white/10 px-2.5 py-1 rounded flex flex-col items-center">
-                          <span className="text-[8px] uppercase text-indigo-200">Stage</span>
-                          <span>{proposalStageContrib > 0 ? `+${proposalStageContrib}%` : proposalStageContrib < 0 ? `${proposalStageContrib}%` : '0% (neutral)'}</span>
-                        </div>
+
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-indigo-300 font-bold">=</span>
