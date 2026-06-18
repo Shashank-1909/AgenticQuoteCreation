@@ -2434,3 +2434,48 @@ Processing request of type CallToolRequest
 [06/17/26 20:57:59] INFO     Processing request of type ListToolsRequest                                  server.py:720
 [06/17/26 20:58:08] INFO     Processing request of type CallToolRequest                                   server.py:720
 [06/17/26 21:00:39] INFO     Processing request of type ListToolsRequest                                  server.py:720
+Processing request of type ListToolsRequest
+
+[DEBUG] parse_requirements_doc: Processing 1106 characters...
+[DEBUG] Calling Gemini directly for document parsing via Pydantic schema...
+[DEBUG] _call_gemini_direct: Calling Gemini via official Client...
+[DEBUG] _call_gemini_direct: Call succeeded.
+[DEBUG] Gemini extracted 9 items.
+[DEBUG] Extraction complete. Total unique requirements: 9
+[DEBUG] _map_requirements_to_catalog: mapping 9 items via Composite Batch API
+[DEBUG] _batch_search_salesforce: Sending batch of 9 queries...
+[DEBUG] _batch_search_salesforce: Sending batch of 1 queries...
+[DEBUG] Mapping complete — 9 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] _map_requirements_to_catalog: mapping 9 items via Composite Batch API
+[DEBUG] _batch_search_salesforce: Sending batch of 9 queries...
+[DEBUG] _batch_search_salesforce: Sending batch of 1 queries...
+[DEBUG] Mapping complete — 9 unique products found
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+[DEBUG] Successfully retrieved QuoteNumber: 00000529 on attempt 1
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+[Twin Hunter] context loaded: analysis_id=twin_5accd47fa0 mode=single_account accounts=34 opps=113
+Processing request of type CallToolRequest
+[Twin Hunter] Tavily research complete: 12 results
+Processing request of type CallToolRequest
+[Twin Hunter] build_twin_cards complete: 6 cards (analysis_id=twin_5accd47fa0 evicted)
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+[Twin Hunter] context loaded: analysis_id=twin_4cf881173d mode=icp_profile accounts=34 opps=113
+Processing request of type CallToolRequest
+[Twin Hunter] Tavily research complete: 12 results
+Processing request of type CallToolRequest
+[Twin Hunter] build_twin_cards complete: 6 cards (analysis_id=twin_4cf881173d evicted)
